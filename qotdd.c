@@ -104,8 +104,8 @@ int main(int argc, const char* argv[])
 
 static int send_quote(int fd)
 {
-    char buffer[] = "Quote of the day: something\n";
-    int bufsize = 28;
+    char buffer[] = "**sample data here**\n";
+    int bufsize = 21;
 
     return write(fd, buffer, bufsize);
 }

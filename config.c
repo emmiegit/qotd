@@ -28,8 +28,9 @@
 #include "qotdd.h"
 
 #define STREQ(x, y) (!strcmp((x), (y)))
-
 #define BUFFER_SIZE 256
+#define keystr ((char*)key)
+#define valstr ((char*)val)
 
 static char* readline(FILE* fh, const char* filename, unsigned int* lineno);
 static bool str_to_bool(const char* string, const char* filename, const unsigned int lineno);
@@ -48,7 +49,7 @@ void parse_config(const char* conf_file, options* opt)
     }
 
     char key[BUFFER_SIZE], val[BUFFER_SIZE];
-    bool reading_key = true;
+    bool firsthalf = true;
     unsigned int lineno = 1;
     while ((line = readline(fh, conf_file, &lineno)) != NULL) {
         /* Ignore comments */
@@ -60,12 +61,17 @@ void parse_config(const char* conf_file, options* opt)
         /* Read each line */
         int i = 0, j = 0;
         char ch;
+        bool ignoring_whitespace = false;
         while ((ch = line[i++]) != '\0') {
-            if (reading_key) {
+            if (firsthalf) {
                 if (ch == ' ' || ch == '\t') {
-                    reading_key = false;
+                    ignoring_whitespace = true;
+                } else if (ignoring_whitespace) {
+                    ignoring_whitespace = false;
+                    firsthalf = false;
                     key[j] = '\0';
                     j = 0;
+                    val[j++] = ch;
                 } else {
                     key[j++] = ch;
                 }
@@ -75,35 +81,36 @@ void parse_config(const char* conf_file, options* opt)
         }
         val[j] = '\0';
 
-        printf("[%s] = [%s]\n", (char*)key, (char*)val);
-
         /* Parse each line */
-        if (STREQ((char*)key, "Port")) {
-            int port = atoi((char*)val);
+        if (STREQ(keystr, "Port")) {
+            int port = atoi(valstr);
             if (port <= 0) {
-                fprintf(stderr, "%s:%d: invalid port number: \"%s\"\n", conf_file, lineno, (char*)val);
+                fprintf(stderr, "%s:%d: invalid port number: \"%s\"\n", conf_file, lineno, valstr);
                 confcleanup(1);
             }
 
             opt->port = port;
-        } else if (STREQ((char*)key, "QuotesFile")) {
-            opt->quotesfile = (char*)val;
-        } else if (STREQ((char*)key, "Delimeter")) {
-            if (STREQ((char*)val, "newline")) {
+        } else if (STREQ(keystr, "QuotesFile")) {
+            opt->quotesfile = valstr;
+        } else if (STREQ(keystr, "Delimeter")) {
+            if (STREQ(valstr, "newline")) {
                 opt->delimeter = DELIM_NEWLINE;
-            } else if (STREQ((char*)val, "emptyline")) {
+            } else if (STREQ(valstr, "emptyline")) {
                 opt->delimeter = DELIM_EMPTYLINE;
             } else {
-                fprintf(stderr, "%s:%d: unknown delimiter: \"%s\"\n", conf_file, lineno, (char*)val);
+                fprintf(stderr, "%s:%d: unknown delimiter: \"%s\"\n", conf_file, lineno, valstr);
                 confcleanup(1);
             }
-        } else if (STREQ((char*)key, "DailyQuotes")) {
-            opt->is_daily = str_to_bool((char*)val, conf_file, lineno);
-        } else if (STREQ((char*)key, "AllowBigQuotes")) {
-            opt->allow_big = str_to_bool((char*)val, conf_file, lineno);
+        } else if (STREQ(keystr, "DailyQuotes")) {
+            opt->is_daily = str_to_bool(valstr, conf_file, lineno);
+        } else if (STREQ(keystr, "AllowBigQuotes")) {
+            opt->allow_big = str_to_bool(valstr, conf_file, lineno);
+        } else {
+            fprintf(stderr, "%s:%d: ignoring unknown conf option: \"%s\"\n", conf_file, lineno, keystr);
         }
 
         lineno++;
+        firsthalf = true;
     }
 
     if (line) free(line);

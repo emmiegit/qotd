@@ -35,9 +35,9 @@ static void help_and_exit();
 static void usage_and_exit();
 static void version_and_exit();
 
-options* parse_args(const int argc, char* argv[])
+options* parse_args(const int argc, const char* argv[])
 {
-    program_name = basename(argv[0]);
+    program_name = basename((char*)argv[0]);
     char* conf_file = "/etc/qotd.conf";
 
     /* Parse arguments */
@@ -53,7 +53,7 @@ options* parse_args(const int argc, char* argv[])
                 fprintf(stderr, "You must specify a configuration file.\n");
                 cleanup(1);
             } else {
-                conf_file = argv[i];
+                conf_file = (char*)argv[i];
             }
         } else if (STREQ(argv[i], "-N") ||
                    STREQ(argv[i], "--noconfig")) {

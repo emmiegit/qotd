@@ -34,5 +34,5 @@ typedef struct {
 #define __OPTIONS_STRUCT
 #endif /* __OPTIONS_STRUCT */
 
-options* parse_args(const int argc, char* argv[]);
+options* parse_args(const int argc, const char* argv[]);
 
