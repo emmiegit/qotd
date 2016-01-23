@@ -18,5 +18,5 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-void cleanup(int ret);
+void cleanup(const int ret);
 

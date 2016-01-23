@@ -22,6 +22,7 @@
 CC=gcc
 FLAGS=-Wall -Wextra -ansi -I.
 OBJECTS=arguments.o \
+		config.o    \
 		qotdd.o     \
 		sighandler.o
 

@@ -61,8 +61,7 @@ static void handle_int(int signum)
 
 static void handle_hup(int signum)
 {
-    printf("Hangup recieved. Restarting daemon...\n");
-    printf("TODO: actually restart daemon.\n");
+    printf("Hangup signal recieved. Doing nothing.\n");
     UNUSED(signum);
 }
 

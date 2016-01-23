@@ -1,5 +1,5 @@
 /*
- * arguments.h
+ * config.h
  *
  * qotd - A simple QOTD server.
  * Copyright (c) 2015 Ammon Smith
@@ -18,21 +18,7 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
+#include "arguments.h"
 
-#define DELIM_NEWLINE    0
-#define DELIM_EMPTYLINE  1
-
-#ifndef __OPTIONS_STRUCT
-typedef struct {
-    unsigned int port;
-    char* quotesfile;
-    char delimeter;
-    bool is_daily;
-    bool allow_big;
-} options;
-#define __OPTIONS_STRUCT
-#endif /* __OPTIONS_STRUCT */
-
-options* parse_args(const int argc, char* argv[]);
+void parse_config(const char* conf_file, options* opt);
 
