@@ -18,7 +18,7 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "arguments.h"
+#include "options.h"
 
 int send_quote(const int fd, const options* opt);
 

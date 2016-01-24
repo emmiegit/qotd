@@ -18,18 +18,7 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
-
-#ifndef __OPTIONS_STRUCT
-typedef struct {
-    unsigned int port;
-    char* quotesfile;
-    char* pidfile;
-    bool is_daily;
-    bool allow_big;
-} options;
-#define __OPTIONS_STRUCT
-#endif /* __OPTIONS_STRUCT */
+#include "options.h"
 
 options* parse_args(const int argc, const char* argv[]);
 

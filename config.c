@@ -23,7 +23,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "arguments.h"
 #include "config.h"
 #include "qotdd.h"
 
@@ -101,10 +100,10 @@ void parse_config(const char* conf_file, options* opt)
 
             opt->port = port;
         } else if (STREQ(keystr, "PidFile")) {
-            opt->pidfile = malloc(strlen(valstr));
+            opt->pidfile = malloc(strlen(valstr) + 1);
             strcpy(opt->pidfile, valstr);
         } else if (STREQ(keystr, "QuotesFile")) {
-            opt->quotesfile = malloc(strlen(valstr));
+            opt->quotesfile = malloc(strlen(valstr) + 1);
             strcpy(opt->quotesfile, valstr);
         } else if (STREQ(keystr, "DailyQuotes")) {
             opt->is_daily = str_to_bool(valstr, conf_file, lineno);

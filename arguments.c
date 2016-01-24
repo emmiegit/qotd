@@ -25,6 +25,7 @@
 
 #include "arguments.h"
 #include "config.h"
+#include "options.h"
 #include "qotdd.h"
 
 #define STREQ(x, y) (!strcmp((x), (y)))

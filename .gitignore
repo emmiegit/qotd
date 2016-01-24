@@ -33,5 +33,6 @@ qotdd
 *.dSYM/
 
 # Others
+core*
 *.pid
 

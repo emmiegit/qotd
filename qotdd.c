@@ -56,9 +56,6 @@ int main(int argc, const char* argv[])
     /* Write to pid file */
     write_pidfile();
 
-    send_quote(1, opt);
-    cleanup(0);
-
     /* Check configuration */
     if (opt->port < 1024 && geteuid() != 0) {
         fprintf(stderr, "Only root can bind to ports below 1024.\n");
@@ -136,6 +133,8 @@ void load_config()
 
 void cleanup(int ret)
 {
+    printf("Quitting with exit code %d.\n", ret);
+
     int ret2 = close(sockfd);
     if (ret2 < 0) {
         perror("Unable to close socket file descriptor");
