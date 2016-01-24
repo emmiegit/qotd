@@ -1,8 +1,8 @@
 /*
  * config.c
  *
- * qotd - A simple QOTD server.
- * Copyright (c) 2015 Ammon Smith
+ * qotd - A simple QOTD daemon.
+ * Copyright (c) 2015-2016 Ammon Smith
  * 
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,6 +31,12 @@
 #define BUFFER_SIZE 256
 #define keystr ((char*)key)
 #define valstr ((char*)val)
+
+#if DEBUG == 1
+# define NULLSTR(x) ((x) ? (x) : "<null>")
+# define BOOLSTR(x) ((x) ? "<true>" : "<false>")
+static void print_options(options* opt);
+#endif /* DEBUG */
 
 static char* readline(FILE* fh, const char* filename, unsigned int* lineno);
 static bool str_to_bool(const char* string, const char* filename, const unsigned int lineno);
@@ -81,6 +87,10 @@ void parse_config(const char* conf_file, options* opt)
         }
         val[j] = '\0';
 
+#if DEBUG == 1
+        printf("[%s] = [%s]\n", keystr, valstr);
+#endif /* DEBUG */
+
         /* Parse each line */
         if (STREQ(keystr, "Port")) {
             int port = atoi(valstr);
@@ -90,17 +100,12 @@ void parse_config(const char* conf_file, options* opt)
             }
 
             opt->port = port;
+        } else if (STREQ(keystr, "PidFile")) {
+            opt->pidfile = malloc(strlen(valstr));
+            strcpy(opt->pidfile, valstr);
         } else if (STREQ(keystr, "QuotesFile")) {
-            opt->quotesfile = valstr;
-        } else if (STREQ(keystr, "Delimeter")) {
-            if (STREQ(valstr, "newline")) {
-                opt->delimeter = DELIM_NEWLINE;
-            } else if (STREQ(valstr, "emptyline")) {
-                opt->delimeter = DELIM_EMPTYLINE;
-            } else {
-                fprintf(stderr, "%s:%d: unknown delimiter: \"%s\"\n", conf_file, lineno, valstr);
-                confcleanup(1);
-            }
+            opt->quotesfile = malloc(strlen(valstr));
+            strcpy(opt->quotesfile, valstr);
         } else if (STREQ(keystr, "DailyQuotes")) {
             opt->is_daily = str_to_bool(valstr, conf_file, lineno);
         } else if (STREQ(keystr, "AllowBigQuotes")) {
@@ -113,9 +118,26 @@ void parse_config(const char* conf_file, options* opt)
         firsthalf = true;
     }
 
+#if DEBUG == 1
+    print_options(opt);
+#endif /* DEBUG */
+
     if (line) free(line);
     fclose(fh);
 }
+
+#if DEBUG == 1
+static void print_options(options* opt)
+{
+    printf("Content of struct 'opt':\n");
+    printf("Port: %d\n", opt->port);
+    printf("QuotesFile: %s\n", NULLSTR(opt->quotesfile));
+    printf("PidFile: %s\n", NULLSTR(opt->pidfile));
+    printf("DailyQuotes: %s\n", BOOLSTR(opt->is_daily));
+    printf("AllowBigQuotes: %s\n", BOOLSTR(opt->allow_big));
+    printf("End of 'opt':\n");
+}
+#endif /* DEBUG */
 
 static char* readline(FILE* fh, const char* filename, unsigned int* lineno)
 {

@@ -32,3 +32,6 @@ qotdd
 # Debug files
 *.dSYM/
 
+# Others
+*.pid
+

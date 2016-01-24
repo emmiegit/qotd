@@ -1,8 +1,8 @@
 /*
  * sighandler.c
  *
- * qotd - A simple QOTD server.
- * Copyright (c) 2015 Ammon Smith
+ * qotd - A simple QOTD daemon.
+ * Copyright (c) 2015-2016 Ammon Smith
  * 
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,10 +27,10 @@
 
 #define UNUSED(x) ((void)(x))
 
-static void handle_segv(int signum);
-static void handle_term(int signum);
-static void handle_int(int signum);
-static void handle_hup(int signum);
+static void handle_segv(const int signum);
+static void handle_term(const int signum);
+static void handle_int(const int signum);
+static void handle_hup(const int signum);
 
 void set_up_handlers()
 {
@@ -40,28 +40,29 @@ void set_up_handlers()
     signal(SIGHUP,  handle_hup);
 }
 
-static void handle_segv(int signum)
+static void handle_segv(const int signum)
 {
     fprintf(stderr, "Error: segmentation fault. Dumping core.\n");
     cleanup(signum);
 }
 
-static void handle_term(int signum)
+static void handle_term(const int signum)
 {
     fprintf(stderr, "Termination signal received. Exiting...\n");
     cleanup(signum);
 }
 
-static void handle_int(int signum)
+static void handle_int(const int signum)
 {
     fprintf(stderr, "Interrupt signal received. Exiting...\n");
     cleanup(signum);
 }
 
 
-static void handle_hup(int signum)
+static void handle_hup(const int signum)
 {
-    printf("Hangup signal recieved. Doing nothing.\n");
+    printf("Hangup signal recieved. Reloading configuration...\n");
+    load_config();
     UNUSED(signum);
 }
 

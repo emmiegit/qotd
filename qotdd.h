@@ -1,8 +1,8 @@
 /*
  * qotdd.h
  *
- * qotd - A simple QOTD server.
- * Copyright (c) 2015 Ammon Smith
+ * qotd - A simple QOTD daemon.
+ * Copyright (c) 2015-2016 Ammon Smith
  * 
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,5 +18,13 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define DEBUG 0
+
+typedef struct {
+    const int argc;
+    const char** argv;
+} arguments;
+
+void load_config();
 void cleanup(const int ret);
 

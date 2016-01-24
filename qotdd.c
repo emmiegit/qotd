@@ -1,8 +1,8 @@
 /*
  * qotdd.c
  *
- * qotd - A simple QOTD server.
- * Copyright (c) 2015 Ammon Smith
+ * qotd - A simple QOTD daemon.
+ * Copyright (c) 2015-2016 Ammon Smith
  * 
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,13 +30,15 @@
 
 #include "arguments.h"
 #include "qotdd.h"
+#include "quotes.h"
 #include "sighandler.h"
 
 #define ever (;;)
-#define BUFFER_SIZE 512
 
-static int send_quote();
+static void save_args(const int argc, const char* argv[]);
+static void write_pidfile();
 
+static arguments* args;
 static options* opt;
 static int sockfd;
 
@@ -45,8 +47,17 @@ int main(int argc, const char* argv[])
     /* Set up signal handlers */
     set_up_handlers();
 
-    /* Parse command line arguments */
-    opt = parse_args(argc, argv);
+    /* Make a global copy of arguments */
+    save_args(argc, argv);
+
+    /* Load configuration */
+    load_config();
+
+    /* Write to pid file */
+    write_pidfile();
+
+    send_quote(1, opt);
+    cleanup(0);
 
     /* Check configuration */
     if (opt->port < 1024 && geteuid() != 0) {
@@ -54,7 +65,7 @@ int main(int argc, const char* argv[])
         cleanup(1);
     }
 
-    /* Open and bind to a socket */
+    /* Set up socket */
     struct sockaddr_in serv_addr, cli_addr;
     socklen_t clilen;
     int consockfd, ret;
@@ -69,6 +80,7 @@ int main(int argc, const char* argv[])
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(opt->port);
 
+    /* Open and bind to a socket */
     ret = bind(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
     if (ret < 0) {
         perror("Unable to bind to socket");
@@ -86,7 +98,7 @@ int main(int argc, const char* argv[])
             continue;
         }
 
-        ret = send_quote();
+        ret = send_quote(consockfd, opt);
         if (ret < 0) {
             perror("Unable to write to socket");
             continue;
@@ -102,24 +114,72 @@ int main(int argc, const char* argv[])
     return EXIT_SUCCESS;
 }
 
-static int send_quote(int fd)
+static void save_args(const int argc, const char* argv[])
 {
-    char buffer[] = "**sample data here**\n";
-    int bufsize = 21;
+    arguments args_ = {
+        .argc = argc,
+        .argv = argv,
+    };
 
-    return write(fd, buffer, bufsize);
+    args = malloc(sizeof(arguments));
+    memcpy(args, &args_, sizeof(arguments));
 }
 
-void cleanup(const int ret)
+void load_config()
 {
-    if (close(sockfd) < 0) {
-        perror("Unable to close socket file descriptor");
-    }
-
     if (opt) {
         free(opt);
     }
 
+    opt = parse_args(args->argc, args->argv);
+}
+
+void cleanup(int ret)
+{
+    int ret2 = close(sockfd);
+    if (ret2 < 0) {
+        perror("Unable to close socket file descriptor");
+        ret++;
+    }
+
+    if (args) {
+        free(args);
+    }
+
+    ret2 = unlink(opt->pidfile);
+    if (ret2 < 0) {
+        fprintf(stderr, "Unable to remove pid file (%s): %s\n",
+                opt->pidfile, strerror(errno));
+        ret++;
+    }
+
+    if (opt) {
+        free(opt->quotesfile);
+        free(opt->pidfile);
+        free(opt);
+    }
+
     exit(ret);
+}
+
+static void write_pidfile()
+{
+    FILE* fh = fopen(opt->pidfile, "w+");
+    int ret;
+
+    if (fh == NULL) {
+        perror("Unable to open pid file");
+        return;
+    }
+
+    ret = fprintf(fh, "%d", getpid());
+    if (ret < 0) {
+        perror("Unable to write pid to pid file");
+    }
+
+    ret = fclose(fh);
+    if (ret < 0) {
+        perror("Unable to close pid file handle");
+    }
 }
 

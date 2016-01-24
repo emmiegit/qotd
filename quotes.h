@@ -1,5 +1,5 @@
 /*
- * arguments.h
+ * quotes.h
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -18,18 +18,7 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
+#include "arguments.h"
 
-#ifndef __OPTIONS_STRUCT
-typedef struct {
-    unsigned int port;
-    char* quotesfile;
-    char* pidfile;
-    bool is_daily;
-    bool allow_big;
-} options;
-#define __OPTIONS_STRUCT
-#endif /* __OPTIONS_STRUCT */
-
-options* parse_args(const int argc, const char* argv[]);
+int send_quote(const int fd, const options* opt);
 
