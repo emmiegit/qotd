@@ -20,14 +20,15 @@
 
 #include <stdbool.h>
 
-#ifndef __OPTIONS_STRUCT
+#ifndef __OPTIONS_H
 typedef struct {
     unsigned int port;
     char* quotesfile;
     char* pidfile;
+    bool require_pidfile;
     bool is_daily;
     bool allow_big;
 } options;
-#define __OPTIONS_STRUCT
-#endif /* __OPTIONS_STRUCT */
+#define __OPTIONS_H
+#endif /* __OPTIONS_H */
 

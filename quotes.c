@@ -28,8 +28,8 @@
 #include "qotdd.h"
 #include "quotes.h"
 
-#define QUOTE_SIZE       512 /* Set by RFC 856 */
-#define MAX_BUFFER_SIZE 4096
+#define QUOTE_SIZE      512  /* Set by RFC 856 */
+#define MAX_BUFFER_SIZE 4096 /* A reasonable upper (although magical) limit */
 #define STREMPTY(x)     (((x)[0]) == '\0')
 #define MIN(x, y)       (((x) < (y)) ? (x) : (y))
 
@@ -141,7 +141,7 @@ static const char** readlines(const char* fn, size_t* lines)
     }
 
     /* Allocate the array of strings */
-    char** array = malloc((*lines) * sizeof(char*));
+    char** array = malloc((*lines) * (sizeof(char*) + 1));
     array[0] = &buf[0];
 
     int j = 1;

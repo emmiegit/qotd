@@ -20,7 +20,7 @@
 .PHONY: all debug force distclean clean
 
 CC=gcc
-FLAGS=-Wall -Wextra -ansi -I.
+FLAGS=-ansi -I. -Wall -Wextra
 OBJECTS=arguments.o \
 		config.o    \
 		qotdd.o     \
@@ -33,12 +33,11 @@ all: $(EXE)
 %.o: %.c
 	$(CC) $(FLAGS) $(EXTRA_FLAGS) -c -o $@ $<
 
-qotdd: $(OBJECTS)
+$(EXE): $(OBJECTS)
 	$(CC) $(FLAGS) $(EXTRA_FLAGS) -o $(EXE) $(OBJECTS)
 
 debug: clean
-	make $(OBJECTS) EXTRA_FLAGS=-g
-	make $(EXE) EXTRA_FLAGS=-g
+	make $(EXE) EXTRA_FLAGS='-g'
 
 force: clean $(EXE)
 

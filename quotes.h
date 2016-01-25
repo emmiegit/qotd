@@ -20,5 +20,8 @@
 
 #include "options.h"
 
+#ifndef __QUOTES_H
+# define __QUOTES_H
 int send_quote(const int fd, const options* opt);
+#endif /* __QUOTES_H */
 

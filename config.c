@@ -102,6 +102,8 @@ void parse_config(const char* conf_file, options* opt)
         } else if (STREQ(keystr, "PidFile")) {
             opt->pidfile = malloc(strlen(valstr) + 1);
             strcpy(opt->pidfile, valstr);
+        } else if (STREQ(keystr, "RequirePidFile")) {
+            opt->require_pidfile = str_to_bool(valstr, conf_file, lineno);
         } else if (STREQ(keystr, "QuotesFile")) {
             opt->quotesfile = malloc(strlen(valstr) + 1);
             strcpy(opt->quotesfile, valstr);

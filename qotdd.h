@@ -18,7 +18,9 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define DEBUG 0
+#ifndef __QOTDD_H
+# define __QOTDD_H
+# define DEBUG 0
 
 typedef struct {
     const int argc;
@@ -27,4 +29,5 @@ typedef struct {
 
 void load_config();
 void cleanup(const int ret);
+#endif /* __QOTDD_H */
 

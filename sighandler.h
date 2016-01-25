@@ -18,5 +18,8 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __SIGHANDLER_H
+# define __SIGHANDLER_H
 void set_up_handlers();
+#endif /* __SIGHANDLER_H */
 

@@ -36,7 +36,10 @@
 #define ever (;;)
 
 static void save_args(const int argc, const char* argv[]);
+static void check_config();
 static void write_pidfile();
+static void setup_socket(struct sockaddr_in* serv_addr);
+static bool accept_connection();
 
 static arguments* args;
 static options* opt;
@@ -57,78 +60,18 @@ int main(int argc, const char* argv[])
     write_pidfile();
 
     /* Check configuration */
-    if (opt->port < 1024 && geteuid() != 0) {
-        fprintf(stderr, "Only root can bind to ports below 1024.\n");
-        cleanup(1);
-    }
+    check_config();
 
     /* Set up socket */
-    struct sockaddr_in serv_addr, cli_addr;
-    socklen_t clilen;
-    int consockfd, ret;
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        perror("Unable to connect to socket");
-        cleanup(1);
-    }
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(opt->port);
-
-    /* Open and bind to a socket */
-    ret = bind(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
-    if (ret < 0) {
-        perror("Unable to bind to socket");
-        cleanup(1);
-    }
+    struct sockaddr_in serv_addr;
+    setup_socket(&serv_addr);
 
     /* Continually accept connections */
     for ever {
-        listen(sockfd, 10);
-
-        clilen = sizeof(cli_addr);
-        consockfd = accept(sockfd, (struct sockaddr*) &cli_addr, &clilen);
-        if (consockfd < 0) {
-            perror("Unable to accept connection");
-            continue;
-        }
-
-        ret = send_quote(consockfd, opt);
-        if (ret < 0) {
-            perror("Unable to write to socket");
-            continue;
-        }
-
-        ret = close(consockfd);
-        if (ret < 0) {
-            perror("Unable to close connection");
-            continue;
-        }
+        accept_connection();
     }
 
     return EXIT_SUCCESS;
-}
-
-static void save_args(const int argc, const char* argv[])
-{
-    arguments args_ = {
-        .argc = argc,
-        .argv = argv,
-    };
-
-    args = malloc(sizeof(arguments));
-    memcpy(args, &args_, sizeof(arguments));
-}
-
-void load_config()
-{
-    if (opt) {
-        free(opt);
-    }
-
-    opt = parse_args(args->argc, args->argv);
 }
 
 void cleanup(int ret)
@@ -161,6 +104,26 @@ void cleanup(int ret)
     exit(ret);
 }
 
+void load_config()
+{
+    if (opt) {
+        free(opt);
+    }
+
+    opt = parse_args(args->argc, args->argv);
+}
+
+static void save_args(const int argc, const char* argv[])
+{
+    arguments args_ = {
+        .argc = argc,
+        .argv = argv,
+    };
+
+    args = malloc(sizeof(arguments));
+    memcpy(args, &args_, sizeof(arguments));
+}
+
 static void write_pidfile()
 {
     FILE* fh = fopen(opt->pidfile, "w+");
@@ -168,17 +131,89 @@ static void write_pidfile()
 
     if (fh == NULL) {
         perror("Unable to open pid file");
-        return;
+
+        if (opt->require_pidfile) {
+            cleanup(1);
+        } else {
+            return;
+        }
     }
 
     ret = fprintf(fh, "%d", getpid());
     if (ret < 0) {
         perror("Unable to write pid to pid file");
+
+        if (opt->require_pidfile) {
+            cleanup(1);
+        }
     }
 
     ret = fclose(fh);
     if (ret < 0) {
         perror("Unable to close pid file handle");
+
+        if (opt->require_pidfile) {
+            cleanup(1);
+        }
     }
+}
+
+static void check_config()
+{
+    if (opt->port < 1024 && geteuid() != 0) {
+        fprintf(stderr, "Only root can bind to ports below 1024.\n");
+        cleanup(1);
+    }
+
+    if (access(opt->quotesfile, F_OK) == -1) {
+        fprintf(stderr, "Specified quotes file \"%s\" does not exist or is inaccessible.\n", opt->quotesfile);
+        cleanup(1);
+    }
+}
+
+static void setup_socket(struct sockaddr_in* serv_addr)
+{
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("Unable to connect to socket");
+        cleanup(1);
+    }
+
+    serv_addr->sin_family = AF_INET;
+    serv_addr->sin_addr.s_addr = INADDR_ANY;
+    serv_addr->sin_port = htons(opt->port);
+
+    int ret = bind(sockfd, (const struct sockaddr*)serv_addr, sizeof(struct sockaddr_in));
+    if (ret < 0) {
+        perror("Unable to bind to socket");
+        cleanup(1);
+    }
+}
+
+static bool accept_connection()
+{
+    listen(sockfd, 10);
+
+    struct sockaddr_in cli_addr;
+    socklen_t clilen = sizeof(cli_addr);
+    int consockfd = accept(sockfd, (struct sockaddr*) &cli_addr, &clilen);
+    if (consockfd < 0) {
+        perror("Unable to accept connection");
+        return false;
+    }
+
+    int ret = send_quote(consockfd, opt);
+    if (ret < 0) {
+        perror("Unable to write to socket");
+        return false;
+    }
+
+    ret = close(consockfd);
+    if (ret < 0) {
+        perror("Unable to close connection");
+        return false;
+    }
+
+    return true;
 }
 
