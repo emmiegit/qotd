@@ -57,8 +57,8 @@ void parse_config(const char* conf_file, options* opt)
     bool firsthalf = true;
     unsigned int lineno = 1;
     while ((line = readline(fh, conf_file, &lineno)) != NULL) {
-        /* Ignore comments */
-        if (line[0] == '#') {
+        /* Ignore comments and blank lines */
+        if (line[0] == '#' || line[0] == '\0') {
             free(line);
             continue;
         }
@@ -117,6 +117,7 @@ void parse_config(const char* conf_file, options* opt)
 
         lineno++;
         firsthalf = true;
+        free(line);
     }
 
 #if DEBUG == 1
