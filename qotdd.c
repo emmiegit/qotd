@@ -29,12 +29,14 @@
 #include <sys/types.h>
 
 #include "arguments.h"
+#include "info.h"
 #include "qotdd.h"
 #include "quotes.h"
 #include "sighandler.h"
 
 #define ever (;;)
 
+static int daemonize();
 static void save_args(const int argc, const char* argv[]);
 static void check_config();
 static void write_pidfile();
@@ -44,6 +46,7 @@ static bool accept_connection();
 static arguments* args;
 static options* opt;
 static int sockfd;
+static bool wrote_pidfile;
 
 int main(int argc, const char* argv[])
 {
@@ -56,9 +59,6 @@ int main(int argc, const char* argv[])
     /* Load configuration */
     load_config();
 
-    /* Write to pid file */
-    write_pidfile();
-
     /* Check configuration */
     check_config();
 
@@ -66,7 +66,36 @@ int main(int argc, const char* argv[])
     struct sockaddr_in serv_addr;
     setup_socket(&serv_addr);
 
-    /* Continually accept connections */
+    /* Fork to the background and quit */
+    return daemonize();
+}
+
+static int daemonize()
+{
+    pid_t pid;
+    if ((pid = fork()) < 0) {
+        cleanup(1);
+        return 1;
+    } else if (pid != 0) {
+        /* If you're the parent, then quit */
+        printf("Successfully created background daemon.\n");
+        cleanup(0);
+        return 0;
+    }
+
+    /* Set up daemon environment */
+    pid = setsid();
+
+    if (pid < 0) {
+        perror("Unable to create new session");
+        cleanup(1);
+        return 1;
+    }
+
+    chdir("/");
+    write_pidfile();
+
+    /* Listen to the specified port */
     for ever {
         accept_connection();
     }
@@ -90,11 +119,13 @@ void cleanup(int ret)
     }
 
     if (opt) {
-        ret2 = unlink(opt->pidfile);
-        if (ret2 < 0) {
-            fprintf(stderr, "Unable to remove pid file (%s): %s\n",
-                    opt->pidfile, strerror(errno));
-            ret++;
+        if (wrote_pidfile) {
+            ret2 = unlink(opt->pidfile);
+            if (ret2 < 0) {
+                fprintf(stderr, "Unable to remove pid file (%s): %s\n",
+                        opt->pidfile, strerror(errno));
+                ret++;
+            }
         }
 
         if (opt->quotesmalloc) {
@@ -134,6 +165,11 @@ static void save_args(const int argc, const char* argv[])
 
 static void write_pidfile()
 {
+    if (opt->pidfile[0] != '/') {
+        fprintf(stderr, "Specified pid file is not an absolute path.\n");
+        cleanup(1);
+    }
+
     FILE* fh = fopen(opt->pidfile, "w+");
     int ret;
 
@@ -155,6 +191,8 @@ static void write_pidfile()
             cleanup(1);
         }
     }
+
+    wrote_pidfile = true;
 
     ret = fclose(fh);
     if (ret < 0) {

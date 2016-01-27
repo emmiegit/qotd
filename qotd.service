@@ -4,10 +4,13 @@ Wants=network-online.target
 After=network.target network-online.target
 
 [Service]
+Type=forking
 ExecStart=/usr/bin/qotdd
 ExecReload=/bin/kill -HUP $MAINPID
+PIDFile=/var/run/qotd.pid
 KillMode=process
 Restart=always
+RestartSec=60
 
 [Install]
 WantedBy=multi-user.target

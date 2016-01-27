@@ -3,17 +3,17 @@
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
- * 
+ *
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * qotd is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -51,6 +51,11 @@ int send_quote(const int fd, const options* opt)
 
     size_t lines = 0;
     const char** array = readlines(opt->quotesfile, &lines);
+
+    if (array == NULL) {
+        /* Reading from quotes file failed */
+        return 0;
+    }
 
     if (lines == 0) {
         fprintf(stderr, "Quotes file is empty.\n");
@@ -111,7 +116,7 @@ static const char** readlines(const char* fn, size_t* lines)
     if (ret < 0) {
         perror("Unable to stat quotes file");
         free(statbuf);
-        cleanup(1);
+        return NULL;
     }
 
     const int size = statbuf->st_size;
@@ -122,7 +127,7 @@ static const char** readlines(const char* fn, size_t* lines)
     FILE* fh = fopen(fn, "r");
     if (fh == NULL) {
         perror("Unable to open quotes file");
-        cleanup(1);
+        return NULL;
     }
 
     int ch, i = 0;

@@ -1,5 +1,5 @@
 /*
- * qotdd.h
+ * info.h
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -18,15 +18,9 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __QOTDD_H
-# define __QOTDD_H
-
-typedef struct {
-    const int argc;
-    const char** argv;
-} arguments;
-
-void load_config();
-void cleanup(const int ret);
-#endif /* __QOTDD_H */
+#ifndef __INFO_H
+# define __INFO_H
+# define DEBUG 0
+# define VERSION_STRING ("0.2")
+#endif /* __INFO_H */
 

@@ -25,6 +25,7 @@
 
 #include "arguments.h"
 #include "config.h"
+#include "info.h"
 #include "options.h"
 #include "qotdd.h"
 
@@ -111,8 +112,8 @@ static void usage_and_exit(const char* program_name)
 
 static void version_and_exit(const char* program_name)
 {
-    printf("%s - A simple QOTD daemon, version 0.1\n",
-            program_name);
+    printf("%s - A simple QOTD daemon, version %s\n",
+            program_name, VERSION_STRING);
     cleanup(0);
 }
 
