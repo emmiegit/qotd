@@ -42,7 +42,7 @@ debug: clean
 force: clean $(EXE)
 
 distclean:
-	rm -f *.o *~ $(EXE) core core.*
+	rm -f *.o *~ $(EXE) core core.* vgcore.*
 
 clean:
 	rm -f *.o $(EXE)
