@@ -27,6 +27,7 @@ typedef struct {
     char* pidfile;
     bool quotesmalloc;
     bool pidmalloc;
+    bool daemonize;
     bool require_pidfile;
     bool is_daily;
     bool allow_big;

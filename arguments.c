@@ -41,6 +41,16 @@ options* parse_args(const int argc, const char* argv[])
     char* conf_file = "/etc/qotd.conf";
     char* pid_file = NULL;
 
+    options* opt = malloc(sizeof(options));
+    opt->port = 17;
+    opt->quotesfile = "/usr/share/qotd/quotes.txt";
+    opt->pidfile = "/var/run/qotd.pid";
+    opt->quotesmalloc = false;
+    opt->pidmalloc = false;
+    opt->daemonize = true;
+    opt->is_daily = true;
+    opt->allow_big = false;
+
     /* Parse arguments */
     int i;
     for (i = 1; i < argc; i++) {
@@ -67,21 +77,19 @@ options* parse_args(const int argc, const char* argv[])
             } else {
                 pid_file = (char*)argv[i];
             }
+        } else if (STREQ(argv[i], "-f") ||
+                   STREQ(argv[i], "--foreground")) {
+            opt->daemonize = false;
         } else {
             usage_and_exit(program_name);
         }
     }
 
-    options* opt = malloc(sizeof(options));
-    opt->port = 17;
-    opt->quotesfile = "/usr/share/qotd/quotes.txt";
-    opt->pidfile = "/var/run/qotd.pid";
-    opt->quotesmalloc = false;
-    opt->pidmalloc = false;
-    opt->is_daily = true;
-    opt->allow_big = false;
-
     if (conf_file) {
+        if (conf_file[0] != '/') {
+            fprintf(stderr, "Path to configuration file is not absolute, reloads will be unsuccessful.\n");
+        }
+
         parse_config(conf_file, opt);
     }
 
@@ -95,17 +103,18 @@ options* parse_args(const int argc, const char* argv[])
 static void help_and_exit(const char* program_name)
 {
     printf("%s - A simple QOTD daemon.\n"
-           "Usage: %s [-c config-file | -N]\n"
+           "Usage: %s [-c config-file | -N] [-f]\n"
            " -c, --config (file)   Specify an alternate configuration file location. The default\n"
            "                       is at /etc/qotd.conf\n"
-           " -N, --noconfig        Do not read from a configuration file.\n",
+           " -N, --noconfig        Do not read from a configuration file.\n"
+           " -f, --foreground      Do not fork, but run in the foreground.\n",
            program_name, program_name);
     cleanup(0);
 }
 
 static void usage_and_exit(const char* program_name)
 {
-    printf("Usage: %s [-c config-file | -N]\n",
+    printf("Usage: %s [-c config-file | -N] [-f]\n",
            program_name);
     cleanup(1);
 }

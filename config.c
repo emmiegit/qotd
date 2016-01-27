@@ -24,9 +24,10 @@
 #include <string.h>
 
 #include "config.h"
+#include "info.h"
 #include "qotdd.h"
 
-#define STREQ(x, y) (!strcmp((x), (y)))
+#define STREQ(x, y) (strcmp((x), (y)) == 0)
 #define BUFFER_SIZE 256
 #define keystr ((char*)key)
 #define valstr ((char*)val)
@@ -64,6 +65,7 @@ void parse_config(const char* conf_file, options* opt)
         /* Ignore comments, blank lines are already ignored by readline() */
         if (line[0] == '#') {
             free(line);
+            line = NULL;
             continue;
         }
 
@@ -90,6 +92,7 @@ void parse_config(const char* conf_file, options* opt)
         }
         val[j] = '\0';
         free(line);
+        line = NULL;
 
 #if DEBUG == 1
         printf("[%s] = [%s]\n", keystr, valstr);
@@ -136,10 +139,13 @@ void parse_config(const char* conf_file, options* opt)
 #if DEBUG == 1
 static void print_options(options* opt)
 {
-    printf("Content of struct 'opt':\n");
+    printf("\nContents of struct 'opt':\n");
     printf("Port: %d\n", opt->port);
     printf("QuotesFile: %s\n", NULLSTR(opt->quotesfile));
     printf("PidFile: %s\n", NULLSTR(opt->pidfile));
+    printf("QuotesMalloc: %s\n", BOOLSTR(opt->quotesmalloc));
+    printf("PidMalloc: %s\n", BOOLSTR(opt->pidmalloc));
+    printf("Daemonize: %s\n", BOOLSTR(opt->daemonize));
     printf("DailyQuotes: %s\n", BOOLSTR(opt->is_daily));
     printf("AllowBigQuotes: %s\n", BOOLSTR(opt->allow_big));
     printf("End of 'opt'.\n");
@@ -202,7 +208,11 @@ static bool str_to_bool(const char* string, const char* filename, const unsigned
 
 static void confcleanup(const int ret)
 {
-    if (line) free(line);
+    if (line) {
+        free(line);
+        line = NULL;
+    }
+
     fclose(fh);
     cleanup(ret);
 }

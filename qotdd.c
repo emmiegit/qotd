@@ -34,9 +34,11 @@
 #include "quotes.h"
 #include "sighandler.h"
 
+#define STREQ(x, y)  (strcmp((x), (y)) != 0)
 #define ever (;;)
 
 static int daemonize();
+static int main_loop();
 static void save_args(const int argc, const char* argv[]);
 static void check_config();
 static void write_pidfile();
@@ -66,8 +68,7 @@ int main(int argc, const char* argv[])
     struct sockaddr_in serv_addr;
     setup_socket(&serv_addr);
 
-    /* Fork to the background and quit */
-    return daemonize();
+    return (opt->daemonize) ? daemonize() : main_loop();
 }
 
 static int daemonize()
@@ -78,7 +79,7 @@ static int daemonize()
         return 1;
     } else if (pid != 0) {
         /* If you're the parent, then quit */
-        printf("Successfully created background daemon.\n");
+        printf("Successfully created background daemon, pid %d.\n", pid);
         cleanup(0);
         return 0;
     }
@@ -93,6 +94,11 @@ static int daemonize()
     }
 
     chdir("/");
+    return main_loop();
+}
+
+static int main_loop()
+{
     write_pidfile();
 
     /* Listen to the specified port */
@@ -165,7 +171,10 @@ static void save_args(const int argc, const char* argv[])
 
 static void write_pidfile()
 {
-    if (opt->pidfile[0] != '/') {
+    if (STREQ(opt->pidfile, "none")) {
+        /* User asked us to not write a pid file */
+        return;
+    } else if (opt->pidfile[0] != '/') {
         fprintf(stderr, "Specified pid file is not an absolute path.\n");
         cleanup(1);
     }
