@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 
 #include "arguments.h"
@@ -220,8 +221,17 @@ static void check_config()
         cleanup(1);
     }
 
-    if (access(opt->quotesfile, F_OK) == -1) {
-        fprintf(stderr, "Specified quotes file \"%s\" does not exist or is inaccessible.\n", opt->quotesfile);
+    struct stat* statbuf = malloc(sizeof(struct stat));
+    if (statbuf == NULL) {
+        perror("Unable to allocate memory for stat of quotes file");
+        cleanup(1);
+    }
+
+    int ret = stat(opt->quotesfile, statbuf);
+    free(statbuf);
+
+    if (ret < 0) {
+        perror("Unable to stat quotes file");
         cleanup(1);
     }
 }

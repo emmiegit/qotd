@@ -17,7 +17,7 @@
 # along with qotd.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-.PHONY: all install-no-systemd install debug force distclean clean
+.PHONY: all check install-no-systemd install debug force distclean clean
 
 CC=gcc
 FLAGS=-ansi -I. -Wall -Wextra
@@ -27,6 +27,7 @@ OBJECTS=arguments.o \
 		quotes.o    \
 		sighandler.o
 EXE=qotdd
+DESTDIR=
 
 all: $(EXE)
 
@@ -36,14 +37,23 @@ all: $(EXE)
 $(EXE): $(OBJECTS)
 	$(CC) $(FLAGS) $(EXTRA_FLAGS) -o $(EXE) $(OBJECTS)
 
+check:
+	[ -f "$(EXE)" ]
+	[ -f quotes.txt ]
+	[ -f qotd.conf ]
+	[ -f qotd.service ]
+
 install-no-systemd: $(EXE)
-	install -m 644 qotd.conf /etc/qotd.conf
-	install -m 755 qotdd /usr/bin/qotdd
-	mkdir -p /usr/share/qotd
-	install -m 644 quotes.txt /usr/share/qotd/quotes.txt
+	mkdir -p $(DESTDIR)/etc
+	install -m 644 qotd.conf $(DESTDIR)/etc/qotd.conf
+	mkdir -p $(DESTDIR)/usr/bin
+	install -m 755 qotdd $(DESTDIR)/usr/bin/qotdd
+	mkdir -p $(DESTDIR)/usr/share/qotd
+	install -m 644 quotes.txt $(DESTDIR)/usr/share/qotd/quotes.txt
 
 install: install-no-systemd
-	install -m 644 qotd.service /usr/lib/systemd/system/qotd.service
+	mkdir -p $(DESTDIR)/usr/lib/systemd/system
+	install -m 644 qotd.service $(DESTDIR)/usr/lib/systemd/system/qotd.service
 
 debug: clean
 	make $(EXE) EXTRA_FLAGS='-g'
@@ -51,7 +61,7 @@ debug: clean
 force: clean $(EXE)
 
 distclean:
-	rm -f *.o *~ $(EXE) core core.* vgcore.*
+	rm -f *.o *.d *~ $(EXE) core core.* vgcore.*
 
 clean:
 	rm -f *.o $(EXE)
