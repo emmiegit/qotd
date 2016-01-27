@@ -3,17 +3,17 @@
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
- * 
+ *
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * qotd is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -50,7 +50,7 @@ int main(int argc, const char* argv[])
     /* Set up signal handlers */
     set_up_handlers();
 
-    /* Make a global copy of arguments */
+    /* Make a static copy of the arguments */
     save_args(argc, argv);
 
     /* Load configuration */
@@ -86,19 +86,27 @@ void cleanup(int ret)
 
     if (args) {
         free(args);
-    }
-
-    ret2 = unlink(opt->pidfile);
-    if (ret2 < 0) {
-        fprintf(stderr, "Unable to remove pid file (%s): %s\n",
-                opt->pidfile, strerror(errno));
-        ret++;
+        args = NULL;
     }
 
     if (opt) {
-        free(opt->quotesfile);
-        free(opt->pidfile);
+        ret2 = unlink(opt->pidfile);
+        if (ret2 < 0) {
+            fprintf(stderr, "Unable to remove pid file (%s): %s\n",
+                    opt->pidfile, strerror(errno));
+            ret++;
+        }
+
+        if (opt->quotesmalloc) {
+            free(opt->quotesfile);
+        }
+
+        if (opt->pidmalloc) {
+            free(opt->pidfile);
+        }
+
         free(opt);
+        opt = NULL;
     }
 
     exit(ret);

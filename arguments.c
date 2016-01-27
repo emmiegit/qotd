@@ -3,17 +3,17 @@
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
- * 
+ *
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * qotd is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -28,17 +28,15 @@
 #include "options.h"
 #include "qotdd.h"
 
-#define STREQ(x, y) (!strcmp((x), (y)))
+#define STREQ(x, y) (strcmp((x), (y)) == 0)
 
-static char* program_name;
-
-static void help_and_exit();
-static void usage_and_exit();
-static void version_and_exit();
+static void help_and_exit(const char* program_name);
+static void usage_and_exit(const char* program_name);
+static void version_and_exit(const char* program_name);
 
 options* parse_args(const int argc, const char* argv[])
 {
-    program_name = basename((char*)argv[0]);
+    const char* program_name = basename((char*)argv[0]);
     char* conf_file = "/etc/qotd.conf";
     char* pid_file = NULL;
 
@@ -46,9 +44,9 @@ options* parse_args(const int argc, const char* argv[])
     int i;
     for (i = 1; i < argc; i++) {
         if (STREQ(argv[i], "--help")) {
-            help_and_exit();
+            help_and_exit(program_name);
         } else if (STREQ(argv[i], "--version")) {
-            version_and_exit();
+            version_and_exit(program_name);
         } else if (STREQ(argv[i], "-c") ||
                    STREQ(argv[i], "--config")) {
             if (++i == argc) {
@@ -69,21 +67,21 @@ options* parse_args(const int argc, const char* argv[])
                 pid_file = (char*)argv[i];
             }
         } else {
-            usage_and_exit();
+            usage_and_exit(program_name);
         }
     }
 
     options* opt = malloc(sizeof(options));
+    opt->port = 17;
+    opt->quotesfile = "/usr/share/qotd/quotes.txt";
+    opt->pidfile = "/var/run/qotd.pid";
+    opt->quotesmalloc = false;
+    opt->pidmalloc = false;
+    opt->is_daily = true;
+    opt->allow_big = false;
 
     if (conf_file) {
         parse_config(conf_file, opt);
-    } else {
-        /* No config file, use default options */
-        opt->port = 17;
-        opt->quotesfile = "/usr/share/qotd/quotes.txt";
-        opt->pidfile = "/var/run/qotd.pid";
-        opt->is_daily = true;
-        opt->allow_big = false;
     }
 
     if (pid_file) {
@@ -93,7 +91,7 @@ options* parse_args(const int argc, const char* argv[])
     return opt;
 }
 
-static void help_and_exit()
+static void help_and_exit(const char* program_name)
 {
     printf("%s - A simple QOTD daemon.\n"
            "Usage: %s [-c config-file | -N]\n"
@@ -104,14 +102,14 @@ static void help_and_exit()
     cleanup(0);
 }
 
-static void usage_and_exit()
+static void usage_and_exit(const char* program_name)
 {
     printf("Usage: %s [-c config-file | -N]\n",
            program_name);
     cleanup(1);
 }
 
-static void version_and_exit()
+static void version_and_exit(const char* program_name)
 {
     printf("%s - A simple QOTD daemon, version 0.1\n",
             program_name);

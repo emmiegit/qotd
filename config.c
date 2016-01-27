@@ -3,17 +3,17 @@
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
- * 
+ *
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * qotd is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -53,12 +53,16 @@ void parse_config(const char* conf_file, options* opt)
         cleanup(1);
     }
 
+#if DEBUG == 1
+    printf("Raw key/value pairs from config file:\n");
+#endif /* DEBUG */
+
     char key[BUFFER_SIZE], val[BUFFER_SIZE];
     bool firsthalf = true;
     unsigned int lineno = 1;
     while ((line = readline(fh, conf_file, &lineno)) != NULL) {
-        /* Ignore comments and blank lines */
-        if (line[0] == '#' || line[0] == '\0') {
+        /* Ignore comments, blank lines are already ignored by readline() */
+        if (line[0] == '#') {
             free(line);
             continue;
         }
@@ -85,6 +89,7 @@ void parse_config(const char* conf_file, options* opt)
             }
         }
         val[j] = '\0';
+        free(line);
 
 #if DEBUG == 1
         printf("[%s] = [%s]\n", keystr, valstr);
@@ -101,11 +106,13 @@ void parse_config(const char* conf_file, options* opt)
             opt->port = port;
         } else if (STREQ(keystr, "PidFile")) {
             opt->pidfile = malloc(strlen(valstr) + 1);
+            opt->pidmalloc = true;
             strcpy(opt->pidfile, valstr);
         } else if (STREQ(keystr, "RequirePidFile")) {
             opt->require_pidfile = str_to_bool(valstr, conf_file, lineno);
         } else if (STREQ(keystr, "QuotesFile")) {
             opt->quotesfile = malloc(strlen(valstr) + 1);
+            opt->quotesmalloc = true;
             strcpy(opt->quotesfile, valstr);
         } else if (STREQ(keystr, "DailyQuotes")) {
             opt->is_daily = str_to_bool(valstr, conf_file, lineno);
@@ -117,14 +124,12 @@ void parse_config(const char* conf_file, options* opt)
 
         lineno++;
         firsthalf = true;
-        free(line);
     }
 
 #if DEBUG == 1
     print_options(opt);
 #endif /* DEBUG */
 
-    if (line) free(line);
     fclose(fh);
 }
 
@@ -137,7 +142,7 @@ static void print_options(options* opt)
     printf("PidFile: %s\n", NULLSTR(opt->pidfile));
     printf("DailyQuotes: %s\n", BOOLSTR(opt->is_daily));
     printf("AllowBigQuotes: %s\n", BOOLSTR(opt->allow_big));
-    printf("End of 'opt':\n");
+    printf("End of 'opt'.\n");
 }
 #endif /* DEBUG */
 
@@ -160,9 +165,12 @@ static char* readline(FILE* fh, const char* filename, unsigned int* lineno)
             }
         } else if (ch == EOF) {
             if (i) {
+                /* Return rest of line when EOF hits before newline */
                 buffer[i] = '\0';
                 return (char*)buffer;
             } else {
+                /* Return NULL when a EOF hits */
+                free(buffer);
                 return NULL;
             }
         } else {

@@ -34,5 +34,6 @@ qotdd
 
 # Others
 core*
+vgcore.*
 *.pid
 

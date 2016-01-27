@@ -25,6 +25,8 @@ typedef struct {
     unsigned int port;
     char* quotesfile;
     char* pidfile;
+    bool quotesmalloc;
+    bool pidmalloc;
     bool require_pidfile;
     bool is_daily;
     bool allow_big;
