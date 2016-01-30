@@ -44,16 +44,12 @@ check:
 	[ -f qotd.service ]
 
 install-no-systemd: $(EXE)
-	mkdir -p $(DESTDIR)/etc
-	install -m 644 qotd.conf $(DESTDIR)/etc/qotd.conf
-	mkdir -p $(DESTDIR)/usr/bin
-	install -m 755 qotdd $(DESTDIR)/usr/bin/qotdd
-	mkdir -p $(DESTDIR)/usr/share/qotd
-	install -m 644 quotes.txt $(DESTDIR)/usr/share/qotd/quotes.txt
+	install -D -m644 qotd.conf $(DESTDIR)/etc/qotd.conf
+	install -D -m755 qotdd $(DESTDIR)/usr/bin/qotdd
+	install -D -m644 quotes.txt $(DESTDIR)/usr/share/qotd/quotes.txt
 
 install: install-no-systemd
-	mkdir -p $(DESTDIR)/usr/lib/systemd/system
-	install -m 644 qotd.service $(DESTDIR)/usr/lib/systemd/system/qotd.service
+	install -D -m644 qotd.service $(DESTDIR)/usr/lib/systemd/system/qotd.service
 
 debug: clean
 	make $(EXE) EXTRA_FLAGS='-g'

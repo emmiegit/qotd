@@ -29,8 +29,6 @@
 
 #define STREQ(x, y) (strcmp((x), (y)) == 0)
 #define BUFFER_SIZE 256
-#define keystr ((char*)key)
-#define valstr ((char*)val)
 
 #if DEBUG == 1
 # define NULLSTR(x) ((x) ? (x) : "<null>")
@@ -94,9 +92,23 @@ void parse_config(const char* conf_file, options* opt)
         free(line);
         line = NULL;
 
+        char* keystr = (char*)key;
+        char* valstr = (char*)val;
+
 #if DEBUG == 1
         printf("[%s] = [%s]\n", keystr, valstr);
 #endif /* DEBUG */
+
+        const size_t vallen = strlen(valstr);
+        if (vallen > 1 && ((valstr[0] == '\'' && valstr[vallen - 1] == '\'') ||
+                           (valstr[0] == '\"' && valstr[vallen - 1] == '\"'))) {
+            valstr[vallen - 1] = '\0';
+            valstr++;
+
+#if DEBUG == 1
+            printf("[%s] = [%s] <\n", keystr, valstr);
+#endif /* DEBUG */
+        }
 
         /* Parse each line */
         if (STREQ(keystr, "Port")) {

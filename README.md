@@ -28,29 +28,35 @@ If you don't use _systemd_, install with the following instead:
 ### Configuration
 The default configuration file is located at `/etc/qotd.conf` (though this can be changed with the `-c` flag). The following options are supported:
 
-<tt>Port <i>positive integer</i></tt>
+<tt>Port <i>positive-integer</i></tt>
 Designates an alternate port to listen on.
+
 **Default:**  use port 17
 
-<tt>PidFile <i>path to file</i></tt>
+<tt>PidFile <i>path-to-file</i></tt>
 Designates what pid file to be used by the daemon. If this value is `none`, then no pid file is used.
+
 **Default:** `/var/run/qotd.pid`
 
-<tt>RequirePidFile <i>boolean value</i></tt>
+<tt>RequirePidFile <i>boolean-value</i></tt>
 If the process is unable to create a pid file and this setting is true, then the process quits with an error.
+
 **Default:** yes
 
-<tt>QuotesFile <i>path to quotes file</i></tt>
+<tt>QuotesFile <i>path-to-quotes-file</i></tt>
 The source of quotations to be displayed. This file is broken down line-by-line, and a random line is chosen to be the quotation. See the `DailyQuotes` option for how this process works.
+
 **Default:** `/usr/share/qotd/quotes.txt` (provided by installation)
 
-<tt>DailyQuotes <i>boolean value</i></tt>
+<tt>DailyQuotes <i>boolean-value</i></tt>
 This option determines whether quotations will be randomly selected every time a request is made, or if the daemon provides one quote per day.
+
 **Default:** yes
 
-<tt>AllowBigQuotes <i>boolean value</i></tt>
+<tt>AllowBigQuotes <i>boolean-value</i></tt>
 RFC 856 says that quotes should be no bigger than 512 bytes. If this option is set to 'yes',
 this limit is ignored. Otherwise, quotes will be truncated to meet the byte limit.
+
 **Default:** no
 
 ### Running

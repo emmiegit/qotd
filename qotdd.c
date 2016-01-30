@@ -261,7 +261,7 @@ static bool accept_connection()
 
     struct sockaddr_in cli_addr;
     socklen_t clilen = sizeof(cli_addr);
-    int consockfd = accept(sockfd, (struct sockaddr*) &cli_addr, &clilen);
+    int consockfd = accept(sockfd, (struct sockaddr*)(&cli_addr), &clilen);
     if (consockfd < 0) {
         perror("Unable to accept connection");
         return false;
