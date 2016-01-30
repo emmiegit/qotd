@@ -39,6 +39,7 @@ options* parse_args(const int argc, const char* argv[])
 {
     const char* program_name = basename((char*)argv[0]);
     char* conf_file = "/etc/qotd.conf";
+    char* quotes_file = NULL;
     char* pid_file = NULL;
 
     options* opt = malloc(sizeof(options));
@@ -58,6 +59,9 @@ options* parse_args(const int argc, const char* argv[])
             help_and_exit(program_name);
         } else if (STREQ(argv[i], "--version")) {
             version_and_exit(program_name);
+        } else if (STREQ(argv[i], "-f") ||
+                   STREQ(argv[i], "--foreground")) {
+            opt->daemonize = false;
         } else if (STREQ(argv[i], "-c") ||
                    STREQ(argv[i], "--config")) {
             if (++i == argc) {
@@ -77,9 +81,14 @@ options* parse_args(const int argc, const char* argv[])
             } else {
                 pid_file = (char*)argv[i];
             }
-        } else if (STREQ(argv[i], "-f") ||
-                   STREQ(argv[i], "--foreground")) {
-            opt->daemonize = false;
+        } else if (STREQ(argv[i], "-s") ||
+                   STREQ(argv[i], "--quotes")) {
+            if (++i == argc) {
+                fprintf(stderr, "You must specify a quotes file.\n");
+                cleanup(1);
+            } else {
+                quotes_file = (char*)argv[i];
+            }
         } else {
             usage_and_exit(program_name);
         }
@@ -97,31 +106,46 @@ options* parse_args(const int argc, const char* argv[])
         opt->pidfile = pid_file;
     }
 
+    if (quotes_file) {
+        opt->quotesfile = quotes_file;
+    }
+
     return opt;
 }
 
 static void help_and_exit(const char* program_name)
 {
     printf("%s - A simple QOTD daemon.\n"
-           "Usage: %s [-c config-file | -N] [-f]\n"
+           "Usage: %s [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file]\n"
+           " -f, --foreground      Do not fork, but run in the foreground.\n"
            " -c, --config (file)   Specify an alternate configuration file location. The default\n"
            "                       is at /etc/qotd.conf\n"
-           " -N, --noconfig        Do not read from a configuration file.\n"
-           " -f, --foreground      Do not fork, but run in the foreground.\n",
+           " -N, --noconfig        Do not read from a configuration file, but use the default\n"
+           "                       options instead.\n"
+           " -P, --pidfile (file)  Override the pidfile name given in the configuration file with\n"
+           "                       the given file instead.\n"
+           " -s, --quotes (file)   Override the quotes file given in the configuration file with\n"
+           "                       the given filename instead.\n",
            program_name, program_name);
     cleanup(0);
 }
 
 static void usage_and_exit(const char* program_name)
 {
-    printf("Usage: %s [-c config-file | -N] [-f]\n",
+    printf("Usage: %s [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file]\n",
            program_name);
     cleanup(1);
 }
 
 static void version_and_exit(const char* program_name)
 {
-    printf("%s - A simple QOTD daemon, version %s\n",
+    printf("%s - A simple QOTD daemon, version %s\n"
+           "Copyright (C) 2015-2016 Ammon Smith\n"
+           "\n"
+           "qotd is free software: you can redistribute it and/or modify\n"
+           "it under the terms of the GNU General Public License as published by\n"
+           "the Free Software Foundation, either version 2 of the License, or\n"
+           "(at your option) any later version.\n",
             program_name, VERSION_STRING);
     cleanup(0);
 }

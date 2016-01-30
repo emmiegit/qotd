@@ -1,0 +1,33 @@
+.TH QOTD.CONF 5 2016-01-29 "qotd 0.2" ""
+.SH NAME
+qotd.conf \- The QOTD daemon configuration file
+.SH SYNOPSIS
+.BR /etc/qotd.conf
+.SH DESCRIPTION
+\fBqotdd\fR(8) reads configuration options from \fI/etc/qotd.conf\fR, or some other file specified by the \fB-c\fR argument. This file contains lines of keyword-arguments pairs, which describe how the daemon is to behave. Empty lines or those starting with `#' are ignored and treated as comments. Optionally, you can surround your arguments with single or double quotes in order to represent arguments containing spaces.
+.P
+The supported keywords and their possible meanings are as follows. Note that both the keywords and their arguments are case-sensitive.
+.TP
+\fBPort\fR
+Specifies an alternate port to listen on. The default argument is `17'.
+.TP
+\fBPidFile\fR
+Specifies what pid file is to be used by the daemon. If this value is `none', then no pid file is written. The default is \fI/var/run/qotd.pid\fR.
+.TP
+\fBRequirePidFile\fR
+If the daemon is unable to write to the pid file for any reason and this option is set, then the daemon will quit. Otherwise, the attempt to produce a pid file will be treated as an warning. This setting is ignored if \fBPidFile\fR is set to `none'.
+Valid options are `yes' or `no' (or alternatively `true' or `false').
+.TP
+\fBQuotesFile\fR
+The source of the quotations to be displayed to the user. The default is to use the pre-installed quotes located at \fI/usr/share/qotd/quotes.txt\fR.
+.TP
+\fBDailyQuotes\fR
+Whether to choose a random quote every day, or for every visit. If this option is set, then the same randomly-chosen quotation will be provided for all visits on the same day. Otherwise, each visit will yield a different quotation.
+Valid options are `yes' or `no' (or alternatively `true' or `false'). The default argument is `yes'.
+.TP
+\fBAllowBigQuotes\fR
+RFC 856 specifies that quotes should be no bigger than 512 bytes. If this option is set, then this limit is ignored. Otherwise, quotes are automatically truncated to meet the byte limit.
+Valid options are `yes' or `no' (or alternatively `true' or `false'). The default argument is `no'.
+.SH SEE ALSO
+.TP
+\fBqotdd\fR(8)

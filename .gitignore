@@ -32,6 +32,11 @@ qotdd
 # Debug files
 *.dSYM/
 
+# Man pages
+*.gz
+*.ps
+*.pdf
+
 # Others
 core*
 vgcore.*

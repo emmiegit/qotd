@@ -17,40 +17,33 @@
 # along with qotd.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-.PHONY: all man install-no-systemd install debug force distclean clean
+.PHONY: all debug force distclean clean
 
+CC=gcc
+FLAGS=-ansi -I. -Wall -Wextra
+OBJECTS=arguments.o \
+		config.o    \
+		qotdd.o     \
+		quotes.o    \
+		sighandler.o
 EXE=qotdd
-DESTDIR=
-MAN_DESTDIR=/usr/share/man
 
-all: $(EXE) man
+all: $(EXE)
 
-$(EXE):
-	make -C src
+%.o: %.c
+	$(CC) $(FLAGS) $(EXTRA_FLAGS) -c -o $@ $<
 
-man:
-	make -C man
+$(EXE): $(OBJECTS)
+	$(CC) $(FLAGS) $(EXTRA_FLAGS) -o $(EXE) $(OBJECTS)
 
-install-no-systemd: $(EXE) man
-	install -D -m755 qotdd $(DESTDIR)/usr/bin/qotdd
-	install -D -m644 misc/qotd.conf $(DESTDIR)/etc/qotd.conf
-	install -D -m644 misc/quotes.txt $(DESTDIR)/usr/share/qotd/quotes.txt
-	make -C man install DESTDIR=$(MAN_DESTDIR)
+debug: clean
+	make $(EXE) EXTRA_FLAGS='-g'
 
-install: install-no-systemd
-	install -D -m644 misc/qotd.service $(DESTDIR)/usr/lib/systemd/system/qotd.service
-
-debug:
-	make -C src debug
-
-force:
-	make -C src force
+force: clean $(EXE)
 
 distclean:
-	make -C src distclean
-	rm -f $(EXE)
+	rm -f *.o *.d *~ $(EXE) core core.* vgcore.*
 
 clean:
-	make -C src clean
-	rm -f $(EXE)
+	rm -f *.o $(EXE)
 

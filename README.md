@@ -29,12 +29,12 @@ If you don't use _systemd_, install with the following instead:
 The default configuration file is located at `/etc/qotd.conf` (though this can be changed with the `-c` flag). The following options are supported:
 
 <tt>Port <i>positive-integer</i></tt>
-Designates an alternate port to listen on.
+Specifies an alternate port to listen on. The default is port 17.
 
 **Default:**  use port 17
 
 <tt>PidFile <i>path-to-file</i></tt>
-Designates what pid file to be used by the daemon. If this value is `none`, then no pid file is used.
+Specifies what pid file is to be used by the daemon. If this value is `none`, then no pid file is written. The default is `/var/run/qotd.pid`.
 
 **Default:** `/var/run/qotd.pid`
 

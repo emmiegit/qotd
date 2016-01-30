@@ -102,6 +102,7 @@ void parse_config(const char* conf_file, options* opt)
         const size_t vallen = strlen(valstr);
         if (vallen > 1 && ((valstr[0] == '\'' && valstr[vallen - 1] == '\'') ||
                            (valstr[0] == '\"' && valstr[vallen - 1] == '\"'))) {
+            /* Strip quotation marks from string */
             valstr[vallen - 1] = '\0';
             valstr++;
 

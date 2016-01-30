@@ -1,0 +1,36 @@
+.TH QOTDD 8 2016-01-29 "qotd 0.2" ""
+.SH NAME
+qotdd \- A daemon to provide an interesting quote every day.
+.SH SYNOPSIS
+.P
+qotdd [\fB\-f\fR] [\fB\-c\fR \fIconfig\-file\fR | \fB\-N\fR] [\fB\-P\fR pidfile] [\fB\-s\fR \fIquotes\-file\fR]
+.P
+qotdd [\fB\-\-help\fR | \fB\-\-version\fR]
+.SH DESCRIPTION
+QOTD (quote of the day) is specified in RFC 865 as a way of broadcasting a quote to users. On both TCP and UDP, port 17 is officially reserved for this purpose. \fBqotdd\fR(8) is meant to provide a simple QOTD daemon.
+.P
+Mandatory arguments to long options are mandatory for short options too.
+.TP
+\fB\-f\fR, \fB\-\-foreground\fR
+Do not fork, but run in the foreground.
+.TP
+\fB\-c\fR, \fB\-\-config\fR \fIconfig\-file\fR
+Specify an alternate configuration file location. The default is at \fI/etc/qotd.conf\fR. (Overrides a previous \fB-N\fR option)
+.TP
+\fB\-N\fR, \fB\-\-noconfig\fR
+Do not read from a configuration file, but use the default options instead. (Overrides a previous \fB-c\fR option)
+.TP
+\fB\-P\fR, \fB\-\-pidfile\fR \fIpidfile\fR
+Override the pidfile name given in the configuration file with the given file instead.
+.TP
+\fB\-s\fR, \fB\-\-quotes\fR \fIquotes\-file\fR
+Override the quotes file given in the configuration file with the given filename instead.
+.TP
+.BR \-\-help
+List all options and what they do.
+.TP
+.BR \-\-version
+Print the version and some basic license information and quit.
+.SH SEE ALSO
+.TP
+\fBqotd.conf\fR(5), \fBtelnet\fR(1)
