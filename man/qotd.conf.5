@@ -19,7 +19,12 @@ If the daemon is unable to write to the pid file for any reason and this option 
 Valid options are `yes' or `no' (or alternatively `true' or `false').
 .TP
 \fBQuotesFile\fR
-The source of the quotations to be displayed to the user. The default is to use the pre-installed quotes located at \fI/usr/share/qotd/quotes.txt\fR.
+The source of the quotations to be displayed to the user. Note that any null bytes `\\0' found in the quotes file will be read as spaces instead. The default is to use the pre-installed quotes located at \fI/usr/share/qotd/quotes.txt\fR.
+.TP
+\fBQuoteDivider\fR
+How quotes in the quotes file are separated. There are currently two possible options: `line' or `percent'.
+If the value is `line', then each non-empty line is treated as a quotation to be possibly transmitted. The other behavior, `percent' is to separate each quote with a line that has only a percent sign (`%') on it. More specifically, the program looks for a sequence of newline, percent sign, and newline, and separates the string there.
+The default argument is `line'.
 .TP
 \fBDailyQuotes\fR
 Whether to choose a random quote every day, or for every visit. If this option is set, then the same randomly-chosen quotation will be provided for all visits on the same day. Otherwise, each visit will yield a different quotation.

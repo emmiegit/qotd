@@ -30,6 +30,13 @@
 #include "qotdd.h"
 
 #define STREQ(x, y) (strcmp((x), (y)) == 0)
+#define BOOLEAN_UNSET 2
+
+#if DEBUG == 1
+# define NULLSTR(x) ((x) ? (x) : "<null>")
+# define BOOLSTR(x) ((x) ? "true" : "false")
+static void print_options(options* opt);
+#endif /* DEBUG */
 
 static void help_and_exit(const char* program_name);
 static void usage_and_exit(const char* program_name);
@@ -41,10 +48,12 @@ options* parse_args(const int argc, const char* argv[])
     char* conf_file = "/etc/qotd.conf";
     char* quotes_file = NULL;
     char* pid_file = NULL;
+    char daemonize = BOOLEAN_UNSET;
 
     options* opt = malloc(sizeof(options));
     opt->port = 17;
     opt->quotesfile = "/usr/share/qotd/quotes.txt";
+    opt->linediv = DIV_EVERYLINE;
     opt->pidfile = "/var/run/qotd.pid";
     opt->quotesmalloc = false;
     opt->pidmalloc = false;
@@ -61,7 +70,7 @@ options* parse_args(const int argc, const char* argv[])
             version_and_exit(program_name);
         } else if (STREQ(argv[i], "-f") ||
                    STREQ(argv[i], "--foreground")) {
-            opt->daemonize = false;
+            daemonize = false;
         } else if (STREQ(argv[i], "-c") ||
                    STREQ(argv[i], "--config")) {
             if (++i == argc) {
@@ -103,15 +112,51 @@ options* parse_args(const int argc, const char* argv[])
     }
 
     if (pid_file) {
+        if (opt->pidmalloc) {
+            free(opt->pidfile);
+        }
+
         opt->pidfile = pid_file;
+        opt->pidmalloc = false;
     }
 
     if (quotes_file) {
+        if (opt->quotesmalloc) {
+            free(opt->quotesfile);
+        }
+
         opt->quotesfile = quotes_file;
+        opt->quotesmalloc = false;
     }
+
+    if (daemonize != BOOLEAN_UNSET) {
+        opt->daemonize = daemonize;
+    }
+
+#if DEBUG == 1
+    print_options(opt);
+#endif /* DEBUG */
 
     return opt;
 }
+
+#if DEBUG == 1
+static void print_options(options* opt)
+{
+    printf("\nContents of struct 'opt':\n");
+    printf("Daemonize: %s\n", BOOLSTR(opt->daemonize));
+    printf("Port: %d\n", opt->port);
+    printf("QuotesMalloc: %s\n", BOOLSTR(opt->quotesmalloc));
+    printf("PidMalloc: %s\n", BOOLSTR(opt->pidmalloc));
+    printf("QuotesFile: %s\n", NULLSTR(opt->quotesfile));
+    printf("QuoteDivider: %d\n", opt->linediv);
+    printf("PidFile: %s\n", NULLSTR(opt->pidfile));
+    printf("RequirePidFile: %s\n", BOOLSTR(opt->require_pidfile));
+    printf("DailyQuotes: %s\n", BOOLSTR(opt->is_daily));
+    printf("AllowBigQuotes: %s\n", BOOLSTR(opt->allow_big));
+    printf("End of 'opt'.\n\n");
+}
+#endif /* DEBUG */
 
 static void help_and_exit(const char* program_name)
 {

@@ -36,6 +36,7 @@
 #include "sighandler.h"
 
 #define STREQ(x, y)  (strcmp((x), (y)) != 0)
+#define PORT_MAX 65535 /* Couldn't find in limits.h */
 #define ever (;;)
 
 static int daemonize();
@@ -103,6 +104,7 @@ static int main_loop()
     write_pidfile();
 
     /* Listen to the specified port */
+    printf("Starting main loop...\n");
     for ever {
         accept_connection();
     }
@@ -218,6 +220,9 @@ static void check_config()
 {
     if (opt->port < 1024 && geteuid() != 0) {
         fprintf(stderr, "Only root can bind to ports below 1024.\n");
+        cleanup(1);
+    } else if (opt->port > PORT_MAX) {
+        fprintf(stderr, "You must specify a port number from 1 to %d.\n", PORT_MAX);
         cleanup(1);
     }
 

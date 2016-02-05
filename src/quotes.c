@@ -18,6 +18,7 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,6 +26,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include "info.h"
 #include "qotdd.h"
 #include "quotes.h"
 
@@ -34,8 +36,11 @@
 #define MIN(x, y)       (((x) < (y)) ? (x) : (y))
 
 int snprintf(char* str, size_t size, const char* format, ...);
-static void freelines(const char** array);
-static const char** readlines(const char* fn, size_t* lines);
+static void freequotes(char** array);
+static int get_file_size(const char* fn);
+static char** readquotes_file(const char* fn, size_t* quotes);
+static char** readquotes_line(const char* fn, size_t* quotes);
+static char** readquotes_percent(const char* fn, size_t* quotes);
 
 int send_quote(const int fd, const options* opt)
 {
@@ -49,29 +54,52 @@ int send_quote(const int fd, const options* opt)
         srand(time(NULL));
     }
 
-    size_t lines = 0;
-    const char** array = readlines(opt->quotesfile, &lines);
+    size_t quotes = 0;
+    char** array;
+    switch (opt->linediv) {
+        case DIV_EVERYLINE:
+            array = readquotes_line(opt->quotesfile, &quotes);
+            break;
+        case DIV_PERCENT:
+            array = readquotes_percent(opt->quotesfile, &quotes);
+            break;
+        case DIV_WHOLEFILE:
+            array = readquotes_file(opt->quotesfile, &quotes);
+            break;
+        default:
+            fprintf(stderr, "Internal error: invalid value for opt->linediv: %d\n", opt->linediv);
+            cleanup(1);
+    }
 
     if (array == NULL) {
         /* Reading from quotes file failed */
         return 0;
     }
 
-    if (lines == 0) {
+    if (quotes == 0) {
         fprintf(stderr, "Quotes file is empty.\n");
-        freelines(array);
+        freequotes(array);
         cleanup(1);
     }
 
-    const size_t lineno = rand() % lines;
-    size_t i = lineno;
-    while (STREMPTY(array[i])) {
-        i = (i + 1) % lines;
+#if DEBUG == 1
+    printf("Printing all %zd quotes:\n", quotes);
 
-        if (i == lineno) {
+    size_t _i;
+    for (_i = 0; _i < quotes; _i++) {
+        printf("#%zd: %s<end>\n", _i, array[_i]);
+    }
+#endif /* DEBUG */
+
+    const size_t quoteno = rand() % quotes;
+    size_t i = quoteno;
+    while (STREMPTY(array[i])) {
+        i = (i + 1) % quotes;
+
+        if (i == quoteno) {
             /* All the lines are blank, will cause an infinite loop */
-            fprintf(stderr, "Quotes file is empty.\n");
-            freelines(array);
+            fprintf(stderr, "Quotes file has only empty entries.\n");
+            freequotes(array);
             cleanup(1);
         }
     }
@@ -93,19 +121,18 @@ int send_quote(const int fd, const options* opt)
     printf("Sending quotation:\n> %s\n", array[i]);
 
     const int ret = write(fd, buf, MIN(len, (unsigned int)bytes));
-    freelines(array);
+    freequotes(array);
     return ret;
 }
 
-static void freelines(const char** array)
+static void freequotes(char** array)
 {
     free((char*)array[0]);
-    free((char**)array);
+    free(array);
 }
 
-static const char** readlines(const char* fn, size_t* lines)
+static int get_file_size(const char* fn)
 {
-    /* Determine file size */
     struct stat* statbuf = malloc(sizeof(struct stat));
     if (statbuf == NULL) {
         perror("Unable to allocate memory for stat");
@@ -116,47 +143,175 @@ static const char** readlines(const char* fn, size_t* lines)
     if (ret < 0) {
         perror("Unable to stat quotes file");
         free(statbuf);
-        return NULL;
+        return -1;
     }
 
     const int size = statbuf->st_size;
     free(statbuf);
+    return size;
+}
 
-    /* Load file into buffer */
-    char* buf = malloc(size + 1);
+static char** readquotes_file(const char* fn, size_t* quotes)
+{
+    const int size = get_file_size(fn);
+    if (size < 0) {
+        return NULL;
+    }
+
+    char* buf = malloc((size + 1) * sizeof(char));
+    if (buf == NULL) {
+        perror("Unable to allocate memory for file buffer");
+        return NULL;
+    }
+
     FILE* fh = fopen(fn, "r");
     if (fh == NULL) {
-        perror("Unable to open quotes file");
+        fprintf(stderr, "Unable to open \"%s\": %s\n", fn, strerror(errno));
+        free(buf);
+        return NULL;
+    }
+
+    int ch, i = 0;
+    while ((ch = fgetc(fh)) != EOF) {
+        if (ch == '\0') {
+            ch = ' ';
+        }
+
+        buf[i++] = (char)ch;
+    }
+    buf[size] = '\0';
+
+    *quotes = 1;
+    char** array = malloc(sizeof(char*));
+    array[0] = &buf[0];
+
+    return array;
+}
+
+static char** readquotes_line(const char* fn, size_t* quotes)
+{
+    const int size = get_file_size(fn);
+    if (size < 0) {
+        return NULL;
+    }
+
+    char* buf = malloc((size + 1) * sizeof(char));
+    if (buf == NULL) {
+        perror("Unable to allocate memory for file buffer");
+        return NULL;
+    }
+
+    FILE* fh = fopen(fn, "r");
+    if (fh == NULL) {
+        fprintf(stderr, "Unable to open \"%s\": %s\n", fn, strerror(errno));
+        free(buf);
         return NULL;
     }
 
     int ch, i = 0;
     /* Count number of newlines in the file */
     while ((ch = fgetc(fh)) != EOF) {
-        if (ch == '\n') {
-            (*lines)++;
+        if (ch == '\0') {
+            ch = ' ';
+        } else if (ch == '\0') {
+            (*quotes)++;
         }
 
         buf[i++] = (char)ch;
     }
+    buf[size] = '\0';
 
-    ret = fclose(fh);
+    int ret = fclose(fh);
     if (ret < 0) {
         perror("Unable to close quotes file");
     }
 
     /* Allocate the array of strings */
-    char** array = malloc((*lines) * (sizeof(char*) + 1));
+    char** array = malloc((*quotes) * sizeof(char*));
     array[0] = &buf[0];
 
-    int j = 1;
+    unsigned int j = 1;
     for (i = 0; i < size; i++) {
         if (buf[i] == '\n') {
             buf[i] = '\0';
-            array[j++] = &buf[i + 1];
+
+            if (j < (*quotes)) {
+                array[j++] = &buf[i + 1];
+            }
         }
     }
 
-    return (const char**)array;
+    return array;
+}
+
+static char** readquotes_percent(const char* fn, size_t* quotes)
+{
+    const int size = get_file_size(fn);
+    if (size < 0) {
+        return NULL;
+    }
+
+    char* buf = malloc(size + 1);
+    if (buf == NULL) {
+        perror("Unable to allocate memory for file buffer");
+        return NULL;
+    }
+
+    FILE* fh = fopen(fn, "r");
+    if (fh == NULL) {
+        fprintf(stderr, "Unable to open \"%s\": %s\n", fn, strerror(errno));
+        free(buf);
+        return NULL;
+    }
+
+    bool has_percent = false;
+    int ch, i = 0, watch = 0;
+    /* Count number of dividers in the file */
+    while ((ch = fgetc(fh)) != EOF) {
+        if (ch == '\0') {
+            ch = ' ';
+            watch = 0;
+        } else if (ch == '\n' && watch == 0) {
+            watch++;
+        } else if (ch == '%' && watch == 1) {
+            has_percent = true;
+            watch++;
+        } else if (ch == '\n' && watch == 2) {
+            watch = 0;
+            buf[i - 2] = '\0';
+            (*quotes)++;
+        } else if (watch > 0) {
+            watch = 0;
+        }
+
+        buf[i++] = (char)ch;
+    }
+    buf[size] = '\0';
+
+    if (!has_percent) {
+        fprintf(stderr, "No percent signs (%%) were found in the quotes file. This means that the whole\n"
+                        "file will be treated as one quote, which is probably not what you want.\n"
+                        "If this is what you want, use the `file' option for `QuoteDivider' in the\n"
+                        "config file.\n");
+        free(buf);
+        return NULL;
+    }
+
+    if (i == size) {
+        (*quotes)++;
+    }
+
+    /* Allocate the array of strings */
+    char** array = malloc((*quotes) * sizeof(char*));
+    array[0] = &buf[0];
+
+    unsigned int j = 1;
+    for (i = 0; i < size && j < (*quotes); i++) {
+        if (buf[i] == '\0') {
+            array[j++] = &buf[i + 3];
+        }
+    }
+
+    return array;
 }
 

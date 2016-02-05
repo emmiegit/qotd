@@ -17,9 +17,9 @@
 # along with qotd.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-.PHONY: all man install-no-systemd install debug force distclean clean
+.PHONY: all man install-no-systemd install force debug forcedebug distclean clean
 
-EXE=qotdd
+EXE=src/qotdd
 DESTDIR=
 MAN_DESTDIR=/usr/share/man
 
@@ -40,11 +40,14 @@ install-no-systemd: $(EXE) man
 install: install-no-systemd
 	install -D -m644 misc/qotd.service $(DESTDIR)/usr/lib/systemd/system/qotd.service
 
+force:
+	make -C src force
+
 debug:
 	make -C src debug
 
-force:
-	make -C src force
+forcedebug:
+	make -C src forcedebug
 
 distclean:
 	make -C src distclean

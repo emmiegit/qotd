@@ -17,7 +17,7 @@
 # along with qotd.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-.PHONY: all debug force distclean clean
+.PHONY: all force debug forcedebug distclean clean
 
 CC=gcc
 FLAGS=-ansi -I. -Wall -Wextra
@@ -36,10 +36,12 @@ all: $(EXE)
 $(EXE): $(OBJECTS)
 	$(CC) $(FLAGS) $(EXTRA_FLAGS) -o $(EXE) $(OBJECTS)
 
-debug: clean
+force: clean $(EXE)
+
+debug:
 	make $(EXE) EXTRA_FLAGS='-g'
 
-force: clean $(EXE)
+forcedebug: clean debug
 
 distclean:
 	rm -f *.o *.d *~ $(EXE) core core.* vgcore.*

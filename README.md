@@ -47,6 +47,11 @@ The source of quotations to be displayed. This file is broken down line-by-line,
 
 **Default:** `/usr/share/qotd/quotes.txt` (provided by installation)
 
+<tt>QuoteDivider (line | percent)</tt>
+How quotes in the quotes file are separated. There are currently two possible options: `line` or `percent`.
+If the value is `line`, then each non-empty line is treated as a quotation to be possibly transmitted. The other behavior, `percent` is to separate each quote with a line that has only a percent sign ('%') on it. More specifically, the program looks for a sequence of newline, percent sign, and newline, and separates the string there.
+**Default:** `line`
+
 <tt>DailyQuotes <i>boolean-value</i></tt><br>
 This option determines whether quotations will be randomly selected every time a request is made, or if the daemon provides one quote per day.
 
@@ -69,12 +74,12 @@ _systemd_ users can run the new service:
 Those running the daemon directly should be aware of its options:
 
 ```
+Usage:
    qotdd [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file]
 
    qotdd [--help | --version]
 
-Mandatory arguments to long options are mandatory for short options too.
-
+Options:
    -f, --foreground
           Do not fork, but run in the foreground.
 

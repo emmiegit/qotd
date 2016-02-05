@@ -30,12 +30,6 @@
 #define STREQ(x, y) (strcmp((x), (y)) == 0)
 #define BUFFER_SIZE 256
 
-#if DEBUG == 1
-# define NULLSTR(x) ((x) ? (x) : "<null>")
-# define BOOLSTR(x) ((x) ? "<true>" : "<false>")
-static void print_options(options* opt);
-#endif /* DEBUG */
-
 static char* readline(FILE* fh, const char* filename, unsigned int* lineno);
 static bool str_to_bool(const char* string, const char* filename, const unsigned int lineno);
 static void confcleanup(const int ret);
@@ -112,7 +106,9 @@ void parse_config(const char* conf_file, options* opt)
         }
 
         /* Parse each line */
-        if (STREQ(keystr, "Port")) {
+        if (STREQ(keystr, "Daemonize")) {
+            opt->daemonize = str_to_bool(valstr, conf_file, lineno);
+        } else if (STREQ(keystr, "Port")) {
             int port = atoi(valstr);
             if (port <= 0) {
                 fprintf(stderr, "%s:%d: invalid port number: \"%s\"\n", conf_file, lineno, valstr);
@@ -130,6 +126,17 @@ void parse_config(const char* conf_file, options* opt)
             opt->quotesfile = malloc(strlen(valstr) + 1);
             opt->quotesmalloc = true;
             strcpy(opt->quotesfile, valstr);
+        } else if (STREQ(keystr, "QuoteDivider")) {
+            if (STREQ(valstr, "line")) {
+                opt->linediv = DIV_EVERYLINE;
+            } else if (STREQ(valstr, "percent")) {
+                opt->linediv = DIV_PERCENT;
+            } else if (STREQ(valstr, "file")) {
+                opt->linediv = DIV_WHOLEFILE;
+            } else {
+                fprintf(stderr, "%s:%d: unsupported division type: \"%s\"\n", conf_file, lineno, valstr);
+                confcleanup(1);
+            }
         } else if (STREQ(keystr, "DailyQuotes")) {
             opt->is_daily = str_to_bool(valstr, conf_file, lineno);
         } else if (STREQ(keystr, "AllowBigQuotes")) {
@@ -142,28 +149,8 @@ void parse_config(const char* conf_file, options* opt)
         firsthalf = true;
     }
 
-#if DEBUG == 1
-    print_options(opt);
-#endif /* DEBUG */
-
     fclose(fh);
 }
-
-#if DEBUG == 1
-static void print_options(options* opt)
-{
-    printf("\nContents of struct 'opt':\n");
-    printf("Port: %d\n", opt->port);
-    printf("QuotesFile: %s\n", NULLSTR(opt->quotesfile));
-    printf("PidFile: %s\n", NULLSTR(opt->pidfile));
-    printf("QuotesMalloc: %s\n", BOOLSTR(opt->quotesmalloc));
-    printf("PidMalloc: %s\n", BOOLSTR(opt->pidmalloc));
-    printf("Daemonize: %s\n", BOOLSTR(opt->daemonize));
-    printf("DailyQuotes: %s\n", BOOLSTR(opt->is_daily));
-    printf("AllowBigQuotes: %s\n", BOOLSTR(opt->allow_big));
-    printf("End of 'opt'.\n");
-}
-#endif /* DEBUG */
 
 static char* readline(FILE* fh, const char* filename, unsigned int* lineno)
 {

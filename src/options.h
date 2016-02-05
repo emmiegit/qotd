@@ -21,17 +21,26 @@
 #include <stdbool.h>
 
 #ifndef __OPTIONS_H
+# define __OPTIONS_H
+
+# define DIV_EVERYLINE 0
+# define DIV_PERCENT   1
+# define DIV_WHOLEFILE 2
+
 typedef struct {
-    unsigned int port;
-    char* quotesfile;
-    char* pidfile;
-    bool quotesmalloc;
-    bool pidmalloc;
-    bool daemonize;
-    bool require_pidfile;
-    bool is_daily;
-    bool allow_big;
+    char* quotesfile;        /* string containing path to quotes file */
+    char* pidfile;           /* string containing path to pid file */
+    unsigned int port;       /* port to listen on */
+    unsigned char linediv;   /* how to read the quotes file */
+
+    bool quotesmalloc;       /* if quotesfile needs to be free'd */
+    bool pidmalloc;          /* if pidfile needs to be free'd */
+
+    bool daemonize;          /* whether to fork to the background or not */
+    bool require_pidfile;    /* whether to quit if the pidfile cannot be made */
+    bool is_daily;           /* whether quotes are random every day or every visit */
+    bool allow_big;          /* ignored 512-byte limit */
 } options;
-#define __OPTIONS_H
+
 #endif /* __OPTIONS_H */
 
