@@ -2,7 +2,7 @@
 QOTD (quote of the day) is specified in [RFC 865](https://tools.ietf.org/html/rfc865) as a way of broadcasting a quote to users. On both TCP and UDP, port 17 is officially reserved for this purpose. This program is meant to provide a simple QOTD daemon. See also [here](https://en.wikipedia.org/wiki/QOTD).
 
 ### Installation from package
-Currently no distros have this project in any of their repositories. If you create a package, please tell me so I can update this page.
+This program is available on the [AUR](https://aur.archlinux.org/packages/qotd-git).
 
 ### Installation from source
 Clone this repo, and in the top level directory, run:
@@ -47,9 +47,11 @@ The source of quotations to be displayed. This file is broken down line-by-line,
 
 **Default:** `/usr/share/qotd/quotes.txt` (provided by installation)
 
-<tt>QuoteDivider (line | percent)</tt>
-How quotes in the quotes file are separated. There are currently two possible options: `line` or `percent`.
-If the value is `line`, then each non-empty line is treated as a quotation to be possibly transmitted. The other behavior, `percent` is to separate each quote with a line that has only a percent sign ('%') on it. More specifically, the program looks for a sequence of newline, percent sign, and newline, and separates the string there.
+<tt>QuoteDivider (line | percent | file)</tt>
+How quotes in the quotes file are separated. There are currently three possible options: `line`, `percent`, or `file`.
+If the value is `line`, then each non-empty line is treated as a quotation to be possibly transmitted.
+If `percent` is set, then the program is instructed to separate each quote with a line that has only a percent sign ('%') on it. More specifically, the program looks for a sequence of newline, percent sign, and newline, and separates the string there.
+If `file` is used, then the whole file is treated as one quote.
 **Default:** `line`
 
 <tt>DailyQuotes <i>boolean-value</i></tt><br>
