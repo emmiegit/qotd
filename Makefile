@@ -17,16 +17,19 @@
 # along with qotd.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-.PHONY: all man install-no-systemd install force debug forcedebug distclean clean
+.PHONY: all src man install-no-systemd install force debug forcedebug distclean clean
 
-EXE=src/qotdd
+EXE=qotdd
 DESTDIR=
 MAN_DESTDIR=/usr/share/man
 
-all: $(EXE) man
+all: src man
 
-$(EXE):
+$(EXE): src
+
+src:
 	make -C src
+	cp -f src/$(EXE) .
 
 man:
 	make -C man
@@ -42,12 +45,15 @@ install: install-no-systemd
 
 force:
 	make -C src force
+	cp -f src/$(EXE) .
 
 debug:
 	make -C src debug
+	cp -f src/$(EXE) .
 
 forcedebug:
 	make -C src forcedebug
+	cp -f src/$(EXE) .
 
 distclean:
 	make -C src distclean

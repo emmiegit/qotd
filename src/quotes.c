@@ -213,7 +213,7 @@ static char** readquotes_line(const char* fn, size_t* quotes)
     while ((ch = fgetc(fh)) != EOF) {
         if (ch == '\0') {
             ch = ' ';
-        } else if (ch == '\0') {
+        } else if (ch == '\n') {
             (*quotes)++;
         }
 
@@ -235,7 +235,7 @@ static char** readquotes_line(const char* fn, size_t* quotes)
         if (buf[i] == '\n') {
             buf[i] = '\0';
 
-            if (j < (*quotes)) {
+            if (j < *quotes) {
                 array[j++] = &buf[i + 1];
             }
         }
@@ -289,10 +289,9 @@ static char** readquotes_percent(const char* fn, size_t* quotes)
     buf[size] = '\0';
 
     if (!has_percent) {
-        fprintf(stderr, "No percent signs (%%) were found in the quotes file. This means that the whole\n"
-                        "file will be treated as one quote, which is probably not what you want.\n"
-                        "If this is what you want, use the `file' option for `QuoteDivider' in the\n"
-                        "config file.\n");
+        fprintf(stderr, "No percent signs (%%) were found in the quotes file. This means that the whole file\n"
+                        "will be treated as one quote, which is probably not what you want. If this is what\n"
+                        "you want, use the `file' option for `QuoteDivider' in the config file.\n");
         free(buf);
         return NULL;
     }
