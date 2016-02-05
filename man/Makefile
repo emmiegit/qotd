@@ -19,6 +19,7 @@
 
 .PHONY: all pdf install uninstall force distclean clean
 
+DEST_DIR=
 GZ_FILES=qotdd.8.gz \
 		 qotd.conf.5.gz
 PS_FILES=qotdd.8.ps \

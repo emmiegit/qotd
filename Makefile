@@ -21,7 +21,7 @@
 
 EXE=qotdd
 DESTDIR=
-MAN_DESTDIR=/usr/share/man
+MAN_DESTDIR=$(DESTDIR)/usr/share/man
 
 all: src man
 
