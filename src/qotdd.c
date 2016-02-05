@@ -35,8 +35,9 @@
 #include "quotes.h"
 #include "sighandler.h"
 
-#define STREQ(x, y)  (strcmp((x), (y)) != 0)
+#define STREQ(x, y)  (strcmp((x), (y)) == 0)
 #define PORT_MAX 65535 /* Couldn't find in limits.h */
+#define CONNECTION_BACKLOG 10
 #define ever (;;)
 
 static int daemonize();
@@ -95,13 +96,22 @@ static int daemonize()
         return 1;
     }
 
-    chdir("/");
+    if (opt->chdir_root) {
+        int ret = chdir("/");
+
+        if (ret < 0) {
+            perror("Unable to chdir to root dir");
+        }
+    }
+
     return main_loop();
 }
 
 static int main_loop()
 {
+    printf("before pidfile\n");
     write_pidfile();
+    printf("after pidfile\n");
 
     /* Listen to the specified port */
     printf("Starting main loop...\n");
@@ -175,11 +185,8 @@ static void save_args(const int argc, const char* argv[])
 static void write_pidfile()
 {
     if (STREQ(opt->pidfile, "none")) {
-        /* User asked us to not write a pid file */
+        printf("No pidfile was written at the request of the user.\n");
         return;
-    } else if (opt->pidfile[0] != '/') {
-        fprintf(stderr, "Specified pid file is not an absolute path.\n");
-        cleanup(1);
     }
 
     FILE* fh = fopen(opt->pidfile, "w+");
@@ -200,6 +207,7 @@ static void write_pidfile()
         perror("Unable to write pid to pid file");
 
         if (opt->require_pidfile) {
+            fclose(fh);
             cleanup(1);
         }
     }
@@ -223,6 +231,11 @@ static void check_config()
         cleanup(1);
     } else if (opt->port > PORT_MAX) {
         fprintf(stderr, "You must specify a port number from 1 to %d.\n", PORT_MAX);
+        cleanup(1);
+    }
+
+    if (opt->pidfile[0] != '/') {
+        fprintf(stderr, "Specified pid file is not an absolute path.\n");
         cleanup(1);
     }
 
@@ -262,7 +275,7 @@ static void setup_socket(struct sockaddr_in* serv_addr)
 
 static bool accept_connection()
 {
-    listen(sockfd, 10);
+    listen(sockfd, CONNECTION_BACKLOG);
 
     struct sockaddr_in cli_addr;
     socklen_t clilen = sizeof(cli_addr);

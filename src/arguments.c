@@ -60,6 +60,7 @@ options* parse_args(const int argc, const char* argv[])
     opt->daemonize = true;
     opt->is_daily = true;
     opt->allow_big = false;
+    opt->chdir_root = true;
 
     /* Parse arguments */
     int i;
@@ -105,7 +106,7 @@ options* parse_args(const int argc, const char* argv[])
 
     if (conf_file) {
         if (conf_file[0] != '/') {
-            fprintf(stderr, "Path to configuration file is not absolute, reloads will be unsuccessful.\n");
+            opt->chdir_root = false;
         }
 
         parse_config(conf_file, opt);

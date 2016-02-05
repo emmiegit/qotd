@@ -40,6 +40,7 @@ typedef struct {
     bool require_pidfile;    /* whether to quit if the pidfile cannot be made */
     bool is_daily;           /* whether quotes are random every day or every visit */
     bool allow_big;          /* ignored 512-byte limit */
+    bool chdir_root;         /* whether to chdir to / */
 } options;
 
 #endif /* __OPTIONS_H */
