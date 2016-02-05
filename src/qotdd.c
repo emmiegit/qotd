@@ -109,9 +109,7 @@ static int daemonize()
 
 static int main_loop()
 {
-    printf("before pidfile\n");
     write_pidfile();
-    printf("after pidfile\n");
 
     /* Listen to the specified port */
     printf("Starting main loop...\n");
