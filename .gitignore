@@ -34,14 +34,7 @@ autoscan.log
 config.log
 autom4te.cache
 .deps
-config.status
 Makefile
-
-# Autotool symlinks
-depcomp
-compile
-install-sh
-missing
 
 # Debug files
 *.dSYM/
