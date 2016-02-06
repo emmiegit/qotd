@@ -15,7 +15,7 @@ qotdd
 *.la
 *.lo
 
-# Shared objects (inc. Windows DLLs)
+# Shared objects
 *.dll
 *.so
 *.so.*
@@ -29,6 +29,20 @@ qotdd
 *.x86_64
 *.hex
 
+# Autotool artifacts
+configure.scan
+autoscan.log
+autom4te.cache
+.deps
+config.status
+config.log
+Makefile.in
+Makefile
+depcomp
+compile
+install-sh
+missing
+
 # Debug files
 *.dSYM/
 
@@ -41,4 +55,5 @@ qotdd
 core*
 vgcore.*
 *.pid
+
 
