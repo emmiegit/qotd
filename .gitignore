@@ -30,14 +30,14 @@ qotdd
 *.hex
 
 # Autotool artifacts
-configure.scan
 autoscan.log
+config.log
 autom4te.cache
 .deps
 config.status
-config.log
-Makefile.in
 Makefile
+
+# Autotool symlinks
 depcomp
 compile
 install-sh
