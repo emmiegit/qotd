@@ -5,7 +5,7 @@ After=network.target network-online.target
 
 [Service]
 Type=forking
-ExecStart=/usr/bin/qotdd -c /etc/qotd.conf
+ExecStart=/usr/bin/qotdd
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=control-group
 PIDFile=/var/run/qotd.pid

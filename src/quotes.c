@@ -69,11 +69,12 @@ int send_quote(const int fd, const options* opt)
         default:
             fprintf(stderr, "Internal error: invalid value for opt->linediv: %d\n", opt->linediv);
             cleanup(1);
+            return 1;
     }
 
     if (array == NULL) {
         /* Reading from quotes file failed */
-        return 0;
+        return 1;
     }
 
     if (quotes == 0) {
