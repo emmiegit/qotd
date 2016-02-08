@@ -120,10 +120,14 @@ static int main_loop()
     return EXIT_SUCCESS;
 }
 
-void cleanup(int ret)
+void cleanup(const int ret)
 {
     printf("Quitting with exit code %d.\n", ret);
+    quietcleanup(ret);
+}
 
+void quietcleanup(int ret)
+{
     int ret2 = close(sockfd);
     if (ret2 < 0) {
         perror("Unable to close socket file descriptor");

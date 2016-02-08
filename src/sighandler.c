@@ -44,11 +44,11 @@ static void handle_signal(const int signum)
             break;
         case SIGTERM:
             fprintf(stderr, "Termination signal received. Exiting...\n");
-            cleanup(signum);
+            cleanup(0);
             break;
         case SIGINT:
             fprintf(stderr, "Interrupt signal received. Exiting...\n");
-            cleanup(signum);
+            cleanup(0);
             break;
         case SIGHUP:
             printf("Hangup signal recieved. Reloading configuration...\n");

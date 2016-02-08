@@ -173,14 +173,14 @@ static void help_and_exit(const char* program_name)
            " -s, --quotes (file)   Override the quotes file given in the configuration file with\n"
            "                       the given filename instead.\n",
            program_name, program_name);
-    cleanup(0);
+    quietcleanup(0);
 }
 
 static void usage_and_exit(const char* program_name)
 {
     printf("Usage: %s [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file]\n",
            program_name);
-    cleanup(1);
+    quietcleanup(1);
 }
 
 static void version_and_exit(const char* program_name)
@@ -193,6 +193,6 @@ static void version_and_exit(const char* program_name)
            "the Free Software Foundation, either version 2 of the License, or\n"
            "(at your option) any later version.\n",
             program_name, VERSION_STRING);
-    cleanup(0);
+    quietcleanup(0);
 }
 

@@ -31,10 +31,10 @@ EXE=qotdd
 all: $(EXE)
 
 %.o: %.c
-	$(CC) $(FLAGS) $(EXTRA_FLAGS) -c -o $@ $<
+	$(CC) $(FLAGS) $(EXTRA_FLAGS) -c $< -o $@
 
 $(EXE): $(OBJECTS)
-	$(CC) $(FLAGS) $(EXTRA_FLAGS) -o $(EXE) $(OBJECTS)
+	$(CC) $(FLAGS) $(EXTRA_FLAGS) $(OBJECTS) -o $(EXE)
 
 force: clean $(EXE)
 

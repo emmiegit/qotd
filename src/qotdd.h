@@ -28,5 +28,6 @@ typedef struct {
 
 void load_config();
 void cleanup(const int ret);
+void quietcleanup(int ret);
 #endif /* __QOTDD_H */
 
