@@ -27,9 +27,9 @@
 # define DIV_PERCENT   1
 # define DIV_WHOLEFILE 2
 
-# define PROTOCOL_IPV4 0
-# define PROTOCOL_IPV6 1
-# define PROTOCOL_BOTH 2
+# define PROTOCOL_IPV4 1
+# define PROTOCOL_IPV6 2
+# define PROTOCOL_BOTH 3
 
 typedef struct {
     char *quotesfile;        /* string containing path to quotes file */

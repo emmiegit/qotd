@@ -125,11 +125,9 @@ static int main_loop()
     int ret;
     switch (opt->protocol) {
         case PROTOCOL_IPV4:
-            printf("Starting main loop...\n");
             ipv4_main_loop(NULL);
             break;
         case PROTOCOL_IPV6:
-            printf("Starting main loop...\n");
             ipv6_main_loop(NULL);
             break;
         case PROTOCOL_BOTH:
@@ -177,6 +175,7 @@ static void *ipv4_main_loop(void *arg)
     struct sockaddr_in serv_addr;
     setup_ipv4_socket(&serv_addr);
 
+    printf("Starting main loop (IPv4)...\n");
     for ever {
         accept_ipv4_connection();
     }
@@ -190,6 +189,7 @@ static void *ipv6_main_loop(void *arg)
     struct sockaddr_in serv_addr;
     setup_ipv6_socket(&serv_addr);
 
+    printf("Starting main loop (IPv6)...\n");
     for ever {
         accept_ipv6_connection();
     }
@@ -239,6 +239,7 @@ static void setup_ipv6_socket(struct sockaddr_in *serv_addr)
 
 static bool accept_ipv4_connection()
 {
+    printf("Listening for IPv4 connection...\n");
     listen(ipv4_sockfd, CONNECTION_BACKLOG);
 
     struct sockaddr_in cli_addr;
@@ -266,6 +267,7 @@ static bool accept_ipv4_connection()
 
 static bool accept_ipv6_connection()
 {
+    printf("Listening for IPv6 connection...\n");
     listen(ipv6_sockfd, CONNECTION_BACKLOG);
 
     struct sockaddr_in cli_addr;

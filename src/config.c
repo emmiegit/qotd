@@ -46,7 +46,7 @@ void parse_config(const char *conf_file, options *opt)
         cleanup(1);
     }
 
-#if DEBUG == 1
+#if DEBUG
     printf("Raw key/value pairs from config file:\n");
 #endif /* DEBUG */
 
@@ -89,7 +89,7 @@ void parse_config(const char *conf_file, options *opt)
         char *keystr = (char *)key;
         char *valstr = (char *)val;
 
-#if DEBUG == 1
+#if DEBUG
         printf("[%s] = [%s]\n", keystr, valstr);
 #endif /* DEBUG */
 
@@ -100,7 +100,7 @@ void parse_config(const char *conf_file, options *opt)
             valstr[vallen - 1] = '\0';
             valstr++;
 
-#if DEBUG == 1
+#if DEBUG
             printf("[%s] = [%s] <\n", keystr, valstr);
 #endif /* DEBUG */
         }

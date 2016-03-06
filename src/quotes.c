@@ -83,7 +83,7 @@ int send_quote(const int fd, const options *opt)
         cleanup(1);
     }
 
-#if DEBUG == 1
+#if DEBUG
     printf("Printing all %zd quotes:\n", quotes);
 
     size_t _i;

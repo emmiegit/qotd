@@ -21,6 +21,6 @@
 #ifndef __INFO_H
 # define __INFO_H
 # define DEBUG 1
-# define VERSION_STRING ("0.3.1")
+# define VERSION_STRING ("0.4")
 #endif /* __INFO_H */
 
