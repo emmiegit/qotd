@@ -48,7 +48,7 @@ static int main_loop();
 static void *ipv4_main_loop(void *arg);
 static void *ipv6_main_loop(void *arg);
 static void setup_ipv4_socket(struct sockaddr_in *serv_addr);
-static void setup_ipv6_socket(struct sockaddr_in *serv_addr);
+static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr);
 static bool accept_ipv4_connection();
 static bool accept_ipv6_connection();
 static void save_args(const int argc, const char *argv[]);
@@ -186,7 +186,7 @@ static void *ipv4_main_loop(void *arg)
 static void *ipv6_main_loop(void *arg)
 {
     UNUSED(arg);
-    struct sockaddr_in serv_addr;
+    struct sockaddr_in6 serv_addr;
     setup_ipv6_socket(&serv_addr);
 
     printf("Starting main loop (IPv6)...\n");
@@ -217,7 +217,7 @@ static void setup_ipv4_socket(struct sockaddr_in *serv_addr)
     }
 }
 
-static void setup_ipv6_socket(struct sockaddr_in *serv_addr)
+static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr)
 {
     printf("Setting up IPv6 socket connection...\n");
     ipv6_sockfd = socket(AF_INET6, SOCK_STREAM, 0);
@@ -226,11 +226,11 @@ static void setup_ipv6_socket(struct sockaddr_in *serv_addr)
         cleanup(1);
     }
 
-    serv_addr->sin_family = AF_INET6;
-    serv_addr->sin_addr.s_addr = INADDR_ANY;
-    serv_addr->sin_port = htons(opt->port);
+    serv_addr->sin6_family = AF_INET6;
+    serv_addr->sin6_addr = in6addr_any;
+    serv_addr->sin6_port = htons(opt->port);
 
-    int ret = bind(ipv6_sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in));
+    int ret = bind(ipv6_sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in6));
     if (ret < 0) {
         perror("Unable to bind to IPv6 socket");
         cleanup(1);
