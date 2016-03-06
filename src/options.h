@@ -27,11 +27,16 @@
 # define DIV_PERCENT   1
 # define DIV_WHOLEFILE 2
 
+# define PROTOCOL_IPV4 1
+# define PROTOCOL_IPV6 2
+# define PROTOCOL_BOTH 3
+
 typedef struct {
-    char* quotesfile;        /* string containing path to quotes file */
-    char* pidfile;           /* string containing path to pid file */
+    char *quotesfile;        /* string containing path to quotes file */
+    char *pidfile;           /* string containing path to pid file */
     unsigned int port;       /* port to listen on */
     unsigned char linediv;   /* how to read the quotes file */
+    unsigned char protocol;  /* which ip protocol(s) to use */
 
     bool quotesmalloc;       /* if quotesfile needs to be free'd */
     bool pidmalloc;          /* if pidfile needs to be free'd */
@@ -39,7 +44,7 @@ typedef struct {
     bool daemonize;          /* whether to fork to the background or not */
     bool require_pidfile;    /* whether to quit if the pidfile cannot be made */
     bool is_daily;           /* whether quotes are random every day or every visit */
-    bool allow_big;          /* ignored 512-byte limit */
+    bool allow_big;          /* ignore 512-byte limit */
     bool chdir_root;         /* whether to chdir to / */
 } options;
 

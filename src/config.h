@@ -22,6 +22,6 @@
 
 #ifndef __CONFIG_H
 # define __CONFIG_H
-void parse_config(const char* conf_file, options* opt);
+void parse_config(const char *conf_file, options *opt);
 #endif /* __CONFIG_H */
 

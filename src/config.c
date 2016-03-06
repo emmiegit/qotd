@@ -1,6 +1,5 @@
 /*
- * config.c
- *
+ * config.c *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
  *
@@ -28,16 +27,17 @@
 #include "qotdd.h"
 
 #define STREQ(x, y) (strcmp((x), (y)) == 0)
-#define BUFFER_SIZE 256
+#define PORT_MAX    65535 /* Couldn't find in limits.h */
+#define BUFFER_SIZE 256   /* No key or value should be this long */
 
-static char* readline(FILE* fh, const char* filename, unsigned int* lineno);
-static bool str_to_bool(const char* string, const char* filename, const unsigned int lineno);
+static char *readline(FILE *fh, const char *filename, unsigned int *lineno);
+static bool str_to_bool(const char *string, const char *filename, const unsigned int lineno);
 static void confcleanup(const int ret);
 
-static FILE* fh;
-static char* line;
+static FILE *fh;
+static char *line;
 
-void parse_config(const char* conf_file, options* opt)
+void parse_config(const char *conf_file, options *opt)
 {
     fh = fopen(conf_file, "r");
 
@@ -46,7 +46,7 @@ void parse_config(const char* conf_file, options* opt)
         cleanup(1);
     }
 
-#if DEBUG == 1
+#if DEBUG
     printf("Raw key/value pairs from config file:\n");
 #endif /* DEBUG */
 
@@ -86,10 +86,10 @@ void parse_config(const char* conf_file, options* opt)
         free(line);
         line = NULL;
 
-        char* keystr = (char*)key;
-        char* valstr = (char*)val;
+        char *keystr = (char *)key;
+        char *valstr = (char *)val;
 
-#if DEBUG == 1
+#if DEBUG
         printf("[%s] = [%s]\n", keystr, valstr);
 #endif /* DEBUG */
 
@@ -100,7 +100,7 @@ void parse_config(const char* conf_file, options* opt)
             valstr[vallen - 1] = '\0';
             valstr++;
 
-#if DEBUG == 1
+#if DEBUG
             printf("[%s] = [%s] <\n", keystr, valstr);
 #endif /* DEBUG */
         }
@@ -108,22 +108,45 @@ void parse_config(const char* conf_file, options* opt)
         /* Parse each line */
         if (STREQ(keystr, "Daemonize")) {
             opt->daemonize = str_to_bool(valstr, conf_file, lineno);
+        } else if (STREQ(keystr, "Protocol")) {
+            if (STREQ(valstr, "both")) {
+                opt->protocol = PROTOCOL_BOTH;
+            } else if (STREQ(valstr, "ipv4")) {
+                opt->protocol = PROTOCOL_IPV4;
+            } else if (STREQ(valstr, "ipv6")) {
+                opt->protocol = PROTOCOL_IPV6;
+            } else {
+                fprintf(stderr, "%s:%d: invalid protocol: \"%s\"\n", conf_file, lineno, valstr);
+                confcleanup(1);
+            }
         } else if (STREQ(keystr, "Port")) {
             int port = atoi(valstr);
-            if (port <= 0) {
+            if (0 >= port || port > PORT_MAX) {
                 fprintf(stderr, "%s:%d: invalid port number: \"%s\"\n", conf_file, lineno, valstr);
                 confcleanup(1);
             }
 
             opt->port = port;
         } else if (STREQ(keystr, "PidFile")) {
-            opt->pidfile = malloc(strlen(valstr) + 1);
+            char *ptr = malloc(vallen + 1);
+            if (ptr == NULL) {
+                perror("Unable to allocate memory for config value");
+                confcleanup(1);
+            }
+
+            opt->pidfile = ptr;
             opt->pidmalloc = true;
             strcpy(opt->pidfile, valstr);
         } else if (STREQ(keystr, "RequirePidFile")) {
             opt->require_pidfile = str_to_bool(valstr, conf_file, lineno);
         } else if (STREQ(keystr, "QuotesFile")) {
-            opt->quotesfile = malloc(strlen(valstr) + 1);
+            char *ptr = malloc(vallen + 1);
+            if (ptr == NULL) {
+                perror("Unable to allocate memory for config value");
+                confcleanup(1);
+            }
+
+            opt->quotesfile = malloc(vallen + 1);
             opt->quotesmalloc = true;
             strcpy(opt->quotesfile, valstr);
         } else if (STREQ(keystr, "QuoteDivider")) {
@@ -152,10 +175,15 @@ void parse_config(const char* conf_file, options* opt)
     fclose(fh);
 }
 
-static char* readline(FILE* fh, const char* filename, unsigned int* lineno)
+static char *readline(FILE *fh, const char *filename, unsigned int *lineno)
 {
-    char* buffer = malloc(BUFFER_SIZE);
+    char *buffer = malloc(BUFFER_SIZE);
     int ch, i;
+
+    if (buffer == NULL) {
+        perror("Unable to allocate memory for readline");
+        confcleanup(1);
+    }
 
     for (i = 0; i < BUFFER_SIZE; i++) {
         ch = fgetc(fh);
@@ -191,7 +219,7 @@ static char* readline(FILE* fh, const char* filename, unsigned int* lineno)
     return NULL;
 }
 
-static bool str_to_bool(const char* string, const char* filename, const unsigned int lineno)
+static bool str_to_bool(const char *string, const char *filename, const unsigned int lineno)
 {
     if (STREQ(string, "yes") || STREQ(string, "YES")
      || STREQ(string, "true") || STREQ(string, "TRUE")) {

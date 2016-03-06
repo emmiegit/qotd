@@ -23,11 +23,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
+
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #include "arguments.h"
 #include "info.h"
@@ -35,28 +36,33 @@
 #include "quotes.h"
 #include "sighandler.h"
 
+#define CONNECTION_BACKLOG 50
+
+#define UNUSED(x)    ((void)(x))
 #define STREQ(x, y)  (strcmp((x), (y)) == 0)
-#define PORT_MAX 65535 /* Couldn't find in limits.h */
-#define CONNECTION_BACKLOG 10
-#define ever (;;)
+#define ever         (;;)
 
 static int daemonize();
 static int main_loop();
-static void save_args(const int argc, const char* argv[]);
+static void setup_ipv4_socket(struct sockaddr_in *serv_addr);
+static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr, int no_ipv4);
+static bool accept_connection();
+static void save_args(const int argc, const char *argv[]);
 static void check_config();
 static void write_pidfile();
-static void setup_socket(struct sockaddr_in* serv_addr);
-static bool accept_connection();
 
-static arguments* args;
-static options* opt;
+static arguments *args;
+static options *opt;
 static int sockfd;
 static bool wrote_pidfile;
 
-int main(int argc, const char* argv[])
+int main(int argc, const char *argv[])
 {
     /* Set up signal handlers */
     set_up_handlers();
+
+    /* Set default values for static variables */
+    sockfd = -1;
 
     /* Make a static copy of the arguments */
     save_args(argc, argv);
@@ -67,27 +73,24 @@ int main(int argc, const char* argv[])
     /* Check configuration */
     check_config();
 
-    /* Set up socket */
-    struct sockaddr_in serv_addr;
-    setup_socket(&serv_addr);
-
     return (opt->daemonize) ? daemonize() : main_loop();
 }
 
 static int daemonize()
 {
+    /* Fork to background */
     pid_t pid;
     if ((pid = fork()) < 0) {
         cleanup(1);
         return 1;
     } else if (pid != 0) {
-        /* If you're the parent, then quit */
+        /* If we're the parent, then quit */
         printf("Successfully created background daemon, pid %d.\n", pid);
         cleanup(0);
         return 0;
     }
 
-    /* Set up daemon environment */
+    /* We're the child, so daemonize */
     pid = setsid();
 
     if (pid < 0) {
@@ -111,13 +114,113 @@ static int main_loop()
 {
     write_pidfile();
 
-    /* Listen to the specified port */
-    printf("Starting main loop...\n");
+    struct sockaddr_in serv_addr;
+    struct sockaddr_in6 serv_addr6;
+    switch (opt->protocol) {
+        case PROTOCOL_IPV4:
+            setup_ipv4_socket(&serv_addr);
+            break;
+        case PROTOCOL_IPV6:
+            setup_ipv6_socket(&serv_addr6, true);
+            break;
+        case PROTOCOL_BOTH:
+            setup_ipv6_socket(&serv_addr6, false);
+            break;
+        default:
+            fprintf(stderr, "Internal error: invalid protocol value: %d.\n", opt->protocol);
+            cleanup(1);
+    }
+
     for ever {
         accept_connection();
     }
 
     return EXIT_SUCCESS;
+}
+
+static void setup_ipv4_socket(struct sockaddr_in *serv_addr)
+{
+    printf("Setting up IPv4 socket connection...\n");
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("Unable to connect to IPv4 socket");
+        cleanup(1);
+    }
+
+    serv_addr->sin_family = AF_INET;
+    serv_addr->sin_addr.s_addr = INADDR_ANY;
+    serv_addr->sin_port = htons(opt->port);
+
+    int ret = bind(sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in));
+    if (ret < 0) {
+        perror("Unable to bind to IPv4 socket");
+        cleanup(1);
+    }
+}
+
+static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr, int no_ipv4)
+{
+    if (no_ipv4) {
+        printf("Setting up IPv6 socket connection...\n");
+    } else {
+        printf("Setting up IPv4/6 socket connection...\n");
+    }
+
+    sockfd = socket(AF_INET6, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        if (no_ipv4) {
+            perror("Unable to connect to IPv6 socket");
+        } else {
+            perror("Unable to connect to IPv4/6 socket");
+        }
+
+        cleanup(1);
+    }
+
+    setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no_ipv4, sizeof(no_ipv4));
+
+    serv_addr->sin6_family = AF_INET6;
+    serv_addr->sin6_addr = in6addr_any;
+    serv_addr->sin6_port = htons(opt->port);
+
+    int ret = bind(sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in6));
+    if (ret < 0) {
+        if (no_ipv4) {
+            perror("Unable to bind to IPv6 socket");
+        } else {
+            perror("Unable to bind to IPv4/6 socket");
+        }
+
+        cleanup(1);
+    }
+}
+
+static bool accept_connection()
+{
+    printf("Listening for connection...\n");
+    listen(sockfd, CONNECTION_BACKLOG);
+
+    struct sockaddr_in cli_addr;
+    socklen_t clilen = sizeof(cli_addr);
+    int consockfd = accept(sockfd, (struct sockaddr *)(&cli_addr), &clilen);
+    if (consockfd < 0) {
+        perror("Unable to accept connection");
+        return false;
+    }
+
+    int ret = send_quote(consockfd, opt);
+    if (ret < 0) {
+        perror("Unable to write to socket");
+        return false;
+    }
+
+    ret = close(consockfd);
+    if (ret < 0) {
+        perror("Unable to close connection");
+        return false;
+    }
+
+    return true;
 }
 
 void cleanup(const int ret)
@@ -128,10 +231,14 @@ void cleanup(const int ret)
 
 void quietcleanup(int ret)
 {
-    int ret2 = close(sockfd);
-    if (ret2 < 0) {
-        perror("Unable to close socket file descriptor");
-        ret++;
+    int ret2;
+    if (sockfd >= 0) {
+        ret2 = close(sockfd);
+        if (ret2 < 0) {
+            fprintf(stderr, "Unable to close socket file descriptor %d: %s\n",
+                    sockfd, strerror(errno));
+            ret++;
+        }
     }
 
     if (args) {
@@ -166,6 +273,8 @@ void quietcleanup(int ret)
 
 void load_config()
 {
+    printf("Loading configuration settings...\n");
+
     if (opt) {
         free(opt);
     }
@@ -173,7 +282,7 @@ void load_config()
     opt = parse_args(args->argc, args->argv);
 }
 
-static void save_args(const int argc, const char* argv[])
+static void save_args(const int argc, const char *argv[])
 {
     arguments args_ = {
         .argc = argc,
@@ -191,7 +300,7 @@ static void write_pidfile()
         return;
     }
 
-    FILE* fh = fopen(opt->pidfile, "w+");
+    FILE *fh = fopen(opt->pidfile, "w+");
     int ret;
 
     if (fh == NULL) {
@@ -231,9 +340,6 @@ static void check_config()
     if (opt->port < 1024 && geteuid() != 0) {
         fprintf(stderr, "Only root can bind to ports below 1024.\n");
         cleanup(1);
-    } else if (opt->port > PORT_MAX) {
-        fprintf(stderr, "You must specify a port number from 1 to %d.\n", PORT_MAX);
-        cleanup(1);
     }
 
     if (opt->pidfile[0] != '/') {
@@ -241,7 +347,7 @@ static void check_config()
         cleanup(1);
     }
 
-    struct stat* statbuf = malloc(sizeof(struct stat));
+    struct stat *statbuf = malloc(sizeof(struct stat));
     if (statbuf == NULL) {
         perror("Unable to allocate memory for stat of quotes file");
         cleanup(1);
@@ -254,51 +360,5 @@ static void check_config()
         perror("Unable to stat quotes file");
         cleanup(1);
     }
-}
-
-static void setup_socket(struct sockaddr_in* serv_addr)
-{
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        perror("Unable to connect to socket");
-        cleanup(1);
-    }
-
-    serv_addr->sin_family = AF_INET;
-    serv_addr->sin_addr.s_addr = INADDR_ANY;
-    serv_addr->sin_port = htons(opt->port);
-
-    int ret = bind(sockfd, (const struct sockaddr*)serv_addr, sizeof(struct sockaddr_in));
-    if (ret < 0) {
-        perror("Unable to bind to socket");
-        cleanup(1);
-    }
-}
-
-static bool accept_connection()
-{
-    listen(sockfd, CONNECTION_BACKLOG);
-
-    struct sockaddr_in cli_addr;
-    socklen_t clilen = sizeof(cli_addr);
-    int consockfd = accept(sockfd, (struct sockaddr*)(&cli_addr), &clilen);
-    if (consockfd < 0) {
-        perror("Unable to accept connection");
-        return false;
-    }
-
-    int ret = send_quote(consockfd, opt);
-    if (ret < 0) {
-        perror("Unable to write to socket");
-        return false;
-    }
-
-    ret = close(consockfd);
-    if (ret < 0) {
-        perror("Unable to close connection");
-        return false;
-    }
-
-    return true;
 }
 
