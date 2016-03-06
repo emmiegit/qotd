@@ -231,10 +231,14 @@ void cleanup(const int ret)
 
 void quietcleanup(int ret)
 {
-    int ret2 = close(sockfd);
-    if (ret2 < 0) {
-        perror("Unable to close socket file descriptor");
-        ret++;
+    int ret2;
+    if (sockfd >= 0) {
+        ret2 = close(sockfd);
+        if (ret2 < 0) {
+            fprintf(stderr, "Unable to close socket file descriptor %d: %s\n",
+                    sockfd, strerror(errno));
+            ret++;
+        }
     }
 
     if (args) {
