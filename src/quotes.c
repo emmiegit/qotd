@@ -134,22 +134,14 @@ static void freequotes(char **array)
 
 static int get_file_size(const char *fn)
 {
-    struct stat *statbuf = malloc(sizeof(struct stat));
-    if (statbuf == NULL) {
-        perror("Unable to allocate memory for stat");
-        cleanup(1);
-    }
-
-    int ret = stat(fn, statbuf);
+    struct stat statbuf;
+    int ret = stat(fn, &statbuf);
     if (ret < 0) {
         perror("Unable to stat quotes file");
-        free(statbuf);
         return -1;
     }
 
-    const int size = statbuf->st_size;
-    free(statbuf);
-    return size;
+    return statbuf.st_size;
 }
 
 static char **readquotes_file(const char *fn, size_t *quotes)

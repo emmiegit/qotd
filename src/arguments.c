@@ -23,6 +23,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "arguments.h"
 #include "config.h"
 #include "info.h"
@@ -38,6 +42,7 @@
 # define BOOLSTR(x) ((x) ? "true" : "false")
 #endif /* DEBUG */
 
+static char *default_pidfile();
 static void help_and_exit(const char *program_name);
 static void usage_and_exit(const char *program_name);
 static void version_and_exit(const char *program_name);
@@ -62,7 +67,7 @@ options *parse_args(const int argc, const char *argv[])
     opt->protocol = PROTOCOL_BOTH;
     opt->quotesfile = "/usr/share/qotd/quotes.txt";
     opt->linediv = DIV_EVERYLINE;
-    opt->pidfile = "/run/qotd.pid";
+    opt->pidfile = default_pidfile();
     opt->quotesmalloc = false;
     opt->pidmalloc = false;
     opt->daemonize = true;
@@ -179,6 +184,17 @@ options *parse_args(const int argc, const char *argv[])
 #endif /* DEBUG */
 
     return opt;
+}
+
+static char *default_pidfile()
+{
+    struct stat statbuf;
+    int ret = stat("/run", &statbuf);
+    if (ret < 0) {
+        return "/var/run/qotd.pid";
+    } else {
+        return "/run/qotd.pid";
+    }
 }
 
 #if DEBUG
