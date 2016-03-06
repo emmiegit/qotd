@@ -1,4 +1,4 @@
-.TH QOTDD 8 2016-01-29 "qotd 0.3" ""
+.TH QOTDD 8 2016-01-29 "qotd 0.4" ""
 .SH NAME
 qotdd \- A daemon to provide an interesting quote every day.
 .SH SYNOPSIS
@@ -25,6 +25,12 @@ Override the pidfile name given in the configuration file with the given file in
 .TP
 \fB\-s\fR, \fB\-\-quotes\fR \fIquotes\-file\fR
 Override the quotes file given in the configuration file with the given filename instead.
+.TP
+\fB\-4, \-\-ipv4
+Only listen on IPv4.
+.TP
+\fB\-6, \-\-ipv6
+Only listen on IPv6.
 .TP
 .BR \-\-help
 List all options and what they do.
