@@ -8,6 +8,9 @@ qotd.conf \- The QOTD daemon configuration file
 .P
 The supported keywords and their possible meanings are as follows. Note that both the keywords and their arguments are case-sensitive.
 .TP
+\fBProtocol\fR
+Which TCP/IP version(s) to use. This setting is either `ipv4', `ipv6', or `both'. The default behavior is to listen on both IPv4 and IPv6.
+.TP
 \fBPort\fR
 Specifies an alternate port to listen on. The default argument is `17'.
 .TP

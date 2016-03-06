@@ -19,15 +19,17 @@
  */
 
 #include <errno.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
+
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #include "arguments.h"
 #include "info.h"
@@ -35,25 +37,31 @@
 #include "quotes.h"
 #include "sighandler.h"
 
+#define CONNECTION_BACKLOG 50
+
+#define UNUSED(x)    ((void)(x))
 #define STREQ(x, y)  (strcmp((x), (y)) == 0)
-#define PORT_MAX 65535 /* Couldn't find in limits.h */
-#define CONNECTION_BACKLOG 10
-#define ever (;;)
+#define ever         (;;)
 
 static int daemonize();
 static int main_loop();
-static void save_args(const int argc, const char* argv[]);
+static void *ipv4_main_loop(void *arg);
+static void *ipv6_main_loop(void *arg);
+static void setup_ipv4_socket(struct sockaddr_in *serv_addr);
+static void setup_ipv6_socket(struct sockaddr_in *serv_addr);
+static bool accept_ipv4_connection();
+static bool accept_ipv6_connection();
+static void save_args(const int argc, const char *argv[]);
 static void check_config();
 static void write_pidfile();
-static void setup_socket(struct sockaddr_in* serv_addr);
-static bool accept_connection();
 
-static arguments* args;
-static options* opt;
-static int sockfd;
+static arguments *args;
+static options *opt;
+static int ipv4_sockfd, ipv6_sockfd;
+static pthread_t *ipv4_thread, *ipv6_thread;
 static bool wrote_pidfile;
 
-int main(int argc, const char* argv[])
+int main(int argc, const char *argv[])
 {
     /* Set up signal handlers */
     set_up_handlers();
@@ -67,27 +75,30 @@ int main(int argc, const char* argv[])
     /* Check configuration */
     check_config();
 
-    /* Set up socket */
-    struct sockaddr_in serv_addr;
-    setup_socket(&serv_addr);
+    /* Set default values for static variables */
+    ipv4_sockfd = -1;
+    ipv6_sockfd = -1;
+    ipv4_thread = NULL;
+    ipv6_thread = NULL;
 
     return (opt->daemonize) ? daemonize() : main_loop();
 }
 
 static int daemonize()
 {
+    /* Fork to background */
     pid_t pid;
     if ((pid = fork()) < 0) {
         cleanup(1);
         return 1;
     } else if (pid != 0) {
-        /* If you're the parent, then quit */
+        /* If we're the parent, then quit */
         printf("Successfully created background daemon, pid %d.\n", pid);
         cleanup(0);
         return 0;
     }
 
-    /* Set up daemon environment */
+    /* We're the child, so daemonize */
     pid = setsid();
 
     if (pid < 0) {
@@ -111,13 +122,173 @@ static int main_loop()
 {
     write_pidfile();
 
-    /* Listen to the specified port */
-    printf("Starting main loop...\n");
-    for ever {
-        accept_connection();
+    int ret;
+    switch (opt->protocol) {
+        case PROTOCOL_IPV4:
+            printf("Starting main loop...\n");
+            ipv4_main_loop(NULL);
+            break;
+        case PROTOCOL_IPV6:
+            printf("Starting main loop...\n");
+            ipv6_main_loop(NULL);
+            break;
+        case PROTOCOL_BOTH:
+            /* Create threads */
+            ret = pthread_create(ipv4_thread, NULL, ipv4_main_loop, NULL);
+            if (ret) {
+                perror("Unable to create IPv4 listener thread");
+                ipv4_thread = NULL;
+                cleanup(1);
+            }
+
+            ret = pthread_create(ipv6_thread, NULL, ipv6_main_loop, NULL);
+            if (ret) {
+                perror("Unable to create IPv6 listener thread");
+                ipv6_thread = NULL;
+                cleanup(1);
+            }
+
+            /* Block until the threads join */
+            ret = pthread_join(*ipv4_thread, NULL);
+            if (ret) {
+                perror("Unable to join IPv4 listener thread");
+                ipv4_thread = NULL;
+                cleanup(1);
+            }
+
+            ret = pthread_join(*ipv6_thread, NULL);
+            if (ret) {
+                perror("Unable to join IPv6 listener thread");
+                ipv6_thread = NULL;
+                cleanup(1);
+            }
+            break;
+        default:
+            fprintf(stderr, "Internal error: invalid protocol value: %d.\n", opt->protocol);
+            cleanup(1);
     }
 
     return EXIT_SUCCESS;
+}
+
+static void *ipv4_main_loop(void *arg)
+{
+    UNUSED(arg);
+    struct sockaddr_in serv_addr;
+    setup_ipv4_socket(&serv_addr);
+
+    for ever {
+        accept_ipv4_connection();
+    }
+
+    return NULL;
+}
+
+static void *ipv6_main_loop(void *arg)
+{
+    UNUSED(arg);
+    struct sockaddr_in serv_addr;
+    setup_ipv6_socket(&serv_addr);
+
+    for ever {
+        accept_ipv6_connection();
+    }
+
+    return NULL;
+}
+
+static void setup_ipv4_socket(struct sockaddr_in *serv_addr)
+{
+    printf("Setting up IPv4 socket connection...\n");
+    ipv4_sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (ipv4_sockfd < 0) {
+        perror("Unable to connect to IPv4 socket");
+        cleanup(1);
+    }
+
+    serv_addr->sin_family = AF_INET;
+    serv_addr->sin_addr.s_addr = INADDR_ANY;
+    serv_addr->sin_port = htons(opt->port);
+
+    int ret = bind(ipv4_sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in));
+    if (ret < 0) {
+        perror("Unable to bind to IPv4 socket");
+        cleanup(1);
+    }
+}
+
+static void setup_ipv6_socket(struct sockaddr_in *serv_addr)
+{
+    printf("Setting up IPv6 socket connection...\n");
+    ipv6_sockfd = socket(AF_INET6, SOCK_STREAM, 0);
+    if (ipv6_sockfd < 0) {
+        perror("Unable to connect to IPv6 socket");
+        cleanup(1);
+    }
+
+    serv_addr->sin_family = AF_INET6;
+    serv_addr->sin_addr.s_addr = INADDR_ANY;
+    serv_addr->sin_port = htons(opt->port);
+
+    int ret = bind(ipv6_sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in));
+    if (ret < 0) {
+        perror("Unable to bind to IPv6 socket");
+        cleanup(1);
+    }
+}
+
+static bool accept_ipv4_connection()
+{
+    listen(ipv4_sockfd, CONNECTION_BACKLOG);
+
+    struct sockaddr_in cli_addr;
+    socklen_t clilen = sizeof(cli_addr);
+    int consockfd = accept(ipv4_sockfd, (struct sockaddr *)(&cli_addr), &clilen);
+    if (consockfd < 0) {
+        perror("Unable to accept connection");
+        return false;
+    }
+
+    int ret = send_quote(consockfd, opt);
+    if (ret < 0) {
+        perror("Unable to write to socket");
+        return false;
+    }
+
+    ret = close(consockfd);
+    if (ret < 0) {
+        perror("Unable to close connection");
+        return false;
+    }
+
+    return true;
+}
+
+static bool accept_ipv6_connection()
+{
+    listen(ipv6_sockfd, CONNECTION_BACKLOG);
+
+    struct sockaddr_in cli_addr;
+    socklen_t clilen = sizeof(cli_addr);
+    int consockfd = accept(ipv6_sockfd, (struct sockaddr *)(&cli_addr), &clilen);
+    if (consockfd < 0) {
+        perror("Unable to accept connection");
+        return false;
+    }
+
+    int ret = send_quote(consockfd, opt);
+    if (ret < 0) {
+        perror("Unable to write to socket");
+        return false;
+    }
+
+    ret = close(consockfd);
+    if (ret < 0) {
+        perror("Unablee to close connection");
+        return false;
+    }
+
+    return true;
 }
 
 void cleanup(const int ret)
@@ -128,10 +299,39 @@ void cleanup(const int ret)
 
 void quietcleanup(int ret)
 {
-    int ret2 = close(sockfd);
-    if (ret2 < 0) {
-        perror("Unable to close socket file descriptor");
-        ret++;
+    int ret2;
+    if (ipv4_thread) {
+        ret2 = pthread_cancel(*ipv4_thread);
+        if (ret2) {
+            perror("Unable to cancel IPv4 pthread");
+            ret++;
+        }
+    }
+
+    if (ipv6_thread) {
+        ret2 = pthread_cancel(*ipv6_thread);
+        if (ret2) {
+            perror("Unable to cancel IPv6 pthread");
+            ret++;
+        }
+    }
+
+    if (ipv4_sockfd >= 0) {
+        ret2 = close(ipv4_sockfd);
+        if (ret2 < 0) {
+            fprintf(stderr, "Unable to close IPv4 socket filed descriptor %d: %s\n",
+                    ipv4_sockfd, strerror(errno));
+            ret++;
+        }
+    }
+
+    if (ipv6_sockfd >= 0) {
+        ret2 = close(ipv6_sockfd);
+        if (ret2 < 0) {
+            fprintf(stderr, "Unable to close IPv6 socket file descriptor %d: %s\n",
+                    ipv6_sockfd, strerror(errno));
+            ret++;
+        }
     }
 
     if (args) {
@@ -166,6 +366,8 @@ void quietcleanup(int ret)
 
 void load_config()
 {
+    printf("Loading configuration settings...\n");
+
     if (opt) {
         free(opt);
     }
@@ -173,7 +375,7 @@ void load_config()
     opt = parse_args(args->argc, args->argv);
 }
 
-static void save_args(const int argc, const char* argv[])
+static void save_args(const int argc, const char *argv[])
 {
     arguments args_ = {
         .argc = argc,
@@ -191,7 +393,7 @@ static void write_pidfile()
         return;
     }
 
-    FILE* fh = fopen(opt->pidfile, "w+");
+    FILE *fh = fopen(opt->pidfile, "w+");
     int ret;
 
     if (fh == NULL) {
@@ -231,9 +433,6 @@ static void check_config()
     if (opt->port < 1024 && geteuid() != 0) {
         fprintf(stderr, "Only root can bind to ports below 1024.\n");
         cleanup(1);
-    } else if (opt->port > PORT_MAX) {
-        fprintf(stderr, "You must specify a port number from 1 to %d.\n", PORT_MAX);
-        cleanup(1);
     }
 
     if (opt->pidfile[0] != '/') {
@@ -241,7 +440,7 @@ static void check_config()
         cleanup(1);
     }
 
-    struct stat* statbuf = malloc(sizeof(struct stat));
+    struct stat *statbuf = malloc(sizeof(struct stat));
     if (statbuf == NULL) {
         perror("Unable to allocate memory for stat of quotes file");
         cleanup(1);
@@ -254,51 +453,5 @@ static void check_config()
         perror("Unable to stat quotes file");
         cleanup(1);
     }
-}
-
-static void setup_socket(struct sockaddr_in* serv_addr)
-{
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        perror("Unable to connect to socket");
-        cleanup(1);
-    }
-
-    serv_addr->sin_family = AF_INET;
-    serv_addr->sin_addr.s_addr = INADDR_ANY;
-    serv_addr->sin_port = htons(opt->port);
-
-    int ret = bind(sockfd, (const struct sockaddr*)serv_addr, sizeof(struct sockaddr_in));
-    if (ret < 0) {
-        perror("Unable to bind to socket");
-        cleanup(1);
-    }
-}
-
-static bool accept_connection()
-{
-    listen(sockfd, CONNECTION_BACKLOG);
-
-    struct sockaddr_in cli_addr;
-    socklen_t clilen = sizeof(cli_addr);
-    int consockfd = accept(sockfd, (struct sockaddr*)(&cli_addr), &clilen);
-    if (consockfd < 0) {
-        perror("Unable to accept connection");
-        return false;
-    }
-
-    int ret = send_quote(consockfd, opt);
-    if (ret < 0) {
-        perror("Unable to write to socket");
-        return false;
-    }
-
-    ret = close(consockfd);
-    if (ret < 0) {
-        perror("Unable to close connection");
-        return false;
-    }
-
-    return true;
 }
 

@@ -35,26 +35,27 @@
 #if DEBUG == 1
 # define NULLSTR(x) ((x) ? (x) : "<null>")
 # define BOOLSTR(x) ((x) ? "true" : "false")
-static void print_options(options* opt);
 #endif /* DEBUG */
 
-static void help_and_exit(const char* program_name);
-static void usage_and_exit(const char* program_name);
-static void version_and_exit(const char* program_name);
+static void help_and_exit(const char *program_name);
+static void usage_and_exit(const char *program_name);
+static void version_and_exit(const char *program_name);
 
-options* parse_args(const int argc, const char* argv[])
+options *parse_args(const int argc, const char *argv[])
 {
-    const char* program_name = basename((char*)argv[0]);
-    char* conf_file = "/etc/qotd.conf";
-    char* quotes_file = NULL;
-    char* pid_file = NULL;
+    const char *program_name = basename((char *)argv[0]);
+    char *conf_file = "/etc/qotd.conf";
+    char *quotes_file = NULL;
+    char *pid_file = NULL;
     char daemonize = BOOLEAN_UNSET;
+    char protocol = 0;
 
-    options* opt = malloc(sizeof(options));
+    options *opt = malloc(sizeof(options));
     opt->port = 17;
+    opt->protocol = PROTOCOL_BOTH;
     opt->quotesfile = "/usr/share/qotd/quotes.txt";
     opt->linediv = DIV_EVERYLINE;
-    opt->pidfile = "/var/run/qotd.pid";
+    opt->pidfile = "/run/qotd.pid";
     opt->quotesmalloc = false;
     opt->pidmalloc = false;
     opt->daemonize = true;
@@ -78,7 +79,7 @@ options* parse_args(const int argc, const char* argv[])
                 fprintf(stderr, "You must specify a configuration file.\n");
                 cleanup(1);
             } else {
-                conf_file = (char*)argv[i];
+                conf_file = (char *)argv[i];
             }
         } else if (STREQ(argv[i], "-N") ||
                    STREQ(argv[i], "--noconfig")) {
@@ -89,7 +90,7 @@ options* parse_args(const int argc, const char* argv[])
                 fprintf(stderr, "You must specify a pid file.\n");
                 cleanup(1);
             } else {
-                pid_file = (char*)argv[i];
+                pid_file = (char *)argv[i];
             }
         } else if (STREQ(argv[i], "-s") ||
                    STREQ(argv[i], "--quotes")) {
@@ -97,8 +98,24 @@ options* parse_args(const int argc, const char* argv[])
                 fprintf(stderr, "You must specify a quotes file.\n");
                 cleanup(1);
             } else {
-                quotes_file = (char*)argv[i];
+                quotes_file = (char *)argv[i];
             }
+        } else if (STREQ(argv[i], "-4") ||
+                   STREQ(argv[i], "--ipv4")) {
+            if (protocol == PROTOCOL_IPV6) {
+                fprintf(stderr, "Conflicting options passed: -4 and -6.\n");
+                cleanup(1);
+            }
+
+            protocol = PROTOCOL_IPV4;
+        } else if (STREQ(argv[i], "-6") ||
+                   STREQ(argv[i], "--ipv6")) {
+            if (protocol == PROTOCOL_IPV4) {
+                fprintf(stderr, "Conflicting options passed: -4 and -6.\n");
+                cleanup(1);
+            }
+
+            protocol = PROTOCOL_IPV6;
         } else {
             usage_and_exit(program_name);
         }
@@ -130,22 +147,18 @@ options* parse_args(const int argc, const char* argv[])
         opt->quotesmalloc = false;
     }
 
+    if (protocol) {
+        opt->protocol = protocol;
+    }
+
     if (daemonize != BOOLEAN_UNSET) {
         opt->daemonize = daemonize;
     }
 
 #if DEBUG == 1
-    print_options(opt);
-#endif /* DEBUG */
-
-    return opt;
-}
-
-#if DEBUG == 1
-static void print_options(options* opt)
-{
     printf("\nContents of struct 'opt':\n");
     printf("Daemonize: %s\n", BOOLSTR(opt->daemonize));
+    printf("Protocol: %d\n", opt->protocol);
     printf("Port: %d\n", opt->port);
     printf("QuotesMalloc: %s\n", BOOLSTR(opt->quotesmalloc));
     printf("PidMalloc: %s\n", BOOLSTR(opt->pidmalloc));
@@ -156,10 +169,12 @@ static void print_options(options* opt)
     printf("DailyQuotes: %s\n", BOOLSTR(opt->is_daily));
     printf("AllowBigQuotes: %s\n", BOOLSTR(opt->allow_big));
     printf("End of 'opt'.\n\n");
-}
 #endif /* DEBUG */
 
-static void help_and_exit(const char* program_name)
+    return opt;
+}
+
+static void help_and_exit(const char *program_name)
 {
     printf("%s - A simple QOTD daemon.\n"
            "Usage: %s [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file]\n"
@@ -171,19 +186,21 @@ static void help_and_exit(const char* program_name)
            " -P, --pidfile (file)  Override the pidfile name given in the configuration file with\n"
            "                       the given file instead.\n"
            " -s, --quotes (file)   Override the quotes file given in the configuration file with\n"
-           "                       the given filename instead.\n",
+           "                       the given filename instead.\n"
+           " -4, --ipv4            Only listen on IPv4.\n"
+           " -6, --ipv6            Only listen on IPv6.\n",
            program_name, program_name);
     quietcleanup(0);
 }
 
-static void usage_and_exit(const char* program_name)
+static void usage_and_exit(const char *program_name)
 {
     printf("Usage: %s [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file]\n",
            program_name);
     quietcleanup(1);
 }
 
-static void version_and_exit(const char* program_name)
+static void version_and_exit(const char *program_name)
 {
     printf("%s - A simple QOTD daemon, version %s\n"
            "Copyright (C) 2015-2016 Ammon Smith\n"

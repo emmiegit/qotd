@@ -23,7 +23,7 @@
 
 typedef struct {
     const int argc;
-    const char** argv;
+    const char **argv;
 } arguments;
 
 void load_config();

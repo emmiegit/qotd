@@ -20,7 +20,7 @@
 .PHONY: all force debug forcedebug distclean clean
 
 CC=gcc
-FLAGS=-ansi -I. -Wall -Wextra
+FLAGS=-ansi -I. -pthread -Wall -Wextra
 OBJECTS=arguments.o \
 		config.o    \
 		qotdd.o     \

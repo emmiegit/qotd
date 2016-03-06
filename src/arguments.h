@@ -22,6 +22,6 @@
 
 #ifndef __ARGUMENTS_H
 # define __ARGUMENTS_H
-options* parse_args(const int argc, const char* argv[]);
+options *parse_args(const int argc, const char *argv[]);
 #endif /* __ARGUMENTS_H */
 
