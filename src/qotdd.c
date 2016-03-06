@@ -19,7 +19,6 @@
  */
 
 #include <errno.h>
-#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,26 +44,25 @@
 
 static int daemonize();
 static int main_loop();
-static void *ipv4_main_loop(void *arg);
-static void *ipv6_main_loop(void *arg);
 static void setup_ipv4_socket(struct sockaddr_in *serv_addr);
-static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr);
-static bool accept_ipv4_connection();
-static bool accept_ipv6_connection();
+static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr, int no_ipv4);
+static bool accept_connection();
 static void save_args(const int argc, const char *argv[]);
 static void check_config();
 static void write_pidfile();
 
 static arguments *args;
 static options *opt;
-static int ipv4_sockfd, ipv6_sockfd;
-static pthread_t *ipv4_thread, *ipv6_thread;
+static int sockfd;
 static bool wrote_pidfile;
 
 int main(int argc, const char *argv[])
 {
     /* Set up signal handlers */
     set_up_handlers();
+
+    /* Set default values for static variables */
+    sockfd = -1;
 
     /* Make a static copy of the arguments */
     save_args(argc, argv);
@@ -74,12 +72,6 @@ int main(int argc, const char *argv[])
 
     /* Check configuration */
     check_config();
-
-    /* Set default values for static variables */
-    ipv4_sockfd = -1;
-    ipv6_sockfd = -1;
-    ipv4_thread = NULL;
-    ipv6_thread = NULL;
 
     return (opt->daemonize) ? daemonize() : main_loop();
 }
@@ -122,86 +114,35 @@ static int main_loop()
 {
     write_pidfile();
 
-    int ret;
+    struct sockaddr_in serv_addr;
+    struct sockaddr_in6 serv_addr6;
     switch (opt->protocol) {
         case PROTOCOL_IPV4:
-            ipv4_main_loop(NULL);
+            setup_ipv4_socket(&serv_addr);
             break;
         case PROTOCOL_IPV6:
-            ipv6_main_loop(NULL);
+            setup_ipv6_socket(&serv_addr6, true);
             break;
         case PROTOCOL_BOTH:
-            /* Create threads */
-            ret = pthread_create(ipv4_thread, NULL, ipv4_main_loop, NULL);
-            if (ret) {
-                perror("Unable to create IPv4 listener thread");
-                ipv4_thread = NULL;
-                cleanup(1);
-            }
-
-            ret = pthread_create(ipv6_thread, NULL, ipv6_main_loop, NULL);
-            if (ret) {
-                perror("Unable to create IPv6 listener thread");
-                ipv6_thread = NULL;
-                cleanup(1);
-            }
-
-            /* Block until the threads join */
-            ret = pthread_join(*ipv4_thread, NULL);
-            if (ret) {
-                perror("Unable to join IPv4 listener thread");
-                ipv4_thread = NULL;
-                cleanup(1);
-            }
-
-            ret = pthread_join(*ipv6_thread, NULL);
-            if (ret) {
-                perror("Unable to join IPv6 listener thread");
-                ipv6_thread = NULL;
-                cleanup(1);
-            }
+            setup_ipv6_socket(&serv_addr6, false);
             break;
         default:
             fprintf(stderr, "Internal error: invalid protocol value: %d.\n", opt->protocol);
             cleanup(1);
     }
 
+    for ever {
+        accept_connection();
+    }
+
     return EXIT_SUCCESS;
-}
-
-static void *ipv4_main_loop(void *arg)
-{
-    UNUSED(arg);
-    struct sockaddr_in serv_addr;
-    setup_ipv4_socket(&serv_addr);
-
-    printf("Starting main loop (IPv4)...\n");
-    for ever {
-        accept_ipv4_connection();
-    }
-
-    return NULL;
-}
-
-static void *ipv6_main_loop(void *arg)
-{
-    UNUSED(arg);
-    struct sockaddr_in6 serv_addr;
-    setup_ipv6_socket(&serv_addr);
-
-    printf("Starting main loop (IPv6)...\n");
-    for ever {
-        accept_ipv6_connection();
-    }
-
-    return NULL;
 }
 
 static void setup_ipv4_socket(struct sockaddr_in *serv_addr)
 {
     printf("Setting up IPv4 socket connection...\n");
-    ipv4_sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (ipv4_sockfd < 0) {
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
         perror("Unable to connect to IPv4 socket");
         cleanup(1);
     }
@@ -210,41 +151,58 @@ static void setup_ipv4_socket(struct sockaddr_in *serv_addr)
     serv_addr->sin_addr.s_addr = INADDR_ANY;
     serv_addr->sin_port = htons(opt->port);
 
-    int ret = bind(ipv4_sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in));
+    int ret = bind(sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in));
     if (ret < 0) {
         perror("Unable to bind to IPv4 socket");
         cleanup(1);
     }
 }
 
-static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr)
+static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr, int no_ipv4)
 {
-    printf("Setting up IPv6 socket connection...\n");
-    ipv6_sockfd = socket(AF_INET6, SOCK_STREAM, 0);
-    if (ipv6_sockfd < 0) {
-        perror("Unable to connect to IPv6 socket");
+    if (no_ipv4) {
+        printf("Setting up IPv6 socket connection...\n");
+    } else {
+        printf("Setting up IPv4/6 socket connection...\n");
+    }
+
+    sockfd = socket(AF_INET6, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        if (no_ipv4) {
+            perror("Unable to connect to IPv6 socket");
+        } else {
+            perror("Unable to connect to IPv4/6 socket");
+        }
+
         cleanup(1);
     }
+
+    setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no_ipv4, sizeof(no_ipv4));
 
     serv_addr->sin6_family = AF_INET6;
     serv_addr->sin6_addr = in6addr_any;
     serv_addr->sin6_port = htons(opt->port);
 
-    int ret = bind(ipv6_sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in6));
+    int ret = bind(sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in6));
     if (ret < 0) {
-        perror("Unable to bind to IPv6 socket");
+        if (no_ipv4) {
+            perror("Unable to bind to IPv6 socket");
+        } else {
+            perror("Unable to bind to IPv4/6 socket");
+        }
+
         cleanup(1);
     }
 }
 
-static bool accept_ipv4_connection()
+static bool accept_connection()
 {
-    printf("Listening for IPv4 connection...\n");
-    listen(ipv4_sockfd, CONNECTION_BACKLOG);
+    printf("Listening for connection...\n");
+    listen(sockfd, CONNECTION_BACKLOG);
 
     struct sockaddr_in cli_addr;
     socklen_t clilen = sizeof(cli_addr);
-    int consockfd = accept(ipv4_sockfd, (struct sockaddr *)(&cli_addr), &clilen);
+    int consockfd = accept(sockfd, (struct sockaddr *)(&cli_addr), &clilen);
     if (consockfd < 0) {
         perror("Unable to accept connection");
         return false;
@@ -265,34 +223,6 @@ static bool accept_ipv4_connection()
     return true;
 }
 
-static bool accept_ipv6_connection()
-{
-    printf("Listening for IPv6 connection...\n");
-    listen(ipv6_sockfd, CONNECTION_BACKLOG);
-
-    struct sockaddr_in cli_addr;
-    socklen_t clilen = sizeof(cli_addr);
-    int consockfd = accept(ipv6_sockfd, (struct sockaddr *)(&cli_addr), &clilen);
-    if (consockfd < 0) {
-        perror("Unable to accept connection");
-        return false;
-    }
-
-    int ret = send_quote(consockfd, opt);
-    if (ret < 0) {
-        perror("Unable to write to socket");
-        return false;
-    }
-
-    ret = close(consockfd);
-    if (ret < 0) {
-        perror("Unablee to close connection");
-        return false;
-    }
-
-    return true;
-}
-
 void cleanup(const int ret)
 {
     printf("Quitting with exit code %d.\n", ret);
@@ -301,39 +231,10 @@ void cleanup(const int ret)
 
 void quietcleanup(int ret)
 {
-    int ret2;
-    if (ipv4_thread) {
-        ret2 = pthread_cancel(*ipv4_thread);
-        if (ret2) {
-            perror("Unable to cancel IPv4 pthread");
-            ret++;
-        }
-    }
-
-    if (ipv6_thread) {
-        ret2 = pthread_cancel(*ipv6_thread);
-        if (ret2) {
-            perror("Unable to cancel IPv6 pthread");
-            ret++;
-        }
-    }
-
-    if (ipv4_sockfd >= 0) {
-        ret2 = close(ipv4_sockfd);
-        if (ret2 < 0) {
-            fprintf(stderr, "Unable to close IPv4 socket filed descriptor %d: %s\n",
-                    ipv4_sockfd, strerror(errno));
-            ret++;
-        }
-    }
-
-    if (ipv6_sockfd >= 0) {
-        ret2 = close(ipv6_sockfd);
-        if (ret2 < 0) {
-            fprintf(stderr, "Unable to close IPv6 socket file descriptor %d: %s\n",
-                    ipv6_sockfd, strerror(errno));
-            ret++;
-        }
+    int ret2 = close(sockfd);
+    if (ret2 < 0) {
+        perror("Unable to close socket file descriptor");
+        ret++;
     }
 
     if (args) {
