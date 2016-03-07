@@ -231,7 +231,7 @@ static const char *name_option_quote_divider(const unsigned char value)
 static void help_and_exit(const char *program_name)
 {
     printf("%s - A simple QOTD daemon.\n"
-           "Usage: %s [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file]\n"
+           "Usage: %s [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file] [-4 | -6]\n"
            " -f, --foreground      Do not fork, but run in the foreground.\n"
            " -c, --config (file)   Specify an alternate configuration file location. The default\n"
            "                       is at /etc/qotd.conf\n"

@@ -77,7 +77,7 @@ Those running the daemon directly should be aware of its options:
 
 ```
 Usage:
-   qotdd [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file]
+   qotdd [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file] [-4 | -6]
 
    qotdd [--help | --version]
 
@@ -96,6 +96,12 @@ Options:
 
    -s, --quotes quotes-file
           Override  the  quotes  file  given  in  the  configuration  file with the given filename instead.
+
+   -4, --ipv4
+          Only listen on IPv4.
+
+   -6, --ipv6
+          Only listen on IPv6.
 
    --help
           List all options and what they do.
