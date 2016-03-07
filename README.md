@@ -36,7 +36,7 @@ Specifies an alternate port to listen on. The default is port 17.
 <tt>PidFile <i>path-to-file</i></tt><br>
 Specifies what pid file is to be used by the daemon. If this value is `none`, then no pid file is written. The default is `/var/run/qotd.pid`.
 
-**Default:** `/var/run/qotd.pid`
+**Default:** `/run/qotd.pid`
 
 <tt>RequirePidFile <i>boolean-value</i></tt><br>
 If the process is unable to create a pid file and this setting is true, then the process quits with an error.<br>  

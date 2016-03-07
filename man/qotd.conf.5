@@ -15,7 +15,7 @@ Which TCP/IP version(s) to use. This setting is either `ipv4', `ipv6', or `both'
 Specifies an alternate port to listen on. The default argument is `17'.
 .TP
 \fBPidFile\fR
-Specifies what pid file is to be used by the daemon. If this value is `none', then no pid file is written. The default is \fI/var/run/qotd.pid\fR.
+Specifies what pid file is to be used by the daemon. If this value is `none', then no pid file is written. The default is \fI/run/qotd.pid\fR, but if there is no \fI/run\fR directory, then \fI/var/run/qotd.pid\fR will be used instead.
 .TP
 \fBRequirePidFile\fR
 If the daemon is unable to write to the pid file for any reason and this option is set, then the daemon will quit. Otherwise, the attempt to produce a pid file will be treated as an warning. This setting is ignored if \fBPidFile\fR is set to `none'.
