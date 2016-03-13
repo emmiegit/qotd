@@ -17,19 +17,20 @@
 # along with qotd.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-.PHONY: all pdf install uninstall force distclean clean
+.PHONY: all pdf install uninstall force clean
 
 DEST_DIR=
 GZ_FILES=qotdd.8.gz \
 		 qotd.conf.5.gz
 PS_FILES=qotdd.8.ps \
 		 qotd.conf.5.gz
+PDF_TARGET=qotd.pdf
 
 all: $(GZ_FILES)
 
 pdf: $(PS_FILES)
 	gs -q -sPAPERSIZE=letter -dNOPAUSE -dBATCH -sDEVICE=pdfwrite \
-		-sOutputFile=qotd.pdf $(PS_FILES)
+		-sOutputFile=$(PDF_TARGET) $(PS_FILES)
 
 %.5.ps: %.5
 	groff -Tps -mandoc $< > $<.ps
@@ -58,9 +59,6 @@ uninstall:
 	done
 
 force: clean $(GZ_FILES)
-
-distclean:
-	rm -f *~ *.gz *.ps *.pdf
 
 clean:
 	rm -f *~ *.gz *.ps *.pdf
