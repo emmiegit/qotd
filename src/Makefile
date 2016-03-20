@@ -39,7 +39,7 @@ $(EXE): $(OBJECTS)
 force: clean $(EXE)
 
 debug:
-	make $(EXE) EXTRA_FLAGS='-g'
+	make $(EXE) EXTRA_FLAGS='-Og -g'
 
 forcedebug: clean debug
 
