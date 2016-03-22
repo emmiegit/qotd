@@ -35,7 +35,9 @@
 #define STREMPTY(x)     (((x)[0]) == '\0')
 #define MIN(x, y)       (((x) < (y)) ? (x) : (y))
 
+#ifndef __APPLE__
 int snprintf(char *str, size_t size, const char *format, ...);
+#endif /* __APPLE__ */
 static void freequotes(char **array);
 static int get_file_size(const char *fn);
 static char **readquotes_file(const char *fn, size_t *quotes);
