@@ -179,7 +179,7 @@ static char **readquotes_file(const char *fn, size_t *quotes)
 
     int ret = fclose(fh);
     if (ret) {
-        perror("Unable to close quotes file");
+        fprintf(stderr, "Unable to close \"%s\": %s\n", fn, strerror(errno));
     }
 
     (*quotes) = 1;
@@ -223,8 +223,8 @@ static char **readquotes_line(const char *fn, size_t *quotes)
     buf[size] = '\0';
 
     int ret = fclose(fh);
-    if (ret < 0) {
-        perror("Unable to close quotes file");
+    if (ret) {
+        fprintf(stderr, "Unable to close \"%s\": %s\n", fn, strerror(errno));
     }
 
     /* Allocate the array of strings */
@@ -288,6 +288,11 @@ static char **readquotes_percent(const char *fn, size_t *quotes)
         buf[i++] = (char)ch;
     }
     buf[size] = '\0';
+
+    int ret = fclose(fh);
+    if (ret) {
+        fprintf(stderr, "Unable to close \"%s\": %s\n", fn, strerror(errno));
+    }
 
     if (!has_percent) {
         fprintf(stderr, "No percent signs (%%) were found in the quotes file. This means that the whole file\n"
