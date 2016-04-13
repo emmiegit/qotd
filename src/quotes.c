@@ -47,6 +47,7 @@ static char **readquotes_percent(const char *fn, size_t *quotes);
 int send_quote(const int fd, const options *opt)
 {
     if (opt->is_daily) {
+        /* Create random seed based on the current day */
         time_t rawtime;
         struct tm *ltime;
         time(&rawtime);
@@ -175,6 +176,11 @@ static char **readquotes_file(const char *fn, size_t *quotes)
         buf[i++] = (char)ch;
     }
     buf[size] = '\0';
+
+    int ret = fclose(fh);
+    if (ret) {
+        perror("Unable to close quotes file");
+    }
 
     (*quotes) = 1;
     char **array = malloc(sizeof(char *));
