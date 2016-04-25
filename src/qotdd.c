@@ -45,7 +45,7 @@
 static int daemonize();
 static int main_loop();
 static void setup_ipv4_socket(struct sockaddr_in *serv_addr);
-static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr, int no_ipv4);
+static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr, bool no_ipv4);
 static bool accept_connection();
 static void save_args(const int argc, const char *argv[]);
 static void check_config();
@@ -158,7 +158,7 @@ static void setup_ipv4_socket(struct sockaddr_in *serv_addr)
     }
 }
 
-static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr, int no_ipv4)
+static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr, bool no_ipv4)
 {
     if (no_ipv4) {
         printf("Setting up IPv6 socket connection...\n");
@@ -300,8 +300,18 @@ static void write_pidfile()
         return;
     }
 
+    /* Check if the pidfile already exists */
+    struct stat *statbuf = malloc(sizeof(struct stat));
+    int ret = stat(opt->pidfile, statbuf);
+    free(statbuf);
+
+    if (ret == 0) {
+        printf("The pid file already exists. Quitting.\n");
+        cleanup(1);
+    }
+
+    /* Write the pidfile */
     FILE *fh = fopen(opt->pidfile, "w+");
-    int ret;
 
     if (fh == NULL) {
         perror("Unable to open pid file");
@@ -313,7 +323,7 @@ static void write_pidfile()
         }
     }
 
-    ret = fprintf(fh, "%d", getpid());
+    ret = fprintf(fh, "%d\n", getpid());
     if (ret < 0) {
         perror("Unable to write pid to pid file");
 
