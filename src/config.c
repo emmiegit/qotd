@@ -93,12 +93,13 @@ void parse_config(const char *conf_file, options *opt)
         printf("[%s] = [%s]\n", keystr, valstr);
 #endif /* DEBUG */
 
-        const size_t vallen = strlen(valstr);
+        size_t vallen = strlen(valstr);
         if (vallen > 1 && ((valstr[0] == '\'' && valstr[vallen - 1] == '\'') ||
                            (valstr[0] == '\"' && valstr[vallen - 1] == '\"'))) {
             /* Strip quotation marks from string */
             valstr[vallen - 1] = '\0';
             valstr++;
+            vallen -= 2;
 
 #if DEBUG
             printf("[%s] = [%s] <\n", keystr, valstr);
