@@ -242,7 +242,9 @@ static void help_and_exit(const char *program_name)
            " -s, --quotes (file)   Override the quotes file given in the configuration file with\n"
            "                       the given filename instead.\n"
            " -4, --ipv4            Only listen on IPv4.\n"
-           " -6, --ipv6            Only listen on IPv6.\n",
+           " -6, --ipv6            Only listen on IPv6.\n"
+           " --help                List all options and what they do.\n"
+           " --version             Print the version and some basic license information.\n",
            program_name, program_name);
     quietcleanup(0);
 }
