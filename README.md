@@ -107,7 +107,7 @@ Options:
           List all options and what they do.
 
    --version
-          Print the version and some basic license information and quit.
+          Print the version and some basic license information.
 ```
 
 ### FAQ
