@@ -31,13 +31,13 @@
 #include "quotes.h"
 
 #define QUOTE_SIZE      512  /* Set by RFC 856 */
-#define MAX_BUFFER_SIZE 4096 /* A reasonable upper (although magical) limit */
 #define STREMPTY(x)     (((x)[0]) == '\0')
 #define MIN(x, y)       (((x) < (y)) ? (x) : (y))
 
 #ifndef __APPLE__
 int snprintf(char *str, size_t size, const char *format, ...);
 #endif /* __APPLE__ */
+
 static void freequotes(char **array);
 static int get_file_size(const char *fn);
 static char **readquotes_file(const char *fn, size_t *quotes);
@@ -108,17 +108,14 @@ int send_quote(const int fd, const options *opt)
         }
     }
 
-    const size_t len = opt->allow_big ? MAX_BUFFER_SIZE : QUOTE_SIZE;
-
-    if (strlen(array[i]) + 3 > len) {
-        fprintf(stderr, "Quotation is past the %zd-byte limit and will be truncated.\n", len);
-    }
-
+    const size_t len = opt->allow_big ? (strlen(array[i]) + 3) : QUOTE_SIZE;
     char buf[len];
     int bytes = snprintf(buf, len, "\n%s\n\n", array[i]);
 
     if (bytes < 0) {
+        int errno_ = errno;
         fprintf(stderr, "Unable to format quotation in char buffer.\n");
+        errno = errno_;
         return bytes;
     }
 
