@@ -20,9 +20,9 @@
 .PHONY: all release force debug forcedebug distclean clean
 
 CC = gcc
-FLAGS = -pipe -ansi -I. -Wall -Wextra -O3
-SOURCES = $(shell echo *.c)
-OBJECTS = $(patsubst %,%,$(SOURCES:.c=.o))
+FLAGS = -ansi -Wall -Wextra -pipe -O3 -I.
+SOURCES = $(wildcard *.c)
+OBJECTS = $(patsubst %.c,%.o,$(SOURCES))
 EXE = qotdd
 
 all: $(EXE)
@@ -31,7 +31,7 @@ release:
 	make clean all EXTRA_FLAGS='-fstack-protector-all'
 
 %.o: %.c
-	$(CC) $(FLAGS) $(EXTRA_FLAGS) -c $< -o $@
+	$(CC) $(FLAGS) $(EXTRA_FLAGS) -c -o $@ $<
 
 $(EXE): $(OBJECTS)
 	$(CC) $(FLAGS) $(EXTRA_FLAGS) $(OBJECTS) -o $(EXE)
@@ -44,7 +44,7 @@ debug:
 forcedebug: clean debug
 
 distclean:
-	rm -f *.o *.d *~ $(EXE) core core.* vgcore.*
+	rm -f *.o $(EXE) core core.* vgcore.*
 
 clean:
 	rm -f *.o $(EXE)
