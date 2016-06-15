@@ -52,7 +52,7 @@ static void check_config();
 static void write_pidfile();
 
 static arguments *args;
-static options *opt;
+static options opt;
 static int sockfd;
 static bool wrote_pidfile;
 
@@ -73,7 +73,7 @@ int main(int argc, const char *argv[])
     /* Check configuration */
     check_config();
 
-    return (opt->daemonize) ? daemonize() : main_loop();
+    return (opt.daemonize) ? daemonize() : main_loop();
 }
 
 static int daemonize()
@@ -99,7 +99,7 @@ static int daemonize()
         return 1;
     }
 
-    if (opt->chdir_root) {
+    if (opt.chdir_root) {
         int ret = chdir("/");
 
         if (ret < 0) {
@@ -116,7 +116,7 @@ static int main_loop()
 
     struct sockaddr_in serv_addr;
     struct sockaddr_in6 serv_addr6;
-    switch (opt->protocol) {
+    switch (opt.protocol) {
         case PROTOCOL_IPV4:
             setup_ipv4_socket(&serv_addr);
             break;
@@ -127,7 +127,7 @@ static int main_loop()
             setup_ipv6_socket(&serv_addr6, false);
             break;
         default:
-            fprintf(stderr, "Internal error: invalid protocol value: %d.\n", opt->protocol);
+            fprintf(stderr, "Internal error: invalid protocol value: %d.\n", opt.protocol);
             cleanup(1);
     }
 
@@ -149,7 +149,7 @@ static void setup_ipv4_socket(struct sockaddr_in *serv_addr)
 
     serv_addr->sin_family = AF_INET;
     serv_addr->sin_addr.s_addr = INADDR_ANY;
-    serv_addr->sin_port = htons(opt->port);
+    serv_addr->sin_port = htons(opt.port);
 
     int ret = bind(sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in));
     if (ret < 0) {
@@ -181,7 +181,7 @@ static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr, bool no_ipv4)
 
     serv_addr->sin6_family = AF_INET6;
     serv_addr->sin6_addr = in6addr_any;
-    serv_addr->sin6_port = htons(opt->port);
+    serv_addr->sin6_port = htons(opt.port);
 
     int ret = bind(sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in6));
     if (ret < 0) {
@@ -208,7 +208,7 @@ static bool accept_connection()
         return false;
     }
 
-    int ret = send_quote(consockfd, opt);
+    int ret = send_quote(consockfd, &opt);
     if (ret < 0) {
         perror("Unable to write to socket");
         return false;
@@ -246,40 +246,28 @@ void quietcleanup(int ret)
         args = NULL;
     }
 
-    if (opt) {
-        if (wrote_pidfile) {
-            ret2 = unlink(opt->pidfile);
-            if (ret2 < 0) {
-                fprintf(stderr, "Unable to remove pid file (%s): %s\n",
-                        opt->pidfile, strerror(errno));
-                ret++;
-            }
+    if (wrote_pidfile) {
+        ret2 = unlink(opt.pidfile);
+        if (ret2 < 0) {
+            fprintf(stderr, "Unable to remove pid file (%s): %s\n",
+                    opt.pidfile, strerror(errno));
+            ret++;
         }
-
-        if (opt->quotesmalloc) {
-            free(opt->quotesfile);
-        }
-
-        if (opt->pidmalloc) {
-            free(opt->pidfile);
-        }
-
-        free(opt);
-        opt = NULL;
     }
 
-    exit(ret);
+    if (opt.quotesmalloc) {
+        free(opt.quotesfile);
+    }
+
+    if (opt.pidmalloc) {
+        free(opt.pidfile);
+    }
 }
 
 void load_config()
 {
     printf("Loading configuration settings...\n");
-
-    if (opt) {
-        free(opt);
-    }
-
-    opt = parse_args(args->argc, args->argv);
+    parse_args(&opt, args->argc, args->argv);
 }
 
 static void save_args(const int argc, const char *argv[])
@@ -295,14 +283,14 @@ static void save_args(const int argc, const char *argv[])
 
 static void write_pidfile()
 {
-    if (STREQ(opt->pidfile, "none")) {
+    if (STREQ(opt.pidfile, "none")) {
         printf("No pidfile was written at the request of the user.\n");
         return;
     }
 
     /* Check if the pidfile already exists */
     struct stat *statbuf = malloc(sizeof(struct stat));
-    int ret = stat(opt->pidfile, statbuf);
+    int ret = stat(opt.pidfile, statbuf);
     free(statbuf);
 
     if (ret == 0) {
@@ -311,12 +299,12 @@ static void write_pidfile()
     }
 
     /* Write the pidfile */
-    FILE *fh = fopen(opt->pidfile, "w+");
+    FILE *fh = fopen(opt.pidfile, "w+");
 
     if (fh == NULL) {
         perror("Unable to open pid file");
 
-        if (opt->require_pidfile) {
+        if (opt.require_pidfile) {
             cleanup(1);
         } else {
             return;
@@ -327,7 +315,7 @@ static void write_pidfile()
     if (ret < 0) {
         perror("Unable to write pid to pid file");
 
-        if (opt->require_pidfile) {
+        if (opt.require_pidfile) {
             fclose(fh);
             cleanup(1);
         }
@@ -339,7 +327,7 @@ static void write_pidfile()
     if (ret < 0) {
         perror("Unable to close pid file handle");
 
-        if (opt->require_pidfile) {
+        if (opt.require_pidfile) {
             cleanup(1);
         }
     }
@@ -347,12 +335,12 @@ static void write_pidfile()
 
 static void check_config()
 {
-    if (opt->port < 1024 && geteuid() != 0) {
+    if (opt.port < 1024 && geteuid() != 0) {
         fprintf(stderr, "Only root can bind to ports below 1024.\n");
         cleanup(1);
     }
 
-    if (opt->pidfile[0] != '/') {
+    if (opt.pidfile[0] != '/') {
         fprintf(stderr, "Specified pid file is not an absolute path.\n");
         cleanup(1);
     }
@@ -363,7 +351,7 @@ static void check_config()
         cleanup(1);
     }
 
-    int ret = stat(opt->quotesfile, statbuf);
+    int ret = stat(opt.quotesfile, statbuf);
     free(statbuf);
 
     if (ret < 0) {

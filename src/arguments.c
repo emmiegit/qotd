@@ -53,7 +53,7 @@ static const char *name_option_quote_divider(const unsigned char value);
 int snprintf(char *str, size_t size, const char *format, ...);
 #endif /* DEBUG */
 
-options *parse_args(const int argc, const char *argv[])
+void parse_args(options *opt, const int argc, const char *argv[])
 {
     const char *program_name = basename((char *)argv[0]);
     char *conf_file = "/etc/qotd.conf";
@@ -62,7 +62,6 @@ options *parse_args(const int argc, const char *argv[])
     char daemonize = BOOLEAN_UNSET;
     char protocol = 0;
 
-    options *opt = malloc(sizeof(options));
     opt->port = 17;
     opt->protocol = PROTOCOL_BOTH;
     opt->quotesfile = "/usr/share/qotd/quotes.txt";
@@ -182,8 +181,6 @@ options *parse_args(const int argc, const char *argv[])
     printf("AllowBigQuotes: %s\n", BOOLSTR(opt->allow_big));
     printf("End of 'opt'.\n\n");
 #endif /* DEBUG */
-
-    return opt;
 }
 
 static char *default_pidfile()
