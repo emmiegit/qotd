@@ -17,6 +17,7 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,11 +27,11 @@
 #include "info.h"
 #include "qotdd.h"
 
-#define STREQ(x, y) (strcmp((x), (y)) == 0)
-#define PORT_MAX    65535 /* Couldn't find in limits.h */
-#define BUFFER_SIZE 256   /* No key or value should be this long */
+#define STREQ(x, y)      (strcmp((x), (y)) == 0)
+#define PORT_MAX         65535 /* Couldn't find in limits.h */
+#define BUFFER_SIZE      256   /* No key or value should be this long */
 
-static char *readline(FILE *fh, const char *filename, unsigned int *lineno);
+static char *file_read_line(FILE *fh, const char *filename, unsigned int *lineno);
 static bool str_to_bool(const char *string, const char *filename, const unsigned int lineno);
 static void confcleanup(const int ret);
 
@@ -53,7 +54,7 @@ void parse_config(const char *conf_file, options *opt)
     char key[BUFFER_SIZE], val[BUFFER_SIZE];
     bool firsthalf = true;
     unsigned int lineno = 1;
-    while ((line = readline(fh, conf_file, &lineno)) != NULL) {
+    while ((line = file_read_line(fh, conf_file, &lineno)) != NULL) {
         /* Ignore comments, blank lines are already ignored by readline() */
         if (line[0] == '#') {
             free(line);
@@ -67,7 +68,7 @@ void parse_config(const char *conf_file, options *opt)
         bool ignoring_whitespace = false;
         while ((ch = line[i++]) != '\0') {
             if (firsthalf) {
-                if (ch == ' ' || ch == '\t') {
+                if (isspace(ch)) {
                     ignoring_whitespace = true;
                 } else if (ignoring_whitespace) {
                     ignoring_whitespace = false;
@@ -147,7 +148,7 @@ void parse_config(const char *conf_file, options *opt)
                 confcleanup(1);
             }
 
-            opt->quotesfile = malloc(vallen + 1);
+            opt->quotesfile = ptr;
             opt->quotesmalloc = true;
             strcpy(opt->quotesfile, valstr);
         } else if (STREQ(keystr, "QuoteDivider")) {
@@ -176,7 +177,7 @@ void parse_config(const char *conf_file, options *opt)
     fclose(fh);
 }
 
-static char *readline(FILE *fh, const char *filename, unsigned int *lineno)
+static char *file_read_line(FILE *fh, const char *filename, unsigned int *lineno)
 {
     char *buffer = malloc(BUFFER_SIZE);
     int ch, i;

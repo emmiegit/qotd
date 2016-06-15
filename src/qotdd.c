@@ -262,6 +262,8 @@ void quietcleanup(int ret)
     if (opt.pidmalloc) {
         free(opt.pidfile);
     }
+
+    exit(ret);
 }
 
 void load_config()
