@@ -41,7 +41,7 @@ $(GZ_FILES): $(SOURCE_FILES)
 install:
 	for section in 5 8; do \
 		for filename in *.$${section}.gz; do \
-			install -D -m644 "$${fn}" "$(DEST_DIR)/usr/share/man$${section}/$${filename}"; \
+			install -D -m644 "$${filename}" "$(DEST_DIR)/usr/share/man$${section}/$${filename}"; \
 		done \
 	done
 
