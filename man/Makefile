@@ -19,7 +19,7 @@
 
 .PHONY: all pdf install uninstall force clean
 
-DEST_DIR=
+DEST_DIR =
 SOURCE_FILES = $(wildcard *.5 *.8)
 GZ_FILES = $(addsuffix .gz,$(SOURCE_FILES))
 PS_FILES = $(addsuffix .ps,$(SOURCE_FILES))
@@ -41,7 +41,7 @@ $(GZ_FILES): $(SOURCE_FILES)
 install:
 	for section in 5 8; do \
 		for filename in *.$${section}.gz; do \
-			install -D -m644 "$${fn}" "$(DEST_DIR)/man$${section}/$${filename}"; \
+			install -D -m644 "$${fn}" "$(DEST_DIR)/usr/share/man$${section}/$${filename}"; \
 		done \
 	done
 
@@ -49,7 +49,7 @@ uninstall:
 	for section in 5 8; do \
 		for filename in $(GZ_FILES); do \
 			if [[ $${filename} == *.$${section} ]]; then \
-				rm -f "$(DEST_DIR)/man$${section}/$${filename}"; \
+				rm -f "$(DEST_DIR)/usr/share/man$${section}/$${filename}"; \
 			fi \
 		done \
 	done
