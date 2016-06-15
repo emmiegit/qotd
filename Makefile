@@ -19,20 +19,18 @@
 
 .PHONY: all release src man install-no-systemd install force debug forcedebug distclean clean
 
-EXE=qotdd
+EXE = src/qotdd
 DEST_DIR=
 
 all: src man
 
 release: man
 	make -C src release
-	cp -f 'src/$(EXE)' .
 
 $(EXE): src
 
 src:
 	make -C src
-	cp -f 'src/$(EXE)' .
 
 man:
 	make -C man
@@ -48,15 +46,12 @@ install: install-no-systemd
 
 force:
 	make -C src force
-	cp -f src/$(EXE) .
 
 debug:
 	make -C src debug
-	cp -f src/$(EXE) .
 
 forcedebug:
 	make -C src forcedebug
-	cp -f src/$(EXE) .
 
 distclean:
 	make -C src distclean

@@ -20,8 +20,7 @@
 .PHONY: all pdf install uninstall force clean
 
 DEST_DIR =
-#SOURCE_FILES = $(wildcard *.5 *.8)
-SOURCE_FILES = qotd.conf.5 qotdd.8
+SOURCE_FILES = $(wildcard *.5 *.8)
 GZ_FILES = $(addsuffix .gz,$(SOURCE_FILES))
 PS_FILES = $(addsuffix .ps,$(SOURCE_FILES))
 PDF_TARGET = qotd.pdf
@@ -37,7 +36,7 @@ $(PDF_TARGET): $(PS_FILES)
 		-sOutputFile=$@ $^
 
 $(GZ_FILES): $(SOURCE_FILES)
-	gzip -kf $(basename $@)
+	gzip -c $(basename $@) > $@
 
 install:
 	for section in 5 8; do \

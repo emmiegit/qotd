@@ -8,6 +8,7 @@ qotdd
 *.pdf
 
 # Others
+run
 core*
 vgcore.*
 *.pid
