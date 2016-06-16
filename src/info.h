@@ -22,7 +22,7 @@
 # define __INFO_H
 
 # define DEBUG          0
-# define VERSION_STRING "0.4"
+# define VERSION_STRING "0.5"
 
 #endif /* __INFO_H */
 

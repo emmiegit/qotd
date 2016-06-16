@@ -1,5 +1,5 @@
 /*
- * config.c *
+ * daemon_config.c
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
  *
@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "config.h"
+#include "daemon_config.h"
 #include "info.h"
 #include "qotdd.h"
 

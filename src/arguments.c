@@ -28,7 +28,7 @@
 #include <unistd.h>
 
 #include "arguments.h"
-#include "config.h"
+#include "daemon_config.h"
 #include "info.h"
 #include "options.h"
 #include "qotdd.h"
