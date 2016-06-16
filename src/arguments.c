@@ -38,7 +38,6 @@
 
 #if DEBUG
 # define DEBUG_BUFFER_SIZE 50
-# define NULLSTR(x) ((x) ? (x) : "<null>")
 # define BOOLSTR(x) ((x) ? "true" : "false")
 #endif /* DEBUG */
 
@@ -50,10 +49,9 @@ static void version_and_exit(const char *program_name);
 #if DEBUG
 static const char *name_option_protocol(const unsigned char value);
 static const char *name_option_quote_divider(const unsigned char value);
-int snprintf(char *str, size_t size, const char *format, ...);
 #endif /* DEBUG */
 
-void parse_args(options *opt, const int argc, const char *argv[])
+void parse_args(struct options *opt, const int argc, const char *argv[])
 {
     const char *program_name = basename((char *)argv[0]);
     char *conf_file = "/etc/qotd.conf";
@@ -61,6 +59,7 @@ void parse_args(options *opt, const int argc, const char *argv[])
     char *pid_file = NULL;
     char daemonize = BOOLEAN_UNSET;
     char protocol = 0;
+    int i;
 
     opt->port = 17;
     opt->protocol = PROTOCOL_BOTH;
@@ -75,7 +74,6 @@ void parse_args(options *opt, const int argc, const char *argv[])
     opt->chdir_root = true;
 
     /* Parse arguments */
-    int i;
     for (i = 1; i < argc; i++) {
         if (STREQ(argv[i], "--help")) {
             help_and_exit(program_name);
@@ -168,17 +166,17 @@ void parse_args(options *opt, const int argc, const char *argv[])
 
 #if DEBUG
     printf("\nContents of struct 'opt':\n");
-    printf("Daemonize: %s\n", BOOLSTR(opt->daemonize));
-    printf("Protocol: %s\n", name_option_protocol(opt->protocol));
-    printf("Port: %d\n", opt->port);
-    printf("QuotesMalloc: %s\n", BOOLSTR(opt->quotesmalloc));
-    printf("PidMalloc: %s\n", BOOLSTR(opt->pidmalloc));
-    printf("QuotesFile: %s\n", NULLSTR(opt->quotesfile));
-    printf("QuoteDivider: %s\n", name_option_quote_divider(opt->linediv));
-    printf("PidFile: %s\n", NULLSTR(opt->pidfile));
-    printf("RequirePidFile: %s\n", BOOLSTR(opt->require_pidfile));
-    printf("DailyQuotes: %s\n", BOOLSTR(opt->is_daily));
-    printf("AllowBigQuotes: %s\n", BOOLSTR(opt->allow_big));
+    printf("Daemonize: %s\n",       BOOLSTR(opt->daemonize));
+    printf("Protocol: %s\n",        name_option_protocol(opt->protocol));
+    printf("Port: %d\n",            opt->port);
+    printf("QuotesMalloc: %s\n",    BOOLSTR(opt->quotesmalloc));
+    printf("PidMalloc: %s\n",       BOOLSTR(opt->pidmalloc));
+    printf("QuotesFile: %s\n",      opt->quotesfile);
+    printf("QuoteDivider: %s\n",    name_option_quote_divider(opt->linediv));
+    printf("PidFile: %s\n",         opt->pidfile);
+    printf("RequirePidFile: %s\n",  BOOLSTR(opt->require_pidfile));
+    printf("DailyQuotes: %s\n",     BOOLSTR(opt->is_daily));
+    printf("AllowBigQuotes: %s\n",  BOOLSTR(opt->allow_big));
     printf("End of 'opt'.\n\n");
 #endif /* DEBUG */
 }
@@ -187,40 +185,38 @@ static char *default_pidfile()
 {
     struct stat statbuf;
     int ret = stat("/run", &statbuf);
-    if (ret < 0) {
-        return "/var/run/qotd.pid";
-    } else {
-        return "/run/qotd.pid";
-    }
+
+    return (ret == 0) ? "/run/qotd.pid" : "/var/run/qotd.pid";
 }
 
 #if DEBUG
 static const char *name_option_protocol(const unsigned char value)
 {
-    char *buf;
     switch (value) {
-        case PROTOCOL_IPV4: return "PROTOCOL_IPV4";
-        case PROTOCOL_IPV6: return "PROTOCOL_IPV6";
-        case PROTOCOL_BOTH: return "PROTOCOL_BOTH";
+        case PROTOCOL_IPV4:
+            return "PROTOCOL_IPV4";
+        case PROTOCOL_IPV6:
+            return "PROTOCOL_IPV6";
+        case PROTOCOL_BOTH:
+            return "PROTOCOL_BOTH";
         default:
-            /* Who cares about memory leaks in debugging code? */
-            buf = malloc(DEBUG_BUFFER_SIZE * sizeof(char));
-            snprintf(buf, DEBUG_BUFFER_SIZE, "(unknown: %zd)", value);
-            return buf;
+            printf("(%u) ", value);
+            return "UNKNOWN";
     }
 }
 
 static const char *name_option_quote_divider(const unsigned char value)
 {
-    char *buf;
     switch (value) {
-        case DIV_EVERYLINE: return "DIV_EVERYLINE";
-        case DIV_PERCENT:   return "DIV_PERCENT";
-        case DIV_WHOLEFILE: return "DIV_WHOLEFILE";
+        case DIV_EVERYLINE:
+            return "DIV_EVERYLINE";
+        case DIV_PERCENT:
+            return "DIV_PERCENT";
+        case DIV_WHOLEFILE:
+            return "DIV_WHOLEFILE";
         default:
-            buf = malloc(DEBUG_BUFFER_SIZE * sizeof(char));
-            snprintf(buf, DEBUG_BUFFER_SIZE, "(unknown: %zd)", value);
-            return buf;
+            printf("(%u) ", value);
+            return "UNKNOWN";
     }
 }
 #endif /* DEBUG */
@@ -234,15 +230,15 @@ static void help_and_exit(const char *program_name)
            "                       is at /etc/qotd.conf\n"
            " -N, --noconfig        Do not read from a configuration file, but use the default\n"
            "                       options instead.\n"
-           " -P, --pidfile (file)  Override the pidfile name given in the configuration file with\n"
-           "                       the given file instead.\n"
+           " -P, --pidfile (file)  Override the pidfile name given in the configuration file with\n",
+           program_name, program_name);
+    printf("                       the given file instead.\n"
            " -s, --quotes (file)   Override the quotes file given in the configuration file with\n"
            "                       the given filename instead.\n"
            " -4, --ipv4            Only listen on IPv4.\n"
            " -6, --ipv6            Only listen on IPv6.\n"
            " --help                List all options and what they do.\n"
-           " --version             Print the version and some basic license information.\n",
-           program_name, program_name);
+           " --version             Print the version and some basic license information.\n");
     quietcleanup(0);
 }
 

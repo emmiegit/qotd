@@ -18,10 +18,10 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
-
 #ifndef __OPTIONS_H
 # define __OPTIONS_H
+
+# include <stdbool.h>
 
 # define DIV_EVERYLINE 0
 # define DIV_PERCENT   1
@@ -31,7 +31,7 @@
 # define PROTOCOL_IPV6 2
 # define PROTOCOL_BOTH 3
 
-typedef struct {
+struct options {
     char *quotesfile;        /* string containing path to quotes file */
     char *pidfile;           /* string containing path to pid file */
     unsigned int port;       /* port to listen on */
@@ -46,7 +46,7 @@ typedef struct {
     bool is_daily;           /* whether quotes are random every day or every visit */
     bool allow_big;          /* ignore 512-byte limit */
     bool chdir_root;         /* whether to chdir to / */
-} options;
+};
 
 #endif /* __OPTIONS_H */
 

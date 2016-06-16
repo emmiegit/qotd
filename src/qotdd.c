@@ -51,8 +51,8 @@ static void save_args(const int argc, const char *argv[]);
 static void check_config();
 static void write_pidfile();
 
-static arguments *args;
-static options opt;
+static struct arguments args;
+static struct options opt;
 static int sockfd;
 static bool wrote_pidfile;
 
@@ -112,10 +112,11 @@ static int daemonize()
 
 static int main_loop()
 {
-    write_pidfile();
-
     struct sockaddr_in serv_addr;
     struct sockaddr_in6 serv_addr6;
+
+    write_pidfile();
+
     switch (opt.protocol) {
         case PROTOCOL_IPV4:
             setup_ipv4_socket(&serv_addr);
@@ -140,6 +141,8 @@ static int main_loop()
 
 static void setup_ipv4_socket(struct sockaddr_in *serv_addr)
 {
+    int ret;
+
     printf("Setting up IPv4 socket connection...\n");
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
@@ -151,7 +154,7 @@ static void setup_ipv4_socket(struct sockaddr_in *serv_addr)
     serv_addr->sin_addr.s_addr = INADDR_ANY;
     serv_addr->sin_port = htons(opt.port);
 
-    int ret = bind(sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in));
+    ret = bind(sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in));
     if (ret < 0) {
         perror("Unable to bind to IPv4 socket");
         cleanup(1);
@@ -160,6 +163,8 @@ static void setup_ipv4_socket(struct sockaddr_in *serv_addr)
 
 static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr, bool no_ipv4)
 {
+    int ret;
+
     if (no_ipv4) {
         printf("Setting up IPv6 socket connection...\n");
     } else {
@@ -183,7 +188,7 @@ static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr, bool no_ipv4)
     serv_addr->sin6_addr = in6addr_any;
     serv_addr->sin6_port = htons(opt.port);
 
-    int ret = bind(sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in6));
+    ret = bind(sockfd, (const struct sockaddr *)serv_addr, sizeof(struct sockaddr_in6));
     if (ret < 0) {
         if (no_ipv4) {
             perror("Unable to bind to IPv6 socket");
@@ -197,18 +202,21 @@ static void setup_ipv6_socket(struct sockaddr_in6 *serv_addr, bool no_ipv4)
 
 static bool accept_connection()
 {
+    struct sockaddr_in cli_addr;
+    int consockfd, ret;
+    socklen_t clilen;
+
     printf("Listening for connection...\n");
     listen(sockfd, CONNECTION_BACKLOG);
 
-    struct sockaddr_in cli_addr;
-    socklen_t clilen = sizeof(cli_addr);
-    int consockfd = accept(sockfd, (struct sockaddr *)(&cli_addr), &clilen);
+    clilen = sizeof(cli_addr);
+    consockfd = accept(sockfd, (struct sockaddr *)(&cli_addr), &clilen);
     if (consockfd < 0) {
         perror("Unable to accept connection");
         return false;
     }
 
-    int ret = send_quote(consockfd, &opt);
+    ret = send_quote(consockfd, &opt);
     if (ret < 0) {
         perror("Unable to write to socket");
         return false;
@@ -241,11 +249,6 @@ void quietcleanup(int ret)
         }
     }
 
-    if (args) {
-        free(args);
-        args = NULL;
-    }
-
     if (wrote_pidfile) {
         ret2 = unlink(opt.pidfile);
         if (ret2 < 0) {
@@ -269,31 +272,28 @@ void quietcleanup(int ret)
 void load_config()
 {
     printf("Loading configuration settings...\n");
-    parse_args(&opt, args->argc, args->argv);
+    parse_args(&opt, args.argc, args.argv);
 }
 
-static void save_args(const int argc, const char *argv[])
+static void save_args(int argc, const char *argv[])
 {
-    arguments args_ = {
-        .argc = argc,
-        .argv = argv,
-    };
-
-    args = malloc(sizeof(arguments));
-    memcpy(args, &args_, sizeof(arguments));
+    args.argc = argc;
+    args.argv = argv;
 }
 
 static void write_pidfile()
 {
+    struct stat statbuf;
+    int ret;
+    FILE *fh;
+
     if (STREQ(opt.pidfile, "none")) {
         printf("No pidfile was written at the request of the user.\n");
         return;
     }
 
     /* Check if the pidfile already exists */
-    struct stat *statbuf = malloc(sizeof(struct stat));
-    int ret = stat(opt.pidfile, statbuf);
-    free(statbuf);
+    ret = stat(opt.pidfile, &statbuf);
 
     if (ret == 0) {
         printf("The pid file already exists. Quitting.\n");
@@ -301,7 +301,7 @@ static void write_pidfile()
     }
 
     /* Write the pidfile */
-    FILE *fh = fopen(opt.pidfile, "w+");
+    fh = fopen(opt.pidfile, "w+");
 
     if (fh == NULL) {
         perror("Unable to open pid file");
@@ -337,6 +337,9 @@ static void write_pidfile()
 
 static void check_config()
 {
+    struct stat statbuf;
+    int ret;
+
     if (opt.port < 1024 && geteuid() != 0) {
         fprintf(stderr, "Only root can bind to ports below 1024.\n");
         cleanup(1);
@@ -347,14 +350,7 @@ static void check_config()
         cleanup(1);
     }
 
-    struct stat *statbuf = malloc(sizeof(struct stat));
-    if (statbuf == NULL) {
-        perror("Unable to allocate memory for stat of quotes file");
-        cleanup(1);
-    }
-
-    int ret = stat(opt.quotesfile, statbuf);
-    free(statbuf);
+    ret = stat(opt.quotesfile, &statbuf);
 
     if (ret < 0) {
         perror("Unable to stat quotes file");

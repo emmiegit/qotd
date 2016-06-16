@@ -38,8 +38,13 @@ static void confcleanup(const int ret);
 static FILE *fh;
 static char *line;
 
-void parse_config(const char *conf_file, options *opt)
+void parse_config(const char *conf_file, struct options *opt)
 {
+    char key[BUFFER_SIZE], val[BUFFER_SIZE];
+    char *keystr, *valstr;
+    unsigned int lineno = 1;
+    size_t vallen;
+
     fh = fopen(conf_file, "r");
 
     if (fh == NULL) {
@@ -51,50 +56,65 @@ void parse_config(const char *conf_file, options *opt)
     printf("Raw key/value pairs from config file:\n");
 #endif /* DEBUG */
 
-    char key[BUFFER_SIZE], val[BUFFER_SIZE];
-    bool firsthalf = true;
-    unsigned int lineno = 1;
     while ((line = file_read_line(fh, conf_file, &lineno)) != NULL) {
-        /* Ignore comments, blank lines are already ignored by readline() */
-        if (line[0] == '#') {
+        int i, j;
+        char ch;
+
+        /* Eat up whitespace */
+        for (i = 0; isspace(line[i]); i++);
+
+        /* Ignore comments and blank lines */
+        if (line[i] == '\0' || line[i] == '#') {
             free(line);
             line = NULL;
             continue;
         }
 
-        /* Read each line */
-        int i = 0, j = 0;
-        char ch;
-        bool ignoring_whitespace = false;
-        while ((ch = line[i++]) != '\0') {
-            if (firsthalf) {
-                if (isspace(ch)) {
-                    ignoring_whitespace = true;
-                } else if (ignoring_whitespace) {
-                    ignoring_whitespace = false;
-                    firsthalf = false;
-                    key[j] = '\0';
-                    j = 0;
-                    val[j++] = ch;
-                } else {
-                    key[j++] = ch;
-                }
-            } else {
-                val[j++] = ch;
+        /* Read the key */
+        for (j = 0; !isspace((ch = line[i++])); j++) {
+            key[j] = ch;
+
+            if (ch == '\0') {
+                fprintf(stderr, "%s:%i: unexpected end of line.\n", conf_file, lineno);
+                free(line);
+                line = NULL;
+                break;
             }
         }
-        val[j] = '\0';
+
+        if (line == NULL) {
+            continue;
+        }
+
+        key[j] = '\0';
+
+        /* Eat up whitespace */
+        for (; isspace(line[i]); i++);
+
+        /* Read the value */
+        for (j = 0; !isspace((ch = line[i++])); j++) {
+            val[j] = ch;
+
+            if (ch == '\0') {
+                break;
+            }
+        }
+
+        if (line == NULL) {
+            continue;
+        }
+
         free(line);
         line = NULL;
 
-        char *keystr = (char *)key;
-        char *valstr = (char *)val;
+        keystr = (char *)key;
+        valstr = (char *)val;
 
 #if DEBUG
         printf("[%s] = [%s]\n", keystr, valstr);
 #endif /* DEBUG */
 
-        size_t vallen = strlen(valstr);
+        vallen = strlen(valstr);
         if (vallen > 1 && ((valstr[0] == '\'' && valstr[vallen - 1] == '\'') ||
                            (valstr[0] == '\"' && valstr[vallen - 1] == '\"'))) {
             /* Strip quotation marks from string */
@@ -171,7 +191,6 @@ void parse_config(const char *conf_file, options *opt)
         }
 
         lineno++;
-        firsthalf = true;
     }
 
     fclose(fh);
@@ -193,7 +212,7 @@ static char *file_read_line(FILE *fh, const char *filename, unsigned int *lineno
         if (ch == '\n') {
             if (i) {
                 buffer[i] = '\0';
-                return (char*)buffer;
+                return (char *)buffer;
             } else {
                 /* Ignore empty lines */
                 i--;
@@ -203,7 +222,7 @@ static char *file_read_line(FILE *fh, const char *filename, unsigned int *lineno
             if (i) {
                 /* Return rest of line when EOF hits before newline */
                 buffer[i] = '\0';
-                return (char*)buffer;
+                return (char *)buffer;
             } else {
                 /* Return NULL when a EOF hits */
                 free(buffer);

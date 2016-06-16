@@ -20,9 +20,14 @@
 .PHONY: all release force debug forcedebug distclean clean
 
 CC = gcc
-FLAGS = -ansi -Wall -Wextra -pipe -O3 -I.
-SOURCES = $(wildcard *.c)
-OBJECTS = $(patsubst %.c,%.o,$(SOURCES))
+FLAGS = -ansi -pipe -O3 -D_XOPEN_SOURCE=500
+WARN_FLAGS = -pedantic -Wall -Wextra
+INCLUDE = -I.
+
+SRCEXT = c
+OBJEXT = o
+SOURCES = $(wildcard *.$(SRCEXT))
+OBJECTS = $(SOURCES:.$(SRCEXT)=.$(OBJEXT))
 EXE = qotdd
 
 all: $(EXE)
@@ -30,11 +35,11 @@ all: $(EXE)
 release:
 	make clean all EXTRA_FLAGS='-fstack-protector-all'
 
-%.o: %.c
-	$(CC) $(FLAGS) $(EXTRA_FLAGS) -c -o $@ $<
+%.$(OBJEXT): %.$(SRCEXT)
+	$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -c -o $@ $<
 
 $(EXE): $(OBJECTS)
-	$(CC) $(FLAGS) $(EXTRA_FLAGS) $(OBJECTS) -o $(EXE)
+	$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) $(OBJECTS) -o $(EXE)
 
 force: clean $(EXE)
 
@@ -44,8 +49,8 @@ debug:
 forcedebug: clean debug
 
 distclean:
-	rm -f *.o $(EXE) core core.* vgcore.*
+	rm -f *.$(OBJEXT) $(EXE) core core.* vgcore.*
 
 clean:
-	rm -f *.o $(EXE)
+	rm -f *.$(OBJEXT) $(EXE)
 

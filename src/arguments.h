@@ -18,12 +18,12 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "options.h"
-
 #ifndef __ARGUMENTS_H
 # define __ARGUMENTS_H
 
-void parse_args(options *opt, const int argc, const char *argv[]);
+#include "options.h"
+
+void parse_args(struct options *opt, const int argc, const char *argv[]);
 
 #endif /* __ARGUMENTS_H */
 
