@@ -34,7 +34,7 @@
 #include "info.h"
 #include "qotdd.h"
 #include "quotes.h"
-#include "sighandler.h"
+#include "signal_handler.h"
 
 #define CONNECTION_BACKLOG 50
 
