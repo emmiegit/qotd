@@ -30,6 +30,10 @@
 #include "qotdd.h"
 #include "quotes.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 #define QUOTE_SIZE      512  /* Set by RFC 856 */
 #define STREMPTY(x)     (((x)[0]) == '\0')
 #define MIN(x, y)       (((x) < (y)) ? (x) : (y))
@@ -350,3 +354,6 @@ static char **readquotes_percent(const char *fn, size_t *quotes)
     return array;
 }
 
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */

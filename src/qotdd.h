@@ -21,6 +21,10 @@
 #ifndef __QOTDD_H
 # define __QOTDD_H
 
+# ifdef __cplusplus
+extern "C" {
+# endif /* __cplusplus */
+
 struct arguments {
     int argc;
     const char **argv;
@@ -30,5 +34,8 @@ void load_config();
 void cleanup(const int ret);
 void quietcleanup(int ret);
 
+# ifdef __cplusplus
+}
+# endif /* __cplusplus */
 #endif /* __QOTDD_H */
 

@@ -27,6 +27,10 @@
 #include "info.h"
 #include "qotdd.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 #define STREQ(x, y)      (strcmp((x), (y)) == 0)
 #define PORT_MAX         65535 /* Couldn't find in limits.h */
 #define BUFFER_SIZE      256   /* No key or value should be this long */
@@ -266,3 +270,6 @@ static void confcleanup(const int ret)
     cleanup(ret);
 }
 
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */

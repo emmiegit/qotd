@@ -33,6 +33,10 @@
 #include "options.h"
 #include "qotdd.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 #define STREQ(x, y) (strcmp((x), (y)) == 0)
 #define BOOLEAN_UNSET 2
 
@@ -262,3 +266,6 @@ static void version_and_exit(const char *program_name)
     quietcleanup(0);
 }
 
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */

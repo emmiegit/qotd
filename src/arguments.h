@@ -21,9 +21,16 @@
 #ifndef __ARGUMENTS_H
 # define __ARGUMENTS_H
 
-#include "options.h"
+# include "options.h"
+
+# ifdef __cplusplus
+extern "C" {
+# endif /* __cplusplus */
 
 void parse_args(struct options *opt, const int argc, const char *argv[]);
 
+# ifdef __cplusplus
+extern "C" {
+# endif /* __cplusplus */
 #endif /* __ARGUMENTS_H */
 

@@ -31,6 +31,10 @@
 # define PROTOCOL_IPV6 2
 # define PROTOCOL_BOTH 3
 
+# ifdef __cplusplus
+extern "C" {
+# endif /* __cplusplus */
+
 struct options {
     char *quotesfile;        /* string containing path to quotes file */
     char *pidfile;           /* string containing path to pid file */
@@ -48,5 +52,8 @@ struct options {
     bool chdir_root;         /* whether to chdir to / */
 };
 
+# ifdef __cplusplus
+}
+# endif /* __cplusplus */
 #endif /* __OPTIONS_H */
 

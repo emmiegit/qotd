@@ -28,15 +28,21 @@ PDF_TARGET = qotd.pdf
 all: $(GZ_FILES)
 pdf: $(PDF_TARGET)
 
-$(PS_FILES): $(SOURCE_FILES)
-	groff -Tps -mandoc $(basename $@) > $@
+%.5.gz: %.5
+	gzip -c $< > $@
+
+%.8.gz: %.8
+	gzip -c $< > $@
+
+%.5.ps: %.5
+	groff -Tps -mandoc $< > $@
+
+%.8.ps: %.8
+	groff -Tps -mandoc $< > $@
 
 $(PDF_TARGET): $(PS_FILES)
 	gs -q -sPAPERSIZE=letter -dNOPAUSE -dBATCH -sDEVICE=pdfwrite \
 		-sOutputFile=$@ $^
-
-$(GZ_FILES): $(SOURCE_FILES)
-	gzip -c $(basename $@) > $@
 
 install:
 	for section in 5 8; do \

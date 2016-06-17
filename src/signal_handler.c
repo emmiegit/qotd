@@ -23,7 +23,11 @@
 #include <signal.h>
 
 #include "qotdd.h"
-#include "sighandler.h"
+#include "signal_handler.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
 static void handle_signal(const int signum);
 
@@ -56,3 +60,6 @@ static void handle_signal(const int signum)
     }
 }
 
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */

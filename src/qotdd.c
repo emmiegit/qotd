@@ -36,6 +36,10 @@
 #include "quotes.h"
 #include "signal_handler.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 #define CONNECTION_BACKLOG 50
 
 #define UNUSED(x)    ((void)(x))
@@ -358,3 +362,6 @@ static void check_config()
     }
 }
 
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */

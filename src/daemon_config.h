@@ -21,9 +21,16 @@
 #ifndef __DAEMON_CONFIG_H
 # define __DAEMON_CONFIG_H
 
-#include "options.h"
+# include "options.h"
+
+# ifdef __cplusplus
+extern "C" {
+# endif /* __cplusplus */
 
 void parse_config(const char *conf_file, struct options *opt);
 
+# ifdef __cplusplus
+}
+# endif /* __cplusplus */
 #endif /* __DAEMON_CONFIG_H */
 

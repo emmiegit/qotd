@@ -26,8 +26,10 @@ INCLUDE = -I.
 
 SRCEXT = c
 OBJEXT = o
+DEPEXT = d
 SOURCES = $(wildcard *.$(SRCEXT))
 OBJECTS = $(SOURCES:.$(SRCEXT)=.$(OBJEXT))
+DEPS = $(OBJECTS:.$(OBJEXT)=.$(DEPEXT))
 EXE = qotdd
 
 all: $(EXE)
@@ -54,3 +56,4 @@ distclean:
 clean:
 	rm -f *.$(OBJEXT) $(EXE)
 
+-include: $(DEPS)
