@@ -39,7 +39,7 @@ install-no-systemd: $(EXE) man
 	install -D -m755 qotdd $(DEST_DIR)/usr/bin/qotdd
 	install -D -m644 misc/qotd.conf $(DEST_DIR)/etc/qotd.conf
 	install -D -m644 misc/quotes.txt $(DEST_DIR)/usr/share/qotd/quotes.txt
-	make -C man install DEST_DIR=$(DEST_DIR)
+	@make -C man install DEST_DIR=$(DEST_DIR)
 
 install: install-no-systemd
 	install -D -m644 misc/qotd.service $(DEST_DIR)/usr/lib/systemd/system/qotd.service

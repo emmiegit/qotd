@@ -29,24 +29,30 @@ all: $(GZ_FILES)
 pdf: $(PDF_TARGET)
 
 %.5.gz: %.5
-	gzip -c $< > $@
+	@echo '[GZ] $@'
+	@gzip -c $< > $@
 
 %.8.gz: %.8
-	gzip -c $< > $@
+	@echo '[GZ] $@'
+	@gzip -c $< > $@
 
 %.5.ps: %.5
-	groff -Tps -mandoc $< > $@
+	@echo '[PS] $@'
+	@groff -Tps -mandoc $< > $@
 
 %.8.ps: %.8
-	groff -Tps -mandoc $< > $@
+	@echo '[PS] $@'
+	@groff -Tps -mandoc $< > $@
 
 $(PDF_TARGET): $(PS_FILES)
-	gs -q -sPAPERSIZE=letter -dNOPAUSE -dBATCH -sDEVICE=pdfwrite \
+	@echo '[PDF] $@'
+	@gs -q -sPAPERSIZE=letter -dNOPAUSE -dBATCH -sDEVICE=pdfwrite \
 		-sOutputFile=$@ $^
 
 install:
-	for section in 5 8; do \
+	@for section in 5 8; do \
 		for filename in *.$${section}.gz; do \
+			echo "[INSTALL] $${filename}"; \
 			install -D -m644 "$${filename}" "$(DEST_DIR)/usr/share/man$${section}/$${filename}"; \
 		done \
 	done
@@ -55,6 +61,7 @@ uninstall:
 	for section in 5 8; do \
 		for filename in $(GZ_FILES); do \
 			if [[ $${filename} == *.$${section} ]]; then \
+				echo "[UNINSTALL] $${filename}"; \
 				rm -f "$(DEST_DIR)/usr/share/man$${section}/$${filename}"; \
 			fi \
 		done \
@@ -64,5 +71,6 @@ force: clean $(GZ_FILES)
 forcepdf: clean $(PDF_FILES)
 
 clean:
-	rm -f $(GZ_FILES) $(PS_FILES) $(PDF_TARGET)
+	@echo '[CLEAN]'
+	@rm -f $(GZ_FILES) $(PS_FILES) $(PDF_TARGET)
 

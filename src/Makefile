@@ -35,25 +35,31 @@ EXE = qotdd
 all: $(EXE)
 
 release:
-	make clean all EXTRA_FLAGS='-fstack-protector-all'
+	@echo '[RELEASE]'
+	@make clean all EXTRA_FLAGS='-fstack-protector-all'
 
 %.$(OBJEXT): %.$(SRCEXT)
-	$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -c -o $@ $<
+	@echo '[CC] $@'
+	@$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -c -o $@ $<
 
 $(EXE): $(OBJECTS)
-	$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) $(OBJECTS) -o $(EXE)
+	@echo '[LN] $@'
+	@$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) $(OBJECTS) -o $(EXE)
 
 force: clean $(EXE)
 
 debug:
-	make $(EXE) EXTRA_FLAGS='-Og -g'
+	@echo '[DEBUG]'
+	@make $(EXE) EXTRA_FLAGS='-Og -g'
 
 forcedebug: clean debug
 
 distclean:
-	rm -f *.$(OBJEXT) $(EXE) core core.* vgcore.*
+	@echo '[DISTCLEAN]'
+	@rm -f *.$(OBJEXT) $(EXE) core core.* vgcore.*
 
 clean:
-	rm -f *.$(OBJEXT) $(EXE)
+	@echo '[CLEAN]'
+	@rm -f *.$(OBJEXT) $(EXE)
 
 -include: $(DEPS)
