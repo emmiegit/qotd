@@ -79,7 +79,7 @@ install:
 
 ifeq ($(SYSTEMD),1)
 	@echo '[INSTALL] $$ROOT/usr/lib/systemd/system/qotd.service'
-	@install -D -m644 misc/qotd.service '$(ROOT)/usr/libPseudPseudo.service'
+	@install -D -m644 misc/qotd.service '$(ROOT)/usr/lib/systemd/system/qotd.service'
 endif
 
 	@cd $(DOC_DIR); \
