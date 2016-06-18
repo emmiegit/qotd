@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <signal.h>
 
-#include "qotdd.h"
+#include "main.h"
 #include "signal_handler.h"
 
 #ifdef __cplusplus

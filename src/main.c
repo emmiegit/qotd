@@ -1,5 +1,5 @@
 /*
- * qotdd.c
+ * main.c
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -32,7 +32,7 @@
 
 #include "arguments.h"
 #include "info.h"
-#include "qotdd.h"
+#include "main.h"
 #include "quotes.h"
 #include "signal_handler.h"
 

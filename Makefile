@@ -17,47 +17,113 @@
 # along with qotd.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-.PHONY: all release src man install-no-systemd install force debug forcedebug distclean clean
+.PHONY: all pdf install force forcedebug clean
 
-EXE = src/qotdd
-DEST_DIR=
+# Directories
+SRC_DIR = src
+MAN_DIR = man
+BIN_DIR = bin
+DOC_DIR = doc
 
-all: src man
+# Compile options
+CC = gcc
+FLAGS = -ansi -pipe -O3 -D_XOPEN_SOURCE=500
+WARN_FLAGS = -pedantic -Wall -Wextra
+INCLUDE = -I.
 
-release: man
-	make -C src release
+# Program sources
+SRC_EXT = c
+OBJ_EXT = o
+DEP_EXT = d
+SOURCES = $(wildcard $(SRC_DIR)/*.$(SRC_EXT))
+OBJECTS = $(patsubst $(SRC_DIR)/%,$(BIN_DIR)/%,$(SOURCES:.$(SRC_EXT)=.$(OBJ_EXT)))
+DEPS = $(OBJECTS:.$(OBJ_EXT)=.$(DEP_EXT))
+EXE = $(BIN_DIR)/qotdd
 
-$(EXE): src
+# Man pages
+MAN_SOURCES = $(wildcard $(MAN_DIR)/*.5 $(MAN_DIR)/*.8)
+GZ_FILES = $(patsubst $(MAN_DIR)/%,$(DOC_DIR)/%,$(addsuffix .gz,$(MAN_SOURCES)))
+PS_FILES = $(patsubst $(MAN_DIR)/%,$(DOC_DIR)/%,$(addsuffix .ps,$(MAN_SOURCES)))
+PDF_TARGET = $(DOC_DIR)/qotd.pdf
 
-src:
-	make -C src
+# Targets
+all: $(BUILD_DIR) $(DOC_DIR) $(EXE) $(GZ_FILES) $(PDF_TARGET)
+pdf: $(PDF_TARGET)
 
-man:
-	make -C man
+# Program targets
+release:
+	@echo '[RELEASE]'
+	@make clean all EXTRA_FLAGS='-fstack-protector-all'
 
-install-no-systemd: $(EXE) man
-	install -D -m755 qotdd $(DEST_DIR)/usr/bin/qotdd
-	install -D -m644 misc/qotd.conf $(DEST_DIR)/etc/qotd.conf
-	install -D -m644 misc/quotes.txt $(DEST_DIR)/usr/share/qotd/quotes.txt
-	@make -C man install DEST_DIR=$(DEST_DIR)
+$(BIN_DIR) $(DOC_DIR):
+	@echo '[MKDIR] $@'
+	@mkdir -p $@
 
-install: install-no-systemd
-	install -D -m644 misc/qotd.service $(DEST_DIR)/usr/lib/systemd/system/qotd.service
+$(BIN_DIR)/%.$(OBJ_EXT): $(BIN_DIR) $(SRC_DIR)/%.$(SRC_EXT)
+	@echo '[CC] $@'
+	@$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -c -o $@ $(word 2,$^)
 
-force:
-	make -C src force
+$(EXE): $(OBJECTS)
+	@echo '[LN] $@'
+	@$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -o $(EXE) $^
+
+install:
+	@echo '[INSTALL] $(ROOT)/usr/bin/qotdd'
+	@install -D -m755 $(EXE) '$(ROOT)/usr/bin/qotdd'
+
+	@echo '[INSTALL] $(ROOT)/etc/qotd.conf'
+	@install -D -m644 misc/qotd.conf '$(ROOT)/etc/qotd.conf'
+
+	@echo '[INSTALL] $(ROOT)/usr/share/qotd/quotes.txt'
+	@install -D -m644 misc/quotes.txt '$(ROOT)/usr/share/qotd/quotes.txt'
+
+ifeq ($(SYSTEMD),1)
+	@echo '[INSTALL] $(ROOT)/usr/lib/systemd/system/qotd.service'
+	@install -D -m644 misc/qotd.service '$(ROOT)/usr/libPseudPseudo.service'
+endif
+
+	@for section in 5 8; do \
+		for filename in $(DOC_DIR)/*.$${section}.gz; do \
+			echo "[INSTALL] $(ROOT)/usr/share/man/$${section}/$${filename}"; \
+			install -D -m644 "$${filename}" "$(ROOT)/usr/share/man$${section}/$${filename}"; \
+		done \
+	done
+
+# Documentation targets
+$(DOC_DIR)/%.5.gz: $(DOC_DIR) $(MAN_DIR)/%.5
+	@echo '[GZ] $@'
+	@gzip -c $(word 2,$^) > $@
+
+$(DOC_DIR)/%.8.gz: $(DOC_DIR) $(MAN_DIR)/%.8
+	@echo '[GZ] $@'
+	@gzip -c $(word 2,$^) > $@
+
+$(DOC_DIR)/%.5.ps: $(DOC_DIR) $(MAN_DIR)/%.5
+	@echo '[PS] $@'
+	@groff -Tps -mandoc $(word 2,$^) > $@
+
+$(DOC_DIR)/%.8.ps: $(DOC_DIR) $(MAN_DIR)/%.8
+	@echo '[PS] $@'
+	@groff -Tps -mandoc $(word 2,$^) > $@
+
+$(PDF_TARGET): $(PS_FILES)
+	@echo '[PDF] $@'
+	@gs -q -sPAPERSIZE=letter -dNOPAUSE -dBATCH -sDEVICE=pdfwrite \
+		-sOutputFile=$@ $^
+
+# Pseudo targets
+force: clean all
+forcedebug: clean debug
 
 debug:
-	make -C src debug
-
-forcedebug:
-	make -C src forcedebug
-
-distclean:
-	make -C src distclean
-	rm -f $(EXE)
+	@echo '[DEBUG]'
+	@make $(EXE) EXTRA_FLAGS='-g -Og'
 
 clean:
-	make -C src clean
-	rm -f $(EXE)
+	@echo '[RMDIR] $(BIN_DIR)'
+	@rm -rf '$(BIN_DIR)'
 
+	@echo '[RMDIR] $(DOC_DIR)'
+	@rm -rf '$(DOC_DIR)'
+
+-include: $(DEPS)

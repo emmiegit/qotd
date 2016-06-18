@@ -27,7 +27,7 @@
 #include <sys/stat.h>
 
 #include "info.h"
-#include "qotdd.h"
+#include "main.h"
 #include "quotes.h"
 
 #ifdef __cplusplus

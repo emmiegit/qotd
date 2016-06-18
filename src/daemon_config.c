@@ -25,7 +25,7 @@
 
 #include "daemon_config.h"
 #include "info.h"
-#include "qotdd.h"
+#include "main.h"
 
 #ifdef __cplusplus
 extern "C" {

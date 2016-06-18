@@ -30,8 +30,8 @@
 #include "arguments.h"
 #include "daemon_config.h"
 #include "info.h"
+#include "main.h"
 #include "options.h"
-#include "qotdd.h"
 
 #ifdef __cplusplus
 extern "C" {

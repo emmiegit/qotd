@@ -1,5 +1,5 @@
 /*
- * qotdd.h
+ * main.h
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -18,8 +18,8 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __QOTDD_H
-# define __QOTDD_H
+#ifndef __MAIN_H
+# define __MAIN_H
 
 # ifdef __cplusplus
 extern "C" {
@@ -37,5 +37,5 @@ void quietcleanup(int ret);
 # ifdef __cplusplus
 }
 # endif /* __cplusplus */
-#endif /* __QOTDD_H */
+#endif /* __MAIN_H */
 
