@@ -82,8 +82,9 @@ ifeq ($(SYSTEMD),1)
 	@install -D -m644 misc/qotd.service '$(ROOT)/usr/libPseudPseudo.service'
 endif
 
-	@for section in 5 8; do \
-		for filename in $(DOC_DIR)/*.$${section}.gz; do \
+	@cd $(DOC_DIR); \
+	for section in 5 8; do \
+		for filename in *.$${section}.gz; do \
 			echo "[INSTALL] $(ROOT)/usr/share/man/$${section}/$${filename}"; \
 			install -D -m644 "$${filename}" "$(ROOT)/usr/share/man$${section}/$${filename}"; \
 		done \
