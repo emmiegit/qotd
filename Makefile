@@ -56,7 +56,7 @@ release:
 	@make clean all EXTRA_FLAGS='-fstack-protector-all'
 
 $(BIN_DIR) $(DOC_DIR):
-	@echo "[MKDIR] $$(basename $@)'
+	@echo "[MKDIR] $$(basename $@)"
 	@mkdir -p $@
 
 $(BIN_DIR)/%.$(OBJ_EXT): $(BIN_DIR) $(SRC_DIR)/%.$(SRC_EXT)
