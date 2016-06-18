@@ -16,14 +16,9 @@ This will install the following files on your system:
 
 * `/etc/qotd.conf`
 * `/usr/bin/qotdd`
-* `/usr/lib/systemd/system/qotd.service`
 * `/usr/share/qotd/quotes.txt`
 
-If you don't use _systemd_, install with the following instead:
-
-```
-# make install-no-systemd
-```
+If you use _systemd_, install with `make install SYSTEMD=1`. This will add a QOTD service file to your system at `/usr/lib/systemd/system/qotd.service`.
 
 ### Configuration
 The default configuration file is located at `/etc/qotd.conf` (though this can be changed with the `-c` flag). The following options are supported:
