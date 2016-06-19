@@ -55,16 +55,13 @@ release:
 	@echo '[RELEASE]'
 	@make clean all EXTRA_FLAGS='-fstack-protector-all'
 
-$(BIN_DIR) $(DOC_DIR):
-	@echo "[MKDIR] $$(basename $@)"
-	@mkdir -p $@
-
-$(BIN_DIR)/%.$(OBJ_EXT): $(BIN_DIR) $(SRC_DIR)/%.$(SRC_EXT)
-	@echo "[CC] $$(basename $@)"
-	@$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -c -o $@ $(word 2,$^)
+$(BIN_DIR)/%.$(OBJ_EXT): $(SRC_DIR)/%.$(SRC_EXT)
+	@mkdir -p $(BIN_DIR)
+	@echo '[CC] $<'
+	@$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -c -o $@ $<
 
 $(EXE): $(OBJECTS)
-	@echo "[LN] $$(basename $@)"
+	@echo '[LD] $<'
 	@$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -o $(EXE) $^
 
 install:
@@ -91,19 +88,23 @@ endif
 	done
 
 # Documentation targets
-$(DOC_DIR)/%.5.gz: $(DOC_DIR) $(MAN_DIR)/%.5
+$(DOC_DIR)/%.5.gz: $(MAN_DIR)/%.5
+	@mkdir -p $(DOC_DIR)
 	@echo '[GZ] $@'
-	@gzip -c $(word 2,$^) > $@
+	@gzip -c $< > $@
 
 $(DOC_DIR)/%.8.gz: $(DOC_DIR) $(MAN_DIR)/%.8
+	@mkdir -p $(DOC_DIR)
 	@echo '[GZ] $@'
 	@gzip -c $(word 2,$^) > $@
 
 $(DOC_DIR)/%.5.ps: $(DOC_DIR) $(MAN_DIR)/%.5
+	@mkdir -p $(DOC_DIR)
 	@echo '[PS] $@'
 	@groff -Tps -mandoc $(word 2,$^) > $@
 
 $(DOC_DIR)/%.8.ps: $(DOC_DIR) $(MAN_DIR)/%.8
+	@mkdir -p $(DOC_DIR)
 	@echo '[PS] $@'
 	@groff -Tps -mandoc $(word 2,$^) > $@
 
@@ -112,13 +113,10 @@ $(PDF_TARGET): $(PS_FILES)
 	@gs -q -sPAPERSIZE=letter -dNOPAUSE -dBATCH -sDEVICE=pdfwrite \
 		-sOutputFile=$@ $^
 
-# Pseudo targets
-force: clean all
-forcedebug: clean debug
-
+# Utility targets
 debug:
 	@echo '[DEBUG]'
-	@make $(EXE) EXTRA_FLAGS='-g -Og'
+	@make $(EXE) EXTRA_FLAGS='-g -Og -DDEBUG=1'
 
 clean:
 	@echo '[RMDIR] $(BIN_DIR)'

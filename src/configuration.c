@@ -1,5 +1,5 @@
 /*
- * daemon_config.c
+ * configuration.c
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
  *
@@ -19,23 +19,24 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "daemon_config.h"
+#include "configuration.h"
+#include "daemon.h"
 #include "info.h"
-#include "main.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#define STREQ(x, y)      (strcmp((x), (y)) == 0)
-#define PORT_MAX         65535 /* Couldn't find in limits.h */
-#define BUFFER_SIZE      256   /* No key or value should be this long */
+#define PORT_MAX         65535    /* Not in limits.h */
+#define BUFFER_SIZE      PATH_MAX /* The longest possible value is the longest possible path */
 
 static char *file_read_line(FILE *fh, const char *filename, unsigned int *lineno);
+static bool str_equals_ignore_case(const char *string, const char *lowercase_string);
 static bool str_to_bool(const char *string, const char *filename, const unsigned int lineno);
 static void confcleanup(const int ret);
 
@@ -53,7 +54,7 @@ void parse_config(const char *conf_file, struct options *opt)
 
     if (fh == NULL) {
         fprintf(stderr, "Unable to open configuration file (%s): %s\n", conf_file, strerror(errno));
-        cleanup(1);
+        cleanup(1, true);
     }
 
 #if DEBUG
@@ -132,20 +133,22 @@ void parse_config(const char *conf_file, struct options *opt)
         }
 
         /* Parse each line */
-        if (STREQ(keystr, "Daemonize")) {
+        if (str_equals_ignore_case(keystr, "daemonize")) {
             opt->daemonize = str_to_bool(valstr, conf_file, lineno);
-        } else if (STREQ(keystr, "Protocol")) {
-            if (STREQ(valstr, "both")) {
-                opt->protocol = PROTOCOL_BOTH;
-            } else if (STREQ(valstr, "ipv4")) {
-                opt->protocol = PROTOCOL_IPV4;
-            } else if (STREQ(valstr, "ipv6")) {
-                opt->protocol = PROTOCOL_IPV6;
+        } else if (str_equals_ignore_case(keystr, "transportprotocol")) {
+
+        } else if (str_equals_ignore_case(keystr, "internetprotocol")) {
+            if (str_equals_ignore_case(valstr, "both")) {
+                opt->iproto = PROTOCOL_BOTH;
+            } else if (str_equals_ignore_case(valstr, "ipv4")) {
+                opt->iproto = PROTOCOL_IPv4;
+            } else if (str_equals_ignore_case(valstr, "ipv6")) {
+                opt->iproto = PROTOCOL_IPv6;
             } else {
                 fprintf(stderr, "%s:%d: invalid protocol: \"%s\"\n", conf_file, lineno, valstr);
                 confcleanup(1);
             }
-        } else if (STREQ(keystr, "Port")) {
+        } else if (str_equals_ignore_case(keystr, "port")) {
             int port = atoi(valstr);
             if (0 >= port || port > PORT_MAX) {
                 fprintf(stderr, "%s:%d: invalid port number: \"%s\"\n", conf_file, lineno, valstr);
@@ -153,7 +156,7 @@ void parse_config(const char *conf_file, struct options *opt)
             }
 
             opt->port = port;
-        } else if (STREQ(keystr, "PidFile")) {
+        } else if (str_equals_ignore_case(keystr, "pidfile")) {
             char *ptr = malloc(vallen + 1);
             if (ptr == NULL) {
                 perror("Unable to allocate memory for config value");
@@ -162,10 +165,10 @@ void parse_config(const char *conf_file, struct options *opt)
 
             opt->pidfile = ptr;
             opt->pidmalloc = true;
-            strcpy(opt->pidfile, valstr);
-        } else if (STREQ(keystr, "RequirePidFile")) {
+            strcpy((char *)opt->pidfile, valstr);
+        } else if (str_equals_ignore_case(keystr, "requirepidfile")) {
             opt->require_pidfile = str_to_bool(valstr, conf_file, lineno);
-        } else if (STREQ(keystr, "QuotesFile")) {
+        } else if (str_equals_ignore_case(keystr, "quotesfile")) {
             char *ptr = malloc(vallen + 1);
             if (ptr == NULL) {
                 perror("Unable to allocate memory for config value");
@@ -174,21 +177,21 @@ void parse_config(const char *conf_file, struct options *opt)
 
             opt->quotesfile = ptr;
             opt->quotesmalloc = true;
-            strcpy(opt->quotesfile, valstr);
-        } else if (STREQ(keystr, "QuoteDivider")) {
-            if (STREQ(valstr, "line")) {
+            strcpy((char *)opt->quotesfile, valstr);
+        } else if (str_equals_ignore_case(keystr, "quotedivider")) {
+            if (str_equals_ignore_case(valstr, "line")) {
                 opt->linediv = DIV_EVERYLINE;
-            } else if (STREQ(valstr, "percent")) {
+            } else if (str_equals_ignore_case(valstr, "percent")) {
                 opt->linediv = DIV_PERCENT;
-            } else if (STREQ(valstr, "file")) {
+            } else if (str_equals_ignore_case(valstr, "file")) {
                 opt->linediv = DIV_WHOLEFILE;
             } else {
                 fprintf(stderr, "%s:%d: unsupported division type: \"%s\"\n", conf_file, lineno, valstr);
                 confcleanup(1);
             }
-        } else if (STREQ(keystr, "DailyQuotes")) {
+        } else if (str_equals_ignore_case(keystr, "dailyquotes")) {
             opt->is_daily = str_to_bool(valstr, conf_file, lineno);
-        } else if (STREQ(keystr, "AllowBigQuotes")) {
+        } else if (str_equals_ignore_case(keystr, "allowbigquotes")) {
             opt->allow_big = str_to_bool(valstr, conf_file, lineno);
         } else {
             fprintf(stderr, "%s:%d: ignoring unknown conf option: \"%s\"\n", conf_file, lineno, keystr);
@@ -244,13 +247,23 @@ static char *file_read_line(FILE *fh, const char *filename, unsigned int *lineno
     return NULL;
 }
 
+static bool str_equals_ignore_case(const char *string, const char *lowercase_string)
+{
+    size_t i;
+    for (i = 0; string[i] || lowercase_string[i]; i++) {
+        if (tolower(string[i]) != lowercase_string[i]) {
+            return false;
+        }
+    }
+
+    return !string[i] && !lowercase_string[i];
+}
+
 static bool str_to_bool(const char *string, const char *filename, const unsigned int lineno)
 {
-    if (STREQ(string, "yes") || STREQ(string, "YES")
-     || STREQ(string, "true") || STREQ(string, "TRUE")) {
+    if (str_equals_ignore_case(string, "yes") || str_equals_ignore_case(string, "true")) {
         return true;
-    } else if (STREQ(string, "no") || STREQ(string, "NO")
-            || STREQ(string, "false") || STREQ(string, "FALSE")) {
+    } else if (str_equals_ignore_case(string, "no") || str_equals_ignore_case(string, "false")) {
         return false;
     } else {
         fprintf(stderr, "%s:%d: not a boolean value: \"%s\"\n", filename, lineno, string);
@@ -267,9 +280,10 @@ static void confcleanup(const int ret)
     }
 
     fclose(fh);
-    cleanup(ret);
+    cleanup(ret, true);
 }
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+

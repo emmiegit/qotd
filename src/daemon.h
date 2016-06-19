@@ -1,5 +1,5 @@
 /*
- * main.h
+ * daemon.h
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -18,8 +18,10 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __MAIN_H
-# define __MAIN_H
+#ifndef __DAEMON_H
+# define __DAEMON_H
+
+# include <stdbool.h>
 
 # ifdef __cplusplus
 extern "C" {
@@ -31,11 +33,10 @@ struct arguments {
 };
 
 void load_config();
-void cleanup(const int ret);
-void quietcleanup(int ret);
+void cleanup(int ret, bool quiet);
 
 # ifdef __cplusplus
 }
 # endif /* __cplusplus */
-#endif /* __MAIN_H */
+#endif /* __DAEMON_H */
 

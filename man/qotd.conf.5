@@ -1,4 +1,4 @@
-.TH QOTD.CONF 5 2016-01-29 "qotd 0.5" ""
+.TH QOTD.CONF 5 2016-01-29 "qotd 0.6" ""
 .SH NAME
 qotd.conf \- The QOTD daemon configuration file
 .SH SYNOPSIS
@@ -8,8 +8,11 @@ qotd.conf \- The QOTD daemon configuration file
 .P
 The supported keywords and their possible meanings are as follows. Note that both the keywords and their arguments are case-sensitive.
 .TP
-\fBProtocol\fR
-Which TCP/IP version(s) to use. This setting is either `ipv4', `ipv6', or `both'. The default behavior is to listen on both IPv4 and IPv6.
+\fBTransportProtocol\fR
+Which transport protocol to use. This setting is either `udp' or `tcp'. By default TCP/IP is used.
+.TP
+\fBInternetProtocol\fR
+Which IP protocol to use. This setting is either `ipv4', `ipv6', or `both'. The default behavior is to listen on both IPv4 and IPv6.
 .TP
 \fBPort\fR
 Specifies an alternate port to listen on. The default argument is `17'.

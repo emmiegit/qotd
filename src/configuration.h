@@ -1,5 +1,5 @@
 /*
- * daemon_config.h
+ * configuration.h
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -18,8 +18,8 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __DAEMON_CONFIG_H
-# define __DAEMON_CONFIG_H
+#ifndef __CONFIGURATION_H
+# define __CONFIGURATION_H
 
 # include "options.h"
 
@@ -32,5 +32,5 @@ void parse_config(const char *conf_file, struct options *opt);
 # ifdef __cplusplus
 }
 # endif /* __cplusplus */
-#endif /* __DAEMON_CONFIG_H */
+#endif /* __CONFIGURATION_H */
 

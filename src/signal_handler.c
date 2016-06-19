@@ -22,15 +22,17 @@
 #include <stdio.h>
 #include <signal.h>
 
-#include "main.h"
+#include "daemon.h"
 #include "signal_handler.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
+/* Static declarations */
 static void handle_signal(const int signum);
 
+/* Function implementations */
 void set_up_handlers()
 {
     signal(SIGSEGV, handle_signal);
@@ -44,15 +46,15 @@ static void handle_signal(const int signum)
     switch (signum) {
         case SIGSEGV:
             fprintf(stderr, "Error: segmentation fault. Dumping core (if enabled).\n");
-            cleanup(signum);
+            cleanup(signum, true);
             break;
         case SIGTERM:
             fprintf(stderr, "Termination signal received. Exiting...\n");
-            cleanup(0);
+            cleanup(0, true);
             break;
         case SIGINT:
             fprintf(stderr, "Interrupt signal received. Exiting...\n");
-            cleanup(0);
+            cleanup(signum, true);
             break;
         case SIGHUP:
             printf("Hangup signal recieved. Reloading configuration...\n");

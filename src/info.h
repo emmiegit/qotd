@@ -21,8 +21,13 @@
 #ifndef __INFO_H
 # define __INFO_H
 
-# define DEBUG          0
-# define VERSION_STRING "0.5"
+# define DEBUG          1
+# define PROGRAM_NAME   "qotd"
+# define VERSION_STRING "0.6"
+
+# if DEBUG
+#  pragma message("Compiling with debug statements.")
+# endif /* DEBUG */
 
 #endif /* __INFO_H */
 

@@ -26,13 +26,17 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include "daemon.h"
 #include "info.h"
-#include "main.h"
 #include "quotes.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
+
+#if DEBUG
+# define PLURAL(x)      ((x == 1) ? "" : "s")
+#endif /* DEBUG */
 
 #define QUOTE_SIZE      512  /* Set by RFC 856 */
 #define STREMPTY(x)     (((x)[0]) == '\0')
@@ -79,7 +83,7 @@ int send_quote(const int fd, const struct options *opt)
             break;
         default:
             fprintf(stderr, "Internal error: invalid value for opt->linediv: %d\n", opt->linediv);
-            cleanup(1);
+            cleanup(1, true);
             return 1;
     }
 
@@ -91,14 +95,14 @@ int send_quote(const int fd, const struct options *opt)
     if (quotes == 0) {
         fprintf(stderr, "Quotes file is empty.\n");
         freequotes(array);
-        cleanup(1);
+        cleanup(1, true);
     }
 
 #if DEBUG
-    printf("Printing all %zd quotes:\n", quotes);
+    printf("Printing all %lu quote%s:\n", quotes, PLURAL(quotes));
 
     for (_i = 0; _i < quotes; _i++) {
-        printf("#%u: %s<end>\n", _i, array[_i]);
+        printf("#%lu: %s<end>\n", _i, array[_i]);
     }
 #endif /* DEBUG */
 
@@ -111,7 +115,7 @@ int send_quote(const int fd, const struct options *opt)
             /* All the lines are blank, will cause an infinite loop */
             fprintf(stderr, "Quotes file has only empty entries.\n");
             freequotes(array);
-            cleanup(1);
+            cleanup(1, true);
         }
     }
 
@@ -357,3 +361,4 @@ static char **readquotes_percent(const char *fn, size_t *quotes)
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+

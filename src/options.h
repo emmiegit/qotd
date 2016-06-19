@@ -23,33 +23,45 @@
 
 # include <stdbool.h>
 
-# define DIV_EVERYLINE 0
-# define DIV_PERCENT   1
-# define DIV_WHOLEFILE 2
+enum quote_divider {
+    DIV_EVERYLINE,
+    DIV_PERCENT,
+    DIV_WHOLEFILE
+};
 
-# define PROTOCOL_IPV4 1
-# define PROTOCOL_IPV6 2
-# define PROTOCOL_BOTH 3
+enum transport_protocol {
+    PROTOCOL_TCP,
+    PROTOCOL_UDP,
+    PROTOCOL_TNONE
+};
+
+enum internet_protocol {
+    PROTOCOL_IPv4,
+    PROTOCOL_IPv6,
+    PROTOCOL_BOTH,
+    PROTOCOL_INONE
+};
 
 # ifdef __cplusplus
 extern "C" {
 # endif /* __cplusplus */
 
 struct options {
-    char *quotesfile;        /* string containing path to quotes file */
-    char *pidfile;           /* string containing path to pid file */
-    unsigned int port;       /* port to listen on */
-    unsigned char linediv;   /* how to read the quotes file */
-    unsigned char protocol;  /* which ip protocol(s) to use */
+    const char *quotesfile;         /* string containing path to quotes file */
+    const char *pidfile;            /* string containing path to pid file */
+    unsigned int port;              /* port to listen on */
+    enum quote_divider linediv;     /* how to read the quotes file */
+    enum transport_protocol tproto; /* which transport protocol to use */
+    enum internet_protocol iproto;  /* which internet protocol to use */
 
-    bool quotesmalloc;       /* if quotesfile needs to be free'd */
-    bool pidmalloc;          /* if pidfile needs to be free'd */
+    bool quotesmalloc;              /* if quotesfile needs to be free'd */
+    bool pidmalloc;                 /* if pidfile needs to be free'd */
 
-    bool daemonize;          /* whether to fork to the background or not */
-    bool require_pidfile;    /* whether to quit if the pidfile cannot be made */
-    bool is_daily;           /* whether quotes are random every day or every visit */
-    bool allow_big;          /* ignore 512-byte limit */
-    bool chdir_root;         /* whether to chdir to / */
+    bool daemonize;                 /* whether to fork to the background or not */
+    bool require_pidfile;           /* whether to quit if the pidfile cannot be made */
+    bool is_daily;                  /* whether quotes are random every day or every visit */
+    bool allow_big;                 /* ignore 512-byte limit */
+    bool chdir_root;                /* whether to chdir to / when running */
 };
 
 # ifdef __cplusplus
