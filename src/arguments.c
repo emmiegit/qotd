@@ -32,6 +32,7 @@
 #include "daemon.h"
 #include "info.h"
 #include "options.h"
+#include "standard.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -181,17 +182,17 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
 #if DEBUG
     printf("\nContents of struct 'opt':\n");
     printf("opt = {\n");
-    printf("  Daemonize: %s\n",       BOOLSTR(opt->daemonize));
-    printf("  Protocol: %s\n",        name_option_protocol(opt));
-    printf("  Port: %d\n",            opt->port);
-    printf("  QuotesMalloc: %s\n",    BOOLSTR(opt->quotesmalloc));
-    printf("  PidMalloc: %s\n",       BOOLSTR(opt->pidmalloc));
-    printf("  QuotesFile: %s\n",      opt->quotesfile);
-    printf("  QuoteDivider: %s\n",    name_option_quote_divider(opt->linediv));
-    printf("  PidFile: %s\n",         opt->pidfile);
-    printf("  RequirePidFile: %s\n",  BOOLSTR(opt->require_pidfile));
-    printf("  DailyQuotes: %s\n",     BOOLSTR(opt->is_daily));
-    printf("  AllowBigQuotes: %s\n",  BOOLSTR(opt->allow_big));
+    printf("    Daemonize: %s\n",       BOOLSTR(opt->daemonize));
+    printf("    Protocol: %s\n",        name_option_protocol(opt));
+    printf("    Port: %d\n",            opt->port);
+    printf("    QuotesMalloc: %s\n",    BOOLSTR(opt->quotesmalloc));
+    printf("    PidMalloc: %s\n",       BOOLSTR(opt->pidmalloc));
+    printf("    QuotesFile: %s\n",      opt->quotesfile);
+    printf("    QuoteDivider: %s\n",    name_option_quote_divider(opt->linediv));
+    printf("    PidFile: %s\n",         opt->pidfile);
+    printf("    RequirePidFile: %s\n",  BOOLSTR(opt->require_pidfile));
+    printf("    DailyQuotes: %s\n",     BOOLSTR(opt->is_daily));
+    printf("    AllowBigQuotes: %s\n",  BOOLSTR(opt->allow_big));
     printf("}\n\n");
 #endif /* DEBUG */
 }

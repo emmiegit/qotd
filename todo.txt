@@ -1,0 +1,8 @@
+[Version 0.7]
+Single flags argument parsing (getopt?)
+Add user/mode checking for config files
+Add --strict option for checking config files
+
+[Version 0.8]
+Rebind connection when reloading config.
+

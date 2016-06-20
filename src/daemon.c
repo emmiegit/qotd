@@ -35,6 +35,7 @@
 #include "info.h"
 #include "quotes.h"
 #include "signal_handler.h"
+#include "standard.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,22 +44,26 @@ extern "C" {
 #define CONNECTION_BACKLOG 50
 
 #define UNUSED(x)    ((void)(x))
-#define STREQ(x, y)  (strcmp((x), (y)) == 0)
+#define STREQUALS(x, y)  (strcmp((x), (y)) == 0)
 
+/* Static function declarations */
 static int daemonize();
 static int main_loop();
 static void setup_ipv4_socket();
 static void setup_ipv6_socket();
-static bool accept_connection();
+static bool tcp_accept_connection();
+static bool udp_accept_connection();
 static void save_args(const int argc, const char *argv[]);
 static void check_config();
 static void write_pidfile();
 
+/* Static member declarations */
 static struct arguments args;
 static struct options opt;
 static int sockfd;
 static bool wrote_pidfile;
 
+/* Function implementations */
 int main(int argc, const char *argv[])
 {
     /* Set up signal handlers */
@@ -66,6 +71,7 @@ int main(int argc, const char *argv[])
 
     /* Set default values for static variables */
     sockfd = -1;
+    wrote_pidfile = false;
 
     /* Make a static copy of the arguments */
     save_args(argc, argv);
@@ -73,10 +79,7 @@ int main(int argc, const char *argv[])
     /* Load configuration */
     load_config();
 
-    /* Check configuration */
-    check_config();
-
-    return (opt.daemonize) ? daemonize() : main_loop();
+    return opt.daemonize ? daemonize() : main_loop();
 }
 
 static int daemonize()
@@ -115,6 +118,7 @@ static int daemonize()
 
 static int main_loop()
 {
+    bool (*accept_connection)();
     write_pidfile();
 
     switch (opt.iproto) {
@@ -126,13 +130,28 @@ static int main_loop()
             setup_ipv4_socket();
             break;
         default:
-            fprintf(stderr, "Invalid enum value for \"iproto\": %d.\n", opt.iproto);
+            fprintf(stderr, "Internal error: invalid enum value for \"iproto\": %d.\n", opt.iproto);
+            cleanup(1, true);
     }
 
-    while (accept_connection());
+    switch (opt.tproto) {
+        case PROTOCOL_TCP:
+            accept_connection = &tcp_accept_connection;
+            break;
+        case PROTOCOL_UDP:
+            accept_connection = &udp_accept_connection;
+            break;
+        default:
+            fprintf(stderr, "Internal error: invalid enum value for \"tproto\": %d.\n", opt.tproto);
+            cleanup(1, true);
+            return EXIT_FAILURE;
+    }
 
-    cleanup(1, true);
-    return EXIT_FAILURE;
+    for (;;) {
+        accept_connection();
+    }
+
+    return EXIT_SUCCESS;
 }
 
 static void setup_ipv4_socket()
@@ -142,10 +161,10 @@ static void setup_ipv4_socket()
 
     if (opt.tproto == PROTOCOL_TCP) {
         printf("Setting up IPv4 socket connection over TCP...\n");
-        sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     } else {
         printf("Setting up IPv4 socket connection over UDP...\n");
-        sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        sockfd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     }
 
     if (sockfd < 0) {
@@ -174,18 +193,22 @@ static void setup_ipv6_socket()
 
     if (opt.tproto == PROTOCOL_TCP) {
         printf("Setting up IPv%s6 socket connection over TCP...\n", (no_ipv4 ? "" : "4/"));
-        sockfd = socket(AF_INET6, SOCK_STREAM, 0);
+        sockfd = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP);
     } else {
         printf("Setting up IPv%s6 socket connection over UDP...\n", (no_ipv4 ? "" : "4/"));
-        sockfd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+        sockfd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
     }
 
     if (sockfd < 0) {
-        perror("Unable to connect to IPv6 socket");
+        perror("Unable to connect to socket");
         cleanup(1, true);
     }
 
-    setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)(&no_ipv4), sizeof(no_ipv4));
+    ret = setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)(&no_ipv4), sizeof(no_ipv4));
+    if (ret < 0) {
+        perror("Unable to set IPv4 compatibility option");
+        cleanup(1, true);
+    }
 
     serv_addr.sin6_family = AF_INET6;
     serv_addr.sin6_addr = in6addr_any;
@@ -193,41 +216,59 @@ static void setup_ipv6_socket()
 
     ret = bind(sockfd, (const struct sockaddr *)(&serv_addr), sizeof(struct sockaddr_in6));
     if (ret < 0) {
-        if (no_ipv4) {
-            perror("Unable to bind to IPv6 socket");
-        } else {
-            perror("Unable to bind to IPv4/6 socket");
-        }
-
+        perror("Unable to bind to socket");
         cleanup(1, true);
     }
 }
 
-static bool accept_connection()
+static bool tcp_accept_connection()
 {
     struct sockaddr_in cli_addr;
+    socklen_t cli_len;
     int consockfd, ret;
-    socklen_t clilen;
 
     printf("Listening for connection...\n");
     listen(sockfd, CONNECTION_BACKLOG);
 
-    clilen = sizeof(cli_addr);
-    consockfd = accept(sockfd, (struct sockaddr *)(&cli_addr), &clilen);
+    cli_len = sizeof(cli_addr);
+    consockfd = accept(sockfd, (struct sockaddr *)(&cli_addr), &cli_len);
     if (consockfd < 0) {
         perror("Unable to accept connection");
         return false;
     }
 
-    ret = send_quote(consockfd, &opt);
+    ret = tcp_send_quote(consockfd, &opt);
     if (ret < 0) {
-        perror("Unable to write to socket");
+        /* Error message is printed by tcp_send_quote */
         return false;
     }
 
     ret = close(consockfd);
     if (ret < 0) {
         perror("Unable to close connection");
+        return false;
+    }
+
+    return true;
+}
+
+static bool udp_accept_connection()
+{
+    struct sockaddr_in cli_addr;
+    socklen_t cli_len;
+    int ret;
+
+    printf("Listening for connection...\n");
+    ret = recvfrom(sockfd, NULL, 0, 0, (struct sockaddr *)(&cli_addr), &cli_len);
+    if (ret < 0) {
+        perror("Unable to write to socket");
+        return false;
+    }
+
+    cli_len = sizeof(cli_addr);
+    ret = udp_send_quote(sockfd, (struct sockaddr *)(&cli_addr), cli_len, &opt);
+    if (ret < 0) {
+        /* Error message is printed by udp_send_quote */
         return false;
     }
 
@@ -287,6 +328,8 @@ void load_config()
 {
     printf("Loading configuration settings...\n");
     parse_args(&opt, args.argc, args.argv);
+    check_config();
+    /* TODO rebind connection if needed */
 }
 
 static void save_args(int argc, const char *argv[])
@@ -301,7 +344,7 @@ static void write_pidfile()
     int ret;
     FILE *fh;
 
-    if (STREQ(opt.pidfile, "none")) {
+    if (STREQUALS(opt.pidfile, "none")) {
         printf("No pidfile was written at the request of the user.\n");
         return;
     }

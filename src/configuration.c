@@ -26,7 +26,7 @@
 
 #include "configuration.h"
 #include "daemon.h"
-#include "info.h"
+#include "standard.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -1,5 +1,5 @@
 /*
- * info.h
+ * standard.h
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -18,11 +18,17 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __INFO_H
-# define __INFO_H
+#ifndef __STANDARD_H
+# define __STANDARD_H
 
-# define PROGRAM_NAME   "qotd"
-# define VERSION_STRING "0.6"
+# define DEBUG          1
 
-#endif /* __INFO_H */
+# if DEBUG
+#  pragma message("Compiling with debug statements.")
+# endif /* DEBUG */
+
+# define likely(x)      __builtin_expect(!!(x), 1)
+# define unlikely(x)    __builtin_expect(!!(x), 0)
+
+#endif /* __STANDARD_H */
 

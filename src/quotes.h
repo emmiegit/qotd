@@ -21,9 +21,12 @@
 #ifndef __QUOTES_H
 # define __QUOTES_H
 
+# include <sys/socket.h>
+
 # include "options.h"
 
-int send_quote(const int fd, const struct options *opt);
+int tcp_send_quote(int fd, const struct options *opt);
+int udp_send_quote(int fd, const struct sockaddr *cli_addr, socklen_t cli_len, const struct options *opt);
 
 #endif /* __QUOTES_H */
 

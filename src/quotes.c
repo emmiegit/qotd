@@ -24,10 +24,11 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
 #include <sys/stat.h>
 
 #include "daemon.h"
-#include "info.h"
+#include "standard.h"
 #include "quotes.h"
 
 #ifdef __cplusplus
@@ -42,22 +43,59 @@ extern "C" {
 #define STREMPTY(x)     (((x)[0]) == '\0')
 #define MIN(x, y)       (((x) < (y)) ? (x) : (y))
 
-static void freequotes(char **array);
+/* Static declarations */
+static struct selected_quote get_quote_of_the_day(const struct options *opt);
 static int get_file_size(const char *fn);
 static char **readquotes_file(const char *fn, size_t *quotes);
 static char **readquotes_line(const char *fn, size_t *quotes);
 static char **readquotes_percent(const char *fn, size_t *quotes);
 
-int send_quote(const int fd, const struct options *opt)
+struct selected_quote {
+    char **array;
+    char *buffer;
+    size_t length;
+};
+
+int tcp_send_quote(int fd, const struct options *opt)
 {
+    struct selected_quote quote;
+    int ret;
+
+    quote = get_quote_of_the_day(opt);
+    ret = write(fd, quote.buffer, quote.length);
+    if (ret < 0) {
+        perror("Unable to write to socket");
+    }
+
+    free((char *)quote.array[0]);
+    free(quote.array);
+    free(quote.buffer);
+    return ret;
+}
+
+int udp_send_quote(int fd, const struct sockaddr *cli_addr, socklen_t clilen, const struct options *opt)
+{
+    struct selected_quote quote;
+    int ret;
+
+    quote = get_quote_of_the_day(opt);
+    ret = sendto(fd, quote.buffer, quote.length, 0, cli_addr, clilen);
+    if (ret < 0) {
+        perror("Unable to write to socket");
+    }
+
+    return ret;
+}
+
+static struct selected_quote get_quote_of_the_day(const struct options *opt)
+{
+    struct selected_quote selected_quote;
     size_t quotes, quoteno, len, i;
     char **array;
     char *buf;
     int ret;
 
-#if DEBUG
-    size_t _i;
-#endif /* DEBUG */
+    selected_quote.array = NULL;
 
     if (opt->is_daily) {
         /* Create random seed based on the current day */
@@ -82,27 +120,26 @@ int send_quote(const int fd, const struct options *opt)
             array = readquotes_file(opt->quotesfile, &quotes);
             break;
         default:
-            fprintf(stderr, "Internal error: invalid value for opt->linediv: %d\n", opt->linediv);
+            fprintf(stderr, "Internal error: invalid enum value for quote_divider: %d.\n", opt->linediv);
             cleanup(1, true);
-            return 1;
+            return selected_quote;
     }
 
     if (array == NULL) {
         /* Reading from quotes file failed */
-        return 1;
+        return selected_quote;
     }
 
     if (quotes == 0) {
         fprintf(stderr, "Quotes file is empty.\n");
-        freequotes(array);
         cleanup(1, true);
     }
 
 #if DEBUG
-    printf("Printing all %lu quote%s:\n", quotes, PLURAL(quotes));
+    printf("Printing %lu quote%s:\n", quotes, PLURAL(quotes));
 
-    for (_i = 0; _i < quotes; _i++) {
-        printf("#%lu: %s<end>\n", _i, array[_i]);
+    for (i = 0; i < quotes; i++) {
+        printf("#%lu: %s<end>\n", i, array[i]);
     }
 #endif /* DEBUG */
 
@@ -114,7 +151,6 @@ int send_quote(const int fd, const struct options *opt)
         if (i == quoteno) {
             /* All the lines are blank, will cause an infinite loop */
             fprintf(stderr, "Quotes file has only empty entries.\n");
-            freequotes(array);
             cleanup(1, true);
         }
     }
@@ -127,7 +163,7 @@ int send_quote(const int fd, const struct options *opt)
         fprintf(stderr, "Unable to allocate variable buffer: %s\n",
                 strerror(errno));
         errno = errno_;
-        return -1;
+        return selected_quote;
     }
 
     ret = snprintf(buf, len, "\n%s\n\n", array[i]);
@@ -136,19 +172,14 @@ int send_quote(const int fd, const struct options *opt)
         int errno_ = errno;
         fprintf(stderr, "Unable to format quotation in char buffer.\n");
         errno = errno_;
-        return ret;
+        return selected_quote;
     }
 
-    printf("Sending quotation:\n> %s\n", array[i]);
-    ret = write(fd, buf, MIN(len, (unsigned int)ret));
-    freequotes(array);
-    return ret;
-}
-
-static void freequotes(char **array)
-{
-    free((char *)array[0]);
-    free(array);
+    printf("Sending quotation:%s\n", buf);
+    selected_quote.array = array;
+    selected_quote.buffer = buf;
+    selected_quote.length = MIN(len, (unsigned int)ret);
+    return selected_quote;
 }
 
 static int get_file_size(const char *fn)
