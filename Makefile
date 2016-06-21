@@ -93,17 +93,17 @@ $(DOC_DIR)/%.5.gz: $(MAN_DIR)/%.5
 	@echo '[GZ] $@'
 	@gzip -c $< > $@
 
-$(DOC_DIR)/%.8.gz: $(DOC_DIR) $(MAN_DIR)/%.8
+$(DOC_DIR)/%.8.gz: $(MAN_DIR)/%.8
 	@mkdir -p $(DOC_DIR)
 	@echo '[GZ] $@'
 	@gzip -c $(word 2,$^) > $@
 
-$(DOC_DIR)/%.5.ps: $(DOC_DIR) $(MAN_DIR)/%.5
+$(DOC_DIR)/%.5.ps: $(MAN_DIR)/%.5
 	@mkdir -p $(DOC_DIR)
 	@echo '[PS] $@'
 	@groff -Tps -mandoc $(word 2,$^) > $@
 
-$(DOC_DIR)/%.8.ps: $(DOC_DIR) $(MAN_DIR)/%.8
+$(DOC_DIR)/%.8.ps: $(MAN_DIR)/%.8
 	@mkdir -p $(DOC_DIR)
 	@echo '[PS] $@'
 	@groff -Tps -mandoc $(word 2,$^) > $@
