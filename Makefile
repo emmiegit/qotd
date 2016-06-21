@@ -47,7 +47,7 @@ PS_FILES = $(patsubst $(MAN_DIR)/%,$(DOC_DIR)/%,$(addsuffix .ps,$(MAN_SOURCES)))
 PDF_TARGET = $(DOC_DIR)/qotd.pdf
 
 # Targets
-all: $(BUILD_DIR) $(DOC_DIR) $(EXE) $(GZ_FILES) $(PDF_TARGET)
+all: $(EXE) $(GZ_FILES) $(PDF_TARGET)
 pdf: $(PDF_TARGET)
 
 # Program targets
@@ -96,17 +96,17 @@ $(DOC_DIR)/%.5.gz: $(MAN_DIR)/%.5
 $(DOC_DIR)/%.8.gz: $(MAN_DIR)/%.8
 	@mkdir -p $(DOC_DIR)
 	@echo '[GZ] $@'
-	@gzip -c $(word 2,$^) > $@
+	@gzip -c $< > $@
 
 $(DOC_DIR)/%.5.ps: $(MAN_DIR)/%.5
 	@mkdir -p $(DOC_DIR)
 	@echo '[PS] $@'
-	@groff -Tps -mandoc $(word 2,$^) > $@
+	@groff -Tps -mandoc $< > $@
 
 $(DOC_DIR)/%.8.ps: $(MAN_DIR)/%.8
 	@mkdir -p $(DOC_DIR)
 	@echo '[PS] $@'
-	@groff -Tps -mandoc $(word 2,$^) > $@
+	@groff -Tps -mandoc $< > $@
 
 $(PDF_TARGET): $(PS_FILES)
 	@echo '[PDF] $@'
