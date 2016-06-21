@@ -64,7 +64,7 @@ int tcp_send_quote(int fd, const struct options *opt)
     quote = get_quote_of_the_day(opt);
     ret = write(fd, quote.buffer, quote.length);
     if (ret < 0) {
-        perror("Unable to write to socket");
+        perror("Unable to write to TCP connection descriptor");
     }
 
     free((char *)quote.array[0]);
@@ -81,9 +81,12 @@ int udp_send_quote(int fd, const struct sockaddr *cli_addr, socklen_t clilen, co
     quote = get_quote_of_the_day(opt);
     ret = sendto(fd, quote.buffer, quote.length, 0, cli_addr, clilen);
     if (ret < 0) {
-        perror("Unable to write to socket");
+        perror("Unable to write to UDP connection socket");
     }
 
+    free((char *)quote.array[0]);
+    free(quote.array);
+    free(quote.buffer);
     return ret;
 }
 

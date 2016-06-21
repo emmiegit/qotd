@@ -33,6 +33,7 @@
 #include "arguments.h"
 #include "daemon.h"
 #include "info.h"
+#include "journal.h"
 #include "quotes.h"
 #include "signal_handler.h"
 #include "standard.h"
@@ -53,6 +54,7 @@ static void setup_ipv4_socket();
 static void setup_ipv6_socket();
 static bool tcp_accept_connection();
 static bool udp_accept_connection();
+static void check_errno(int errno_);
 static void save_args(const int argc, const char *argv[]);
 static void check_config();
 static void write_pidfile();
@@ -78,6 +80,8 @@ int main(int argc, const char *argv[])
 
     /* Load configuration */
     load_config();
+
+    /* TODO open journal */
 
     return opt.daemonize ? daemonize() : main_loop();
 }
@@ -157,7 +161,7 @@ static int main_loop()
 static void setup_ipv4_socket()
 {
     struct sockaddr_in serv_addr;
-    int ret;
+    int ret, one = 1;
 
     if (opt.tproto == PROTOCOL_TCP) {
         printf("Setting up IPv4 socket connection over TCP...\n");
@@ -168,8 +172,13 @@ static void setup_ipv4_socket()
     }
 
     if (sockfd < 0) {
-        perror("Unable to connect to IPv4 socket");
+        perror("Unable to create IPv4 socket");
         cleanup(1, true);
+    }
+
+    ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (void *)(&one), sizeof(one));
+    if (ret < 0) {
+        perror("Unable to set the socket to allow address reuse");
     }
 
     serv_addr.sin_family = AF_INET;
@@ -186,28 +195,34 @@ static void setup_ipv4_socket()
 static void setup_ipv6_socket()
 {
     struct sockaddr_in6 serv_addr;
-    bool no_ipv4;
-    int ret;
-
-    no_ipv4 = (opt.iproto != PROTOCOL_BOTH);
+    int ret, one = 1;
 
     if (opt.tproto == PROTOCOL_TCP) {
-        printf("Setting up IPv%s6 socket connection over TCP...\n", (no_ipv4 ? "" : "4/"));
+        printf("Setting up IPv%s6 socket connection over TCP...\n",
+                ((opt.iproto == PROTOCOL_BOTH) ? "4/" : ""));
         sockfd = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP);
     } else {
-        printf("Setting up IPv%s6 socket connection over UDP...\n", (no_ipv4 ? "" : "4/"));
+        printf("Setting up IPv%s6 socket connection over UDP...\n",
+                ((opt.iproto == PROTOCOL_BOTH) ? "4/" : ""));
         sockfd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
     }
 
     if (sockfd < 0) {
-        perror("Unable to connect to socket");
+        perror("Unable to create IPv6 socket");
         cleanup(1, true);
     }
 
-    ret = setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)(&no_ipv4), sizeof(no_ipv4));
+    if (opt.iproto == PROTOCOL_IPv6) {
+        ret = setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)(&one), sizeof(one));
+        if (ret < 0) {
+            perror("Unable to set IPv4 compatibility option");
+            cleanup(1, true);
+        }
+    }
+
+    ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (void *)(&one), sizeof(one));
     if (ret < 0) {
-        perror("Unable to set IPv4 compatibility option");
-        cleanup(1, true);
+        perror("Unable to set the socket to allow address reuse");
     }
 
     serv_addr.sin6_family = AF_INET6;
@@ -233,7 +248,9 @@ static bool tcp_accept_connection()
     cli_len = sizeof(cli_addr);
     consockfd = accept(sockfd, (struct sockaddr *)(&cli_addr), &cli_len);
     if (consockfd < 0) {
+        int errno_ = errno;
         perror("Unable to accept connection");
+        check_errno(errno_);
         return false;
     }
 
@@ -261,7 +278,9 @@ static bool udp_accept_connection()
     printf("Listening for connection...\n");
     ret = recvfrom(sockfd, NULL, 0, 0, (struct sockaddr *)(&cli_addr), &cli_len);
     if (ret < 0) {
+        int errno_ = errno;
         perror("Unable to write to socket");
+        check_errno(errno_);
         return false;
     }
 
@@ -273,6 +292,25 @@ static bool udp_accept_connection()
     }
 
     return true;
+}
+
+static void check_errno(int errno_)
+{
+    /* Certain errors are fatal and should not be repeated */
+    switch (errno_) {
+        case EBADF:
+        case EFAULT:
+        case EINVAL:
+        case EMFILE:
+        case ENFILE:
+        case ENOBUFS:
+        case ENOMEM:
+        case ENOTSOCK:
+        case EOPNOTSUPP:
+        case EPROTO:
+            cleanup(1, true);
+            break;
+    }
 }
 
 void cleanup(int ret, bool quiet)
@@ -320,6 +358,8 @@ void cleanup(int ret, bool quiet)
     if (opt.pidmalloc) {
         free((char *)opt.pidfile);
     }
+
+    ret += close_journal();
 
     exit(ret);
 }

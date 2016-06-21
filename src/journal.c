@@ -1,0 +1,92 @@
+/*
+ * journal.c
+ *
+ * qotd - A simple QOTD daemon.
+ * Copyright (c) 2015-2016 Ammon Smith
+ *
+ * qotd is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * qotd is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "daemon.h"
+#include "journal.h"
+
+static FILE *journal_fh = NULL;
+
+void open_journal(const char *path)
+{
+    if (path == NULL) {
+        journal_fh = NULL;
+        return;
+    }
+
+    journal_fh = fopen(path, "w");
+    if (journal_fh == NULL) {
+        fprintf(stderr, "Unable to open journal handle for \"%s\": %s.\n",
+                path, strerror(errno));
+        perror("Unable to open journal handle");
+        cleanup(1, true);
+    }
+}
+
+void open_journal_as_fd(int fd)
+{
+    if (fd < 0) {
+        journal_fh = NULL;
+        return;
+    }
+
+    journal_fh = fdopen(fd, "w");
+    if (journal_fh == NULL) {
+        fprintf(stderr, "Unable to open journal handle for file descriptor \"%d\": %s.\n",
+                fd, strerror(errno));
+        perror("Unable to open journal handle");
+        cleanup(1, true);
+    }
+}
+
+int close_journal()
+{
+    if (journal_fh) {
+        int ret = fclose(journal_fh);
+        if (ret < 0) {
+            fprintf(stderr, "Unable to close journal handle: %s.\n",
+                    strerror(errno));
+        }
+
+        return ret;
+    }
+
+    return 0;
+}
+
+int journal(const char *format, ...)
+{
+    va_list args;
+    int ret;
+
+    if (journal_fh == NULL) {
+        return 0;
+    }
+
+    va_start(args, format);
+    ret = vfprintf(journal_fh, format, args);
+    va_end(args);
+    return ret;
+}
+
