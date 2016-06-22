@@ -25,6 +25,7 @@
 
 #include "daemon.h"
 #include "journal.h"
+#include "standard.h"
 
 static FILE *journal_fh = NULL;
 
@@ -34,6 +35,10 @@ void open_journal(const char *path)
         journal_fh = NULL;
         return;
     }
+
+#if DEBUG
+    printf("Setting journal to be \"%s\".\n", path);
+#endif /* DEBUG */
 
     journal_fh = fopen(path, "w");
     if (journal_fh == NULL) {
@@ -50,6 +55,10 @@ void open_journal_as_fd(int fd)
         journal_fh = NULL;
         return;
     }
+
+#if DEBUG
+    printf("Setting journal to be the same as file descriptor %d.\n", fd);
+#endif /* DEBUG */
 
     journal_fh = fdopen(fd, "w");
     if (journal_fh == NULL) {

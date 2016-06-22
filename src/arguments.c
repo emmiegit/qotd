@@ -57,7 +57,7 @@ struct argument_flags {
     enum internet_protocol iproto;
 };
 
-static void parse_short_options(const char *argument, const char *next_arg, struct argument_flags *flags);
+static void parse_short_options(const char *argument, const char *next_arg, int *index, struct argument_flags *flags);
 static void parse_long_option(const int argc, const char *argv[], int *i, struct argument_flags *flags);
 static char *default_pidfile();
 static void help_and_exit(const char *program_name);
@@ -103,8 +103,8 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
         if (strncmp(argv[i], "--", 2) == 0) {
             parse_long_option(argc, argv, &i, &flags);
         } else if (argv[i][0] == '-') {
-            const char *next_arg = (i + 1 == argc) ? argv[i + 1] : NULL;
-            parse_short_options(argv[i] + 1, next_arg, &flags);
+            const char *next_arg = (i + 1 == argc) ? NULL : argv[i + 1];
+            parse_short_options(argv[i] + 1, next_arg, &i, &flags);
         } else {
             printf("Unrecognized option: %s.\n", argv[i]);
             usage_and_exit(flags.program_name);
@@ -173,7 +173,7 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
 #endif /* DEBUG */
 }
 
-static void parse_short_options(const char *argument, const char *next_arg, struct argument_flags *flags)
+static void parse_short_options(const char *argument, const char *next_arg, int *index, struct argument_flags *flags)
 {
     size_t i;
 
@@ -188,6 +188,7 @@ static void parse_short_options(const char *argument, const char *next_arg, stru
                     cleanup(1, true);
                 }
 
+                (*index)++;
                 flags->conf_file = next_arg;
                 break;
             case 'N':
@@ -198,6 +199,7 @@ static void parse_short_options(const char *argument, const char *next_arg, stru
                     cleanup(1, true);
                 }
 
+                (*index)++;
                 flags->pid_file = next_arg;
                 break;
             case 's':
@@ -206,6 +208,7 @@ static void parse_short_options(const char *argument, const char *next_arg, stru
                     cleanup(1, true);
                 }
 
+                (*index)++;
                 flags->quotes_file = next_arg;
                 break;
             case 'j':
@@ -214,6 +217,7 @@ static void parse_short_options(const char *argument, const char *next_arg, stru
                     cleanup(1, true);
                 }
 
+                (*index)++;
                 flags->journal_file = next_arg;
                 break;
             case '4':
