@@ -1,5 +1,13 @@
 [Version 0.7]
+<<<<<<< Updated upstream
 Single flags argument parsing (getopt?)
+=======
+Add journaling
+Add repeated error checking
+
+[Version 0.8]
+Add single flags checking
+>>>>>>> Stashed changes
 Add user/mode checking for config files
 Add --strict option for checking config files
 

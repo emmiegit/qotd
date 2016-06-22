@@ -1,13 +1,33 @@
-.TH QOTDD 8 2016-01-29 "qotd 0.6" ""
+.TH QOTDD 8 2016-01-29 "qotd 0.6" "System Manager's Manual"
+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License as
+.\" published by the Free Software Foundation; either version 2 of
+.\" the License, or (at your option) any later version.
+.\"
+.\" The GNU General Public License's references to "object code"
+.\" and "executables" are to be interpreted as the output of any
+.\" document formatting or typesetting system, including
+.\" intermediate and printed output.
+.\"
+.\" This manual is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public
+.\" License along with this manual; if not, see
+.\" <http://www.gnu.org/licenses/>.
+.\" %%%LICENSE_END
 .SH NAME
 qotdd \- A daemon to provide an interesting quote every day.
 .SH SYNOPSIS
 .P
-qotdd [\fB\-f\fR] [\fB\-c\fR \fIconfig\-file\fR | \fB\-N\fR] [\fB\-P\fR pidfile] [\fB\-s\fR \fIquotes\-file\fR] [\fB\-4\fR | \fB\-6\fR] [\fB\-U\fR]
+qotdd [\fB\-f\fR] [\fB\-c\fR \fIconfig\-file\fR | \fB\-N\fR] [\fB\-P\fR pidfile] [\fB\-s\fR \fIquotes\-file\fR] [\fB\-4\fR | \fB\-6\fR] [\fB\-T\fR | \fB\-U\fR] [\fB\-q\fR]
 .P
 qotdd [\fB\-\-help\fR | \fB\-\-version\fR]
 .SH DESCRIPTION
-QOTD (quote of the day) is specified in RFC 865 as a way of broadcasting a quote to users. On both TCP and UDP, port 17 is officially reserved for this purpose. \fBqotdd\fR(8) is meant to provide a simple QOTD daemon on IPv4 and/or IPv6.
+QOTD (quote of the day) is specified in RFC 865 as a way of broadcasting a quote to users. On both TCP and UDP, port 17 is officially reserved for this purpose. \fBqotdd\fR(8) is meant to provide a simple QOTD daemon on IPv4 and/or IPv6 on either TCP or UDP.
 .P
 Mandatory arguments to long options are mandatory for short options too.
 .TP
@@ -15,25 +35,36 @@ Mandatory arguments to long options are mandatory for short options too.
 Do not fork, but run in the foreground.
 .TP
 \fB\-c\fR, \fB\-\-config\fR \fIconfig\-file\fR
-Specify an alternate configuration file location. The default is at \fI/etc/qotd.conf\fR. (Overrides a previous \fB-N\fR option)
+Specify an alternate configuration file location. The default is at `\fI/etc/qotd.conf\fR'. (Overrides a previous \fB\-c\fR or \fB\-N\fR option)
 .TP
 \fB\-N\fR, \fB\-\-noconfig\fR
-Do not read from a configuration file, but use the default options instead. (Overrides a previous \fB-c\fR option)
+Do not read from a configuration file, but use the default options instead. (Overrides a previous \fB\-c\fR option)
+.TP
+For more information on the following three options, see \fBqotd.conf\fR(5):
 .TP
 \fB\-P\fR, \fB\-\-pidfile\fR \fIpidfile\fR
 Override the pidfile name given in the configuration file with the given file instead.
 .TP
 \fB\-s\fR, \fB\-\-quotes\fR \fIquotes\-file\fR
-Override the quotes file given in the configuration file with the given filename instead.
+Override the quotes file given in the configuration file with the given file instead.
 .TP
-\fB\-4, \-\-ipv4
-Only listen on IPv4.
+\fB\-j\fR, \fB\-\-journal\fR \fIjournal\-file\fR
+Overrides the journal file given in the configuration file with the given file instead.
 .TP
-\fB\-6, \-\-ipv6
+\fB\-4\fR, \fB\-\-ipv4\fR
+Only listen on IPv4. The default behavior is to listen on both IPv4 and IPv6.
+.TP
+\fB\-6\fR, \fB\-\-ipv6\fR
 Only listen on IPv6.
 .TP
-\fB\-U, \-\-udp
-Use UDP instead of TCP/IP.
+\fB\-T\fR, \fB\-\-tcp\fR
+Use TCP instead of UDP. This is the default behavior.
+.TP
+\fB\-U\fR, \fB\-\-udp\fR
+Use UDP instead of TCP. (Not fully implemented yet)
+.TP
+\fB\-q\fR, \fB\-\-quiet\fR
+Only output error messages. This is the same as using `\fB\-\-journal\fR \fI/dev/null\fR'.
 .TP
 .BR \-\-help
 List all options and what they do.
@@ -42,4 +73,7 @@ List all options and what they do.
 Print the version and some basic license information.
 .SH SEE ALSO
 .TP
-\fBqotd.conf\fR(5), \fBtelnet\fR(1)
+\fBqotd.conf\fR(5), \fBtelnet\fR(1), \fBnetcat\fR(1)
+.SH AUTHOR
+.TP
+Ammon Smith (ammon.i.smith\fR@\fRgmail.com)
