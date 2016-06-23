@@ -83,7 +83,7 @@ endif
 	for section in 5 8; do \
 		for filename in *.$${section}.gz; do \
 			echo "[INSTALL] $(ROOT)/usr/share/man/$${section}/$${filename}"; \
-			install -D -m644 "$${filename}" "$(ROOT)/usr/share/man$${section}/$${filename}"; \
+			install -D -m644 "$${filename}" "$(ROOT)/usr/share/man/man$${section}/$${filename}"; \
 		done \
 	done
 
