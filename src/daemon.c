@@ -381,7 +381,10 @@ void load_config(bool first_time)
 {
     struct options old_opt = opt;
 
-    journal("Loading configuration settings...\n");
+    if (!first_time) {
+        journal("Reloading configuration settings...\n");
+    }
+
     parse_args(&opt, args.argc, args.argv);
     check_config();
 

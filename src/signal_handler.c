@@ -26,6 +26,8 @@
 #include "journal.h"
 #include "signal_handler.h"
 
+#define JOURNAL(x)          (journal_is_open() ? journal(x) : fprintf(stderr, x))
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */

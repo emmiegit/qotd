@@ -42,9 +42,9 @@ extern "C" {
 #define BOOLEAN_UNSET       2
 
 #if DEBUG
-# define DEBUG_BUFFER_SIZE 50
-# define BOOLSTR(x)  ((x) ? "true" : "false")
-# define BOOLSTR2(x) (((x) == BOOLEAN_UNSET) ? "(unset)" : ((x) ? "true" : "false"))
+# define DEBUG_BUFFER_SIZE  50
+# define BOOLSTR(x)         ((x) ? "true" : "false")
+# define BOOLSTR2(x)        (((x) == BOOLEAN_UNSET) ? "(unset)" : ((x) ? "true" : "false"))
 #endif /* DEBUG */
 
 struct argument_flags {
@@ -102,7 +102,9 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
 
     /* Parse arguments */
     for (i = 1; i < argc; i++) {
-        if (strncmp(argv[i], "--", 2) == 0) {
+        if (strcmp(argv[i], "--") == 0) {
+            break;
+        } else if (strncmp(argv[i], "--", 2) == 0) {
             parse_long_option(argc, argv, &i, &flags);
         } else if (argv[i][0] == '-') {
             const char *next_arg = (i + 1 == argc) ? NULL : argv[i + 1];
@@ -140,14 +142,13 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
         opt->quotesmalloc = false;
     }
 
-    if (strcmp(flags.journal_file, "-") == 0) {
+    if (flags.journal_file) {
         close_journal();
-        open_journal_as_fd(STDOUT_FILENO);
-    } else if (strcmp(flags.journal_file, "none") == 0) {
-        close_journal();
-    } else if (flags.journal_file) {
-        close_journal();
-        open_journal(flags.journal_file);
+        if (strcmp(flags.journal_file, "-") == 0) {
+            open_journal_as_fd(STDOUT_FILENO);
+        } else if (strcmp(flags.journal_file, "none") != 0) {
+            open_journal(flags.journal_file);
+        }
     } else if (!journal_is_open()) {
         open_journal_as_fd(STDOUT_FILENO);
     }
