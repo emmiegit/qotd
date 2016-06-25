@@ -21,7 +21,7 @@
 
 # Constant declarations
 PROGRAM_NAME = qotd
-VERSION = 0.6
+VERSION = 0.7
 
 # Directories
 SRC_DIR = src
@@ -57,8 +57,9 @@ pdf: $(PDF_TARGET)
 
 # Program targets
 update-versions:
-	@sed -i '1 s/"$(PROGRAM_NAME) [^"]*?"/"$(PROGRAM_NAME) VERSION"/' $(MAN_SOURCES)
+	@sed -i '1 s/"$(PROGRAM_NAME) [^"]*"/"$(PROGRAM_NAME) $(VERSION)"/' $(MAN_SOURCES)
 	@sed -i 's/VERSION_STRING .*/VERSION_STRING "$(VERSION)"/' $(SRC_DIR)/info.$(HDR_EXT)
+	@make
 
 release: update-versions
 	@echo '[RELEASE]'

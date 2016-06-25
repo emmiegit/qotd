@@ -22,7 +22,7 @@
 # define __INFO_H
 
 # define PROGRAM_NAME   "qotd"
-# define VERSION_STRING "0.6"
+# define VERSION_STRING "0.7"
 
 #endif /* __INFO_H */
 
