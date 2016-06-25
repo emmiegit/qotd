@@ -1,12 +1,10 @@
-[Version 0.7]
-Add repeated error checking
-Drop root privileges after connection
-
 [Version 0.8]
-Add single flags checking
 Add user/mode checking for config files
 Add --strict option for checking config files
 
-[Version 0.8]
+[Version 0.9]
+UDP support
+
+[Version 0.10]
 Rebind connection when reloading config.
 

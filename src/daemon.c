@@ -43,6 +43,8 @@ extern "C" {
 #endif /* __cplusplus */
 
 #define CONNECTION_BACKLOG 50
+#define ROOT_USER_ID       0
+#define ROOT_GROUP_ID      0
 #define DAEMON_USER_ID     2
 #define DAEMON_GROUP_ID    2
 
@@ -56,7 +58,7 @@ static void setup_ipv4_socket();
 static void setup_ipv6_socket();
 static bool tcp_accept_connection();
 static bool udp_accept_connection();
-static void check_errno();
+static void check_socket_creation_errno();
 static void save_args(const int argc, const char *argv[]);
 static void check_config();
 static void write_pidfile();
@@ -81,7 +83,7 @@ int main(int argc, const char *argv[])
     save_args(argc, argv);
 
     /* Load configuration */
-    load_config();
+    load_config(true);
 
     return opt.daemonize ? daemonize() : main_loop();
 }
@@ -123,6 +125,7 @@ static int daemonize()
 static int main_loop()
 {
     bool (*accept_connection)();
+
     write_pidfile();
 
     switch (opt.iproto) {
@@ -166,20 +169,22 @@ static void drop_privileges()
 {
     int ret;
 
-    if (geteuid() != 0) {
-        /* Not running as root, no privileges to drop */
+    if (geteuid() != ROOT_USER_ID) {
+        journal("Not root, no privileges to drop.\n");
         return;
     }
+
+    journal("Connected to socket, dropping privileges.\n");
 
     /* POSIX specifies that the group should be dropped first */
     ret = setgid(DAEMON_GROUP_ID);
     if (unlikely(ret < 0)) {
-        journal("Unable to drop group id to %d: %s.\n", DAEMON_GROUP_ID, strerror(errno));
+        journal("Unable to set effective group id to %d: %s.\n", DAEMON_GROUP_ID, strerror(errno));
     }
 
     ret = setuid(DAEMON_USER_ID);
     if (unlikely(ret < 0)) {
-        journal("Unable to drop user id to %d: %s.\n", DAEMON_USER_ID, strerror(errno));
+        journal("Unable to set effective user id to %d: %s.\n", DAEMON_USER_ID, strerror(errno));
     }
 }
 
@@ -278,7 +283,7 @@ static bool tcp_accept_connection()
         int errno_ = errno;
         journal("Unable to accept connection: %s.\n", strerror(errno));
         errno = errno_;
-        check_errno();
+        check_socket_creation_errno();
         return false;
     }
 
@@ -309,7 +314,7 @@ static bool udp_accept_connection()
         int errno_ = errno;
         journal("Unable to write to socket: %s.\n", strerror(errno));
         errno = errno_;
-        check_errno();
+        check_socket_creation_errno();
         return false;
     }
 
@@ -372,17 +377,56 @@ void cleanup(int ret, bool quiet)
     exit(ret);
 }
 
-void load_config()
+void load_config(bool first_time)
 {
+    struct options old_opt = opt;
+
     journal("Loading configuration settings...\n");
     parse_args(&opt, args.argc, args.argv);
     check_config();
-    /* TODO rebind connection if needed
-     *      be sure to setuid() if drop_privileges is set */
+
+    /* not finished yet */
+    if (false && !first_time && (
+            opt.port != old_opt.port ||
+            opt.tproto != old_opt.tproto ||
+            opt.iproto != old_opt.iproto)) {
+        int ret;
+
+        journal("Connection settings changed, remaking socket...\n");
+
+        if (opt.drop_privileges && getuid() == ROOT_USER_ID) {
+            /* Regain privileges */
+            ret = setuid(getuid());
+
+            if (ret < 0) {
+                journal("Unable to set effective user ID to %d: %s.\n",
+                        getuid(), strerror(errno));
+                return;
+            }
+
+            /* Close old socket */
+            ret = close(sockfd);
+
+            if (ret < 0) {
+                journal("Unable to close existing socket: %s.\n", strerror(errno));
+                return;
+            }
+
+            /* Create new socket */
+            /* TODO */
+
+            /* Drop privileges again */
+            drop_privileges();
+        }
+    }
 }
 
-static void check_errno()
+static void check_socket_creation_errno()
 {
+    /* If the returned error is one of these, then you
+     * should not attempt to remake the socket.
+     * Getting one of these errors should be fatal.
+     */
     switch (errno) {
         case EBADF:
         case EFAULT:
@@ -467,7 +511,7 @@ static void check_config()
     struct stat statbuf;
     int ret;
 
-    if (opt.port < 1024 && geteuid() != 0) {
+    if (opt.port < 1024 && geteuid() != ROOT_USER_ID) {
         journal("Only root can bind to ports below 1024.\n");
         cleanup(1, true);
     }

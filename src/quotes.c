@@ -41,7 +41,7 @@ extern "C" {
 #endif /* DEBUG */
 
 #define QUOTE_SIZE      512  /* Set by RFC 856 */
-#define STREMPTY(x)     (((x)[0]) == '\0')
+#define EMPTYSTR(x)     (((x)[0]) == '\0')
 #define MIN(x, y)       (((x) < (y)) ? (x) : (y))
 
 /* Static declarations */
@@ -85,6 +85,9 @@ int udp_send_quote(int fd, const struct sockaddr *cli_addr, socklen_t clilen, co
         journal("Unable to write to UDP socket: %s.\n", strerror(errno));
     }
 
+    free((char *)quote.array[0]);
+    free(quote.array);
+    free(quote.buffer);
     return ret;
 }
 
@@ -146,7 +149,7 @@ static struct selected_quote get_quote_of_the_day(const struct options *opt)
 
     quoteno = rand() % quotes;
     i = quoteno;
-    while (STREMPTY(array[i])) {
+    while (EMPTYSTR(array[i])) {
         i = (i + 1) % quotes;
 
         if (i == quoteno) {

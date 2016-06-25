@@ -43,7 +43,8 @@ extern "C" {
 
 #if DEBUG
 # define DEBUG_BUFFER_SIZE 50
-# define BOOLSTR(x) ((x) ? "true" : "false")
+# define BOOLSTR(x)  ((x) ? "true" : "false")
+# define BOOLSTR2(x) (((x) == BOOLEAN_UNSET) ? "unset" : ((x) ? "true" : "false"))
 #endif /* DEBUG */
 
 struct argument_flags {
@@ -65,7 +66,7 @@ static void usage_and_exit(const char *program_name);
 static void version_and_exit();
 
 #if DEBUG
-static const char *name_option_protocol(struct options *opt);
+static const char *name_option_protocol(enum transport_protocol tproto, enum internet_protocol iproto);
 static const char *name_option_quote_divider(enum quote_divider value);
 #endif /* DEBUG */
 
@@ -159,17 +160,19 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
 #if DEBUG
     printf("\nContents of struct 'opt':\n");
     printf("opt = {\n");
-    printf("    Daemonize: %s\n",       BOOLSTR(opt->daemonize));
-    printf("    Protocol: %s\n",        name_option_protocol(opt));
-    printf("    Port: %d\n",            opt->port);
-    printf("    QuotesMalloc: %s\n",    BOOLSTR(opt->quotesmalloc));
-    printf("    PidMalloc: %s\n",       BOOLSTR(opt->pidmalloc));
-    printf("    QuotesFile: %s\n",      opt->quotesfile);
-    printf("    QuoteDivider: %s\n",    name_option_quote_divider(opt->linediv));
-    printf("    PidFile: %s\n",         opt->pidfile);
-    printf("    RequirePidFile: %s\n",  BOOLSTR(opt->require_pidfile));
-    printf("    DailyQuotes: %s\n",     BOOLSTR(opt->is_daily));
-    printf("    AllowBigQuotes: %s\n",  BOOLSTR(opt->allow_big));
+    printf("    QuotesFile: %s\n",          BOOLSTR(opt->quotesfile));
+    printf("    PidFile: %s\n",             opt->pidfile);
+    printf("    Port: %u\n",                opt->port);
+    printf("    QuoteDivider: %s\n",        name_option_quote_divider(opt->linediv));
+    printf("    Protocol: %s\n",            name_option_protocol(opt->tproto, opt->iproto));
+    printf("    QuotesMalloc: %s\n",        BOOLSTR(opt->quotesmalloc));
+    printf("    PidMalloc: %s\n",           BOOLSTR(opt->quotesmalloc));
+    printf("    Daemonize: %s\n",           BOOLSTR(opt->daemonize));
+    printf("    RequirePidfile: %s\n",      BOOLSTR(opt->require_pidfile));
+    printf("    DropPrivileges: %s\n",      BOOLSTR(opt->drop_privileges));
+    printf("    DailyQuotes: %s\n",         BOOLSTR(opt->is_daily));
+    printf("    AllowBigQuotes: %s\n",      BOOLSTR(opt->allow_big));
+    printf("    ChdirRoot: %s\n",           BOOLSTR(opt->chdir_root));
     printf("}\n\n");
 #endif /* DEBUG */
 }
@@ -178,7 +181,21 @@ static void parse_short_options(const char *argument, const char *next_arg, int 
 {
     size_t i;
 
+    printf("Parsing options in \"-%s\":\n", argument);
     for (i = 0; argument[i]; i++) {
+#if DEBUG
+        printf("    Parsing flag \"-%c\".\n", argument[i]);
+        printf("    flags = {\n");
+        printf("        ProgramName: %s\n",     flags->program_name);
+        printf("        ConfFile: %s\n",        flags->conf_file);
+        printf("        QuotesFile: %s\n",      flags->quotes_file);
+        printf("        PidFile: %s\n",         flags->pid_file);
+        printf("        JournalFile: %s\n",     flags->journal_file);
+        printf("        Daemonize: %s\n",       BOOLSTR2(flags->daemonize));
+        printf("        Protocol: %s\n",        name_option_protocol(flags->tproto, flags->iproto));
+        printf("    }\n\n");
+#endif /* DEBUG */
+
         switch (argument[i]) {
             case 'f':
                 flags->daemonize = false;
@@ -236,6 +253,7 @@ static void parse_short_options(const char *argument, const char *next_arg, int 
                 }
 
                 flags->iproto = PROTOCOL_IPv6;
+                break;
             case 'T':
                 if (flags->tproto == PROTOCOL_UDP) {
                     fprintf(stderr, "Conflicting options passed: -T and -U.\n");
@@ -345,30 +363,47 @@ static char *default_pidfile()
 }
 
 #if DEBUG
-static const char *name_option_protocol(struct options *opt)
+static const char *name_option_protocol(enum transport_protocol tproto, enum internet_protocol iproto)
 {
-    switch (opt->tproto) {
+    switch (tproto) {
         case PROTOCOL_TCP:
-            switch (opt->iproto) {
+            switch (iproto) {
                 case PROTOCOL_IPv4:
                     return "TCP IPv4 only";
                 case PROTOCOL_IPv6:
                     return "TCP IPv6 only";
                 case PROTOCOL_BOTH:
                     return "TCP IPv4 and IPv6";
+                case PROTOCOL_INONE:
+                    return "TCP <UNSET>";
                 default:
                     return "TCP ???";
             }
         case PROTOCOL_UDP:
-            switch (opt->iproto) {
+            switch (iproto) {
                 case PROTOCOL_IPv4:
                     return "UDP IPv4 only";
                 case PROTOCOL_IPv6:
                     return "UDP IPv6 only";
                 case PROTOCOL_BOTH:
                     return "UDP IPv4 and IPv6";
+                case PROTOCOL_INONE:
+                    return "UDP <UNSET>";
                 default:
                     return "UDP ???";
+            }
+        case PROTOCOL_TNONE:
+            switch (iproto) {
+                case PROTOCOL_IPv4:
+                    return "<UNSET> IPv4 only";
+                case PROTOCOL_IPv6:
+                    return "<UNSET> IPv6 only";
+                case PROTOCOL_BOTH:
+                    return "<UNSET> IPv4 and IPv6";
+                case PROTOCOL_INONE:
+                    return "<UNSET> <UNSET>";
+                default:
+                    return "<UNSET> ???";
             }
         default:
             return "???";
