@@ -27,6 +27,10 @@
 #include "journal.h"
 #include "standard.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 static FILE *journal_fh = NULL;
 
 void open_journal(const char *path)
@@ -103,4 +107,8 @@ int journal(const char *format, ...)
     va_end(args);
     return ret;
 }
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 

@@ -43,13 +43,15 @@ extern "C" {
 #endif /* __cplusplus */
 
 #define CONNECTION_BACKLOG 50
+#define DAEMON_USER_ID     2
+#define DAEMON_GROUP_ID    2
 
 #define UNUSED(x)    ((void)(x))
-#define STREQUALS(x, y)  (strcmp((x), (y)) == 0)
 
 /* Static function declarations */
 static int daemonize();
 static int main_loop();
+static void drop_privileges();
 static void setup_ipv4_socket();
 static void setup_ipv6_socket();
 static bool tcp_accept_connection();
@@ -136,6 +138,10 @@ static int main_loop()
             cleanup(1, true);
     }
 
+    if (opt.drop_privileges) {
+        drop_privileges();
+    }
+
     switch (opt.tproto) {
         case PROTOCOL_TCP:
             accept_connection = &tcp_accept_connection;
@@ -154,6 +160,27 @@ static int main_loop()
     }
 
     return EXIT_SUCCESS;
+}
+
+static void drop_privileges()
+{
+    int ret;
+
+    if (geteuid() != 0) {
+        /* Not running as root, no privileges to drop */
+        return;
+    }
+
+    /* POSIX specifies that the group should be dropped first */
+    ret = setgid(DAEMON_GROUP_ID);
+    if (unlikely(ret < 0)) {
+        journal("Unable to drop group id to %d: %s.\n", DAEMON_GROUP_ID, strerror(errno));
+    }
+
+    ret = setuid(DAEMON_USER_ID);
+    if (unlikely(ret < 0)) {
+        journal("Unable to drop user id to %d: %s.\n", DAEMON_USER_ID, strerror(errno));
+    }
 }
 
 static void setup_ipv4_socket()
@@ -350,7 +377,8 @@ void load_config()
     journal("Loading configuration settings...\n");
     parse_args(&opt, args.argc, args.argv);
     check_config();
-    /* TODO rebind connection if needed */
+    /* TODO rebind connection if needed
+     *      be sure to setuid() if drop_privileges is set */
 }
 
 static void check_errno()
@@ -386,7 +414,7 @@ static void write_pidfile()
     int ret;
     FILE *fh;
 
-    if (STREQUALS(opt.pidfile, "none")) {
+    if (opt.pidfile == NULL) {
         journal("No pidfile was written at the request of the user.\n");
         return;
     }

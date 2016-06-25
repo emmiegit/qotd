@@ -66,11 +66,11 @@ release: update-versions
 
 $(BIN_DIR)/%.$(OBJ_EXT): $(SRC_DIR)/%.$(SRC_EXT)
 	@mkdir -p $(BIN_DIR)
-	@echo '[CC] $(notdir $<)'
+	@echo '[CC] $(notdir $@)'
 	@$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -c -o $@ $<
 
 $(EXE): $(OBJECTS)
-	@echo '[LD] $(notdir $<)'
+	@echo '[LD] $(notdir $@)'
 	@$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -o $(EXE) $^
 
 install:

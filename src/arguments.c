@@ -94,6 +94,7 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
     opt->quotesmalloc = false;
     opt->pidmalloc = false;
     opt->daemonize = true;
+    opt->drop_privileges = true;
     opt->is_daily = true;
     opt->allow_big = false;
     opt->chdir_root = true;
@@ -413,8 +414,8 @@ static void help_and_exit(const char *program_name)
            " -6, --ipv6            Only listen on IPv6.\n"
            " -T, --tcp             Use TCP. This is the default behavior.\n"
            " -U, --udp             Use UDP instead of TCP. (Not fully implemented yet)\n"
-           " -q, --quiet           Only output error messages. This is the same as using\n"
-           "                       \"--journal /dev/null\".\n"
+           " -q, --quiet           Only output error messages. This is the same as using \"--journal\n"
+           "                       /dev/null\".\n"
            " --help                List all options and what they do.\n"
            " --version             Print the version and some basic license information.\n");
     cleanup(0, false);
@@ -443,3 +444,4 @@ static void version_and_exit()
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+
