@@ -74,17 +74,17 @@ $(EXE): $(OBJECTS)
 	@$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -o $(EXE) $^
 
 install:
-	@echo '[INSTALL] $$ROOT/usr/bin/qotdd'
+	@echo '[INSTALL] $(ROOT)/usr/bin/qotdd'
 	@install -D -m755 $(EXE) '$(ROOT)/usr/bin/qotdd'
 
-	@echo '[INSTALL] $$ROOT/etc/qotd.conf'
+	@echo '[INSTALL] $(ROOT)/etc/qotd.conf'
 	@install -D -m644 misc/qotd.conf '$(ROOT)/etc/qotd.conf'
 
-	@echo '[INSTALL] $$ROOT/usr/share/qotd/quotes.txt'
+	@echo '[INSTALL] $(ROOT)/usr/share/qotd/quotes.txt'
 	@install -D -m644 misc/quotes.txt '$(ROOT)/usr/share/qotd/quotes.txt'
 
 ifeq ($(SYSTEMD),1)
-	@echo '[INSTALL] $$ROOT/usr/lib/systemd/system/qotd.service'
+	@echo '[INSTALL] $(ROOT)/usr/lib/systemd/system/qotd.service'
 	@install -D -m644 misc/qotd.service '$(ROOT)/usr/lib/systemd/system/qotd.service'
 endif
 
