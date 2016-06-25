@@ -59,7 +59,6 @@ pdf: $(PDF_TARGET)
 update-versions:
 	@sed -i '1 s/"$(PROGRAM_NAME) [^"]*"/"$(PROGRAM_NAME) $(VERSION)"/' $(MAN_SOURCES)
 	@sed -i 's/VERSION_STRING .*/VERSION_STRING "$(VERSION)"/' $(SRC_DIR)/info.$(HDR_EXT)
-	@make
 
 release: update-versions
 	@echo '[RELEASE]'
