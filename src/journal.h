@@ -21,9 +21,12 @@
 #ifndef __JOURNAL_H
 # define __JOURNAL_H
 
+# include <stdbool.h>
+
 void open_journal(const char *path);
 void open_journal_as_fd(int fd);
 int close_journal();
+bool journal_is_open();
 
 int journal(const char *message, ...);
 

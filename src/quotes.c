@@ -28,6 +28,7 @@
 #include <sys/stat.h>
 
 #include "daemon.h"
+#include "journal.h"
 #include "standard.h"
 #include "quotes.h"
 
@@ -40,7 +41,7 @@ extern "C" {
 #endif /* DEBUG */
 
 #define QUOTE_SIZE      512  /* Set by RFC 856 */
-#define STREMPTY(x)     (((x)[0]) == '\0')
+#define EMPTYSTR(x)     (((x)[0]) == '\0')
 #define MIN(x, y)       (((x) < (y)) ? (x) : (y))
 
 /* Static declarations */
@@ -64,7 +65,7 @@ int tcp_send_quote(int fd, const struct options *opt)
     quote = get_quote_of_the_day(opt);
     ret = write(fd, quote.buffer, quote.length);
     if (ret < 0) {
-        perror("Unable to write to TCP connection descriptor");
+        journal("Unable to write to TCP connection socket: %s.\n", strerror(errno));
     }
 
     free((char *)quote.array[0]);
@@ -81,7 +82,7 @@ int udp_send_quote(int fd, const struct sockaddr *cli_addr, socklen_t clilen, co
     quote = get_quote_of_the_day(opt);
     ret = sendto(fd, quote.buffer, quote.length, 0, cli_addr, clilen);
     if (ret < 0) {
-        perror("Unable to write to UDP connection socket");
+        journal("Unable to write to UDP socket: %s.\n", strerror(errno));
     }
 
     free((char *)quote.array[0]);
@@ -123,7 +124,7 @@ static struct selected_quote get_quote_of_the_day(const struct options *opt)
             array = readquotes_file(opt->quotesfile, &quotes);
             break;
         default:
-            fprintf(stderr, "Internal error: invalid enum value for quote_divider: %d.\n", opt->linediv);
+            journal("Internal error: invalid enum value for quote_divider: %d.\n", opt->linediv);
             cleanup(1, true);
             return selected_quote;
     }
@@ -134,37 +135,45 @@ static struct selected_quote get_quote_of_the_day(const struct options *opt)
     }
 
     if (quotes == 0) {
-        fprintf(stderr, "Quotes file is empty.\n");
+        journal("Quotes file is empty.\n");
         cleanup(1, true);
     }
 
 #if DEBUG
-    printf("Printing %lu quote%s:\n", quotes, PLURAL(quotes));
+    journal("Printing %lu quote%s:\n", quotes, PLURAL(quotes));
 
     for (i = 0; i < quotes; i++) {
-        printf("#%lu: %s<end>\n", i, array[i]);
+        journal("#%lu: %s<end>\n", i, array[i]);
     }
 #endif /* DEBUG */
 
     quoteno = rand() % quotes;
     i = quoteno;
-    while (STREMPTY(array[i])) {
+    while (EMPTYSTR(array[i])) {
         i = (i + 1) % quotes;
 
         if (i == quoteno) {
             /* All the lines are blank, will cause an infinite loop */
-            fprintf(stderr, "Quotes file has only empty entries.\n");
+            journal("Quotes file has only empty entries.\n");
             cleanup(1, true);
         }
     }
 
-    len = opt->allow_big ? (strlen(array[i]) + 3) : QUOTE_SIZE;
+    /* The pattern is "\n%s\n\n", so the total length is strlen + 3,
+       with one byte for the null byte. */
+    len = strlen(array[i]) + 4;
+
+    if (!opt->allow_big && len > QUOTE_SIZE) {
+        journal("Quote is %u bytes, which is %u bytes too long! Truncating to %u bytes.\n",
+                len, len - QUOTE_SIZE, QUOTE_SIZE);
+        len = QUOTE_SIZE;
+    }
+
     buf = malloc(len * sizeof(char));
 
     if (buf == NULL) {
         int errno_ = errno;
-        fprintf(stderr, "Unable to allocate variable buffer: %s\n",
-                strerror(errno));
+        journal("Unable to allocate variable buffer: %s\n", strerror(errno));
         errno = errno_;
         return selected_quote;
     }
@@ -173,12 +182,12 @@ static struct selected_quote get_quote_of_the_day(const struct options *opt)
 
     if (ret < 0) {
         int errno_ = errno;
-        fprintf(stderr, "Unable to format quotation in char buffer.\n");
+        journal("Unable to format quotation in char buffer.\n");
         errno = errno_;
         return selected_quote;
     }
 
-    printf("Sending quotation:%s\n", buf);
+    journal("Sending quotation:%s\n", buf);
     selected_quote.array = array;
     selected_quote.buffer = buf;
     selected_quote.length = MIN(len, (unsigned int)ret);
@@ -188,9 +197,9 @@ static struct selected_quote get_quote_of_the_day(const struct options *opt)
 static int get_file_size(const char *fn)
 {
     struct stat statbuf;
-    int ret = stat(fn, &statbuf);
-    if (ret < 0) {
-        perror("Unable to stat quotes file");
+
+    if (stat(fn, &statbuf) < 0) {
+        journal("Unable to stat quotes file: %s.\n", strerror(errno));
         return -1;
     }
 
@@ -211,13 +220,13 @@ static char **readquotes_file(const char *fn, size_t *quotes)
 
     buf = malloc((size + 1) * sizeof(char));
     if (buf == NULL) {
-        perror("Unable to allocate memory for file buffer");
+        journal("Unable to allocate memory for file buffer: %s.\n", strerror(errno));
         return NULL;
     }
 
     fh = fopen(fn, "r");
     if (fh == NULL) {
-        fprintf(stderr, "Unable to open \"%s\": %s\n", fn, strerror(errno));
+        journal("Unable to open \"%s\": %s\n", fn, strerror(errno));
         free(buf);
         return NULL;
     }
@@ -234,7 +243,7 @@ static char **readquotes_file(const char *fn, size_t *quotes)
 
     ret = fclose(fh);
     if (ret) {
-        fprintf(stderr, "Unable to close \"%s\": %s\n", fn, strerror(errno));
+        journal("Unable to close \"%s\": %s\n", fn, strerror(errno));
     }
 
     (*quotes) = 1;
@@ -261,13 +270,13 @@ static char **readquotes_line(const char *fn, size_t *quotes)
 
     buf = malloc((size + 1) * sizeof(char));
     if (buf == NULL) {
-        perror("Unable to allocate memory for file buffer");
+        journal("Unable to allocate memory for file buffer: %s.\n", strerror(errno));
         return NULL;
     }
 
     fh = fopen(fn, "r");
     if (fh == NULL) {
-        fprintf(stderr, "Unable to open \"%s\": %s\n", fn, strerror(errno));
+        journal("Unable to open \"%s\": %s\n", fn, strerror(errno));
         free(buf);
         return NULL;
     }
@@ -287,7 +296,7 @@ static char **readquotes_line(const char *fn, size_t *quotes)
 
     ret = fclose(fh);
     if (ret) {
-        fprintf(stderr, "Unable to close \"%s\": %s\n", fn, strerror(errno));
+        journal("Unable to close \"%s\": %s\n", fn, strerror(errno));
     }
 
     /* Allocate the array of strings */
@@ -326,13 +335,13 @@ static char **readquotes_percent(const char *fn, size_t *quotes)
 
     buf = malloc(size + 1);
     if (buf == NULL) {
-        perror("Unable to allocate memory for file buffer");
+        journal("Unable to allocate memory for file buffer: %s.\n", strerror(errno));
         return NULL;
     }
 
     fh = fopen(fn, "r");
     if (fh == NULL) {
-        fprintf(stderr, "Unable to open \"%s\": %s\n", fn, strerror(errno));
+        journal("Unable to open \"%s\": %s\n", fn, strerror(errno));
         free(buf);
         return NULL;
     }
@@ -364,13 +373,13 @@ static char **readquotes_percent(const char *fn, size_t *quotes)
 
     ret = fclose(fh);
     if (ret) {
-        fprintf(stderr, "Unable to close \"%s\": %s\n", fn, strerror(errno));
+        journal("Unable to close \"%s\": %s\n", fn, strerror(errno));
     }
 
     if (!has_percent) {
-        fprintf(stderr, "No percent signs (%%) were found in the quotes file. This means that the whole file\n"
-                        "will be treated as one quote, which is probably not what you want. If this is what\n"
-                        "you want, use the `file' option for `QuoteDivider' in the config file.\n");
+        journal("No percent signs (%%) were found in the quotes file. This means that the whole file\n"
+                    "will be treated as one quote, which is probably not what you want. If this is what\n"
+                    "you want, use the `file' option for `QuoteDivider' in the config file.\n");
         free(buf);
         return NULL;
     }

@@ -23,7 +23,10 @@
 #include <signal.h>
 
 #include "daemon.h"
+#include "journal.h"
 #include "signal_handler.h"
+
+#define JOURNAL(x)          (journal_is_open() ? journal(x) : fprintf(stderr, x))
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,23 +48,24 @@ static void handle_signal(const int signum)
 {
     switch (signum) {
         case SIGSEGV:
-            fprintf(stderr, "Error: segmentation fault. Dumping core (if enabled).\n");
+            journal("Error: segmentation fault. Dumping core (if enabled).\n");
             cleanup(signum, true);
             break;
         case SIGTERM:
-            fprintf(stderr, "Termination signal received. Exiting...\n");
+            journal("Termination signal received. Exiting...\n");
             cleanup(0, true);
             break;
         case SIGINT:
-            fprintf(stderr, "Interrupt signal received. Exiting...\n");
+            journal("Interrupt signal received. Exiting...\n");
             cleanup(signum, true);
             break;
         case SIGHUP:
-            printf("Hangup signal recieved. Reloading configuration...\n");
-            load_config();
+            journal("Hangup signal recieved. Reloading configuration...\n");
+            load_config(false);
     }
 }
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+

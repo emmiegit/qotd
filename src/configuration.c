@@ -23,9 +23,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
+#include <unistd.h>
 
 #include "configuration.h"
 #include "daemon.h"
+#include "journal.h"
 #include "standard.h"
 
 #ifdef __cplusplus
@@ -36,23 +39,20 @@ extern "C" {
 #define BUFFER_SIZE      PATH_MAX /* The longest possible value is the longest possible path */
 
 static char *file_read_line(FILE *fh, const char *filename, unsigned int *lineno);
-static bool str_equals_ignore_case(const char *string, const char *lowercase_string);
-static bool str_to_bool(const char *string, const char *filename, const unsigned int lineno);
-static void confcleanup(const int ret);
-
-static FILE *fh;
-static char *line;
+static bool str_to_bool(const char *string, const char *filename, const unsigned int lineno, bool *success);
 
 void parse_config(const char *conf_file, struct options *opt)
 {
+    FILE *fh;
     char key[BUFFER_SIZE], val[BUFFER_SIZE];
-    char *keystr, *valstr;
+    char *keystr, *valstr, *line;
     unsigned int lineno = 1;
     size_t vallen;
 
     fh = fopen(conf_file, "r");
 
     if (fh == NULL) {
+        /* Can't write to the journal, it hasn't been opened yet */
         fprintf(stderr, "Unable to open configuration file (%s): %s\n", conf_file, strerror(errno));
         cleanup(1, true);
     }
@@ -64,6 +64,7 @@ void parse_config(const char *conf_file, struct options *opt)
     while ((line = file_read_line(fh, conf_file, &lineno)) != NULL) {
         int i, j;
         char ch;
+        bool success;
 
         /* Eat up whitespace */
         for (i = 0; isspace(line[i]); i++);
@@ -133,66 +134,108 @@ void parse_config(const char *conf_file, struct options *opt)
         }
 
         /* Parse each line */
-        if (str_equals_ignore_case(keystr, "daemonize")) {
-            opt->daemonize = str_to_bool(valstr, conf_file, lineno);
-        } else if (str_equals_ignore_case(keystr, "transportprotocol")) {
+        if (strcasecmp(keystr, "daemonize") == 0) {
+            ch = str_to_bool(valstr, conf_file, lineno, &success);
 
-        } else if (str_equals_ignore_case(keystr, "internetprotocol")) {
-            if (str_equals_ignore_case(valstr, "both")) {
+            if (likely(success)) {
+                opt->daemonize = ch;
+            }
+        } else if (strcasecmp(keystr, "transportprotocol") == 0) {
+            if (strcasecmp(valstr, "tcp") == 0) {
+                opt->tproto = PROTOCOL_TCP;
+            } else if (strcasecmp(valstr, "udp") == 0) {
+                opt->tproto = PROTOCOL_UDP;
+            } else {
+                fprintf(stderr, "%s:%d: invalid transport protocol: \"%s\"\n", conf_file, lineno, valstr);
+            }
+        } else if (strcasecmp(keystr, "internetprotocol") == 0) {
+            if (strcasecmp(valstr, "both") == 0) {
                 opt->iproto = PROTOCOL_BOTH;
-            } else if (str_equals_ignore_case(valstr, "ipv4")) {
+            } else if (strcasecmp(valstr, "ipv4") == 0) {
                 opt->iproto = PROTOCOL_IPv4;
-            } else if (str_equals_ignore_case(valstr, "ipv6")) {
+            } else if (strcasecmp(valstr, "ipv6") == 0) {
                 opt->iproto = PROTOCOL_IPv6;
             } else {
-                fprintf(stderr, "%s:%d: invalid protocol: \"%s\"\n", conf_file, lineno, valstr);
-                confcleanup(1);
+                fprintf(stderr, "%s:%d: invalid internet protocol: \"%s\"\n", conf_file, lineno, valstr);
             }
-        } else if (str_equals_ignore_case(keystr, "port")) {
+        } else if (strcasecmp(keystr, "port") == 0) {
+            /* atoi is ok because it returns 0 in case of failure, and 0 isn't a valid port */
             int port = atoi(valstr);
             if (0 >= port || port > PORT_MAX) {
                 fprintf(stderr, "%s:%d: invalid port number: \"%s\"\n", conf_file, lineno, valstr);
-                confcleanup(1);
+            } else {
+                opt->port = port;
+            }
+        } else if (strcasecmp(keystr, "dropprivileges") == 0) {
+            ch = str_to_bool(valstr, conf_file, lineno, &success);
+
+            if (likely(success)) {
+                opt->drop_privileges = ch;
+            }
+        } else if (strcasecmp(keystr, "pidfile") == 0) {
+            char *ptr;
+
+            if (strcmp(valstr, "none") == 0 || strcmp(valstr, "/dev/null") == 0) {
+                opt->pidfile = NULL;
+                opt->pidmalloc = false;
+                continue;
             }
 
-            opt->port = port;
-        } else if (str_equals_ignore_case(keystr, "pidfile")) {
-            char *ptr = malloc(vallen + 1);
+            ptr = malloc(vallen + 1);
             if (ptr == NULL) {
                 perror("Unable to allocate memory for config value");
-                confcleanup(1);
+                fclose(fh);
+                cleanup(1, true);
             }
 
             opt->pidfile = ptr;
             opt->pidmalloc = true;
             strcpy((char *)opt->pidfile, valstr);
-        } else if (str_equals_ignore_case(keystr, "requirepidfile")) {
-            opt->require_pidfile = str_to_bool(valstr, conf_file, lineno);
-        } else if (str_equals_ignore_case(keystr, "quotesfile")) {
+        } else if (strcasecmp(keystr, "requirepidfile") == 0) {
+            ch = str_to_bool(valstr, conf_file, lineno, &success);
+
+            if (likely(success)) {
+                opt->require_pidfile = ch;
+            }
+        } else if (strcasecmp(keystr, "journalfile") == 0) {
+            close_journal();
+
+            if (strcmp(valstr, "-") == 0) {
+                open_journal_as_fd(STDOUT_FILENO);
+            } else if (strcmp(valstr, "none") != 0) {
+                open_journal(valstr);
+            }
+        } else if (strcasecmp(keystr, "quotesfile") == 0) {
             char *ptr = malloc(vallen + 1);
             if (ptr == NULL) {
                 perror("Unable to allocate memory for config value");
-                confcleanup(1);
             }
 
             opt->quotesfile = ptr;
             opt->quotesmalloc = true;
             strcpy((char *)opt->quotesfile, valstr);
-        } else if (str_equals_ignore_case(keystr, "quotedivider")) {
-            if (str_equals_ignore_case(valstr, "line")) {
+        } else if (strcasecmp(keystr, "quotedivider") == 0) {
+            if (strcasecmp(valstr, "line") == 0) {
                 opt->linediv = DIV_EVERYLINE;
-            } else if (str_equals_ignore_case(valstr, "percent")) {
+            } else if (strcasecmp(valstr, "percent") == 0) {
                 opt->linediv = DIV_PERCENT;
-            } else if (str_equals_ignore_case(valstr, "file")) {
+            } else if (strcasecmp(valstr, "file") == 0) {
                 opt->linediv = DIV_WHOLEFILE;
             } else {
                 fprintf(stderr, "%s:%d: unsupported division type: \"%s\"\n", conf_file, lineno, valstr);
-                confcleanup(1);
             }
-        } else if (str_equals_ignore_case(keystr, "dailyquotes")) {
-            opt->is_daily = str_to_bool(valstr, conf_file, lineno);
-        } else if (str_equals_ignore_case(keystr, "allowbigquotes")) {
-            opt->allow_big = str_to_bool(valstr, conf_file, lineno);
+        } else if (strcasecmp(keystr, "dailyquotes") == 0) {
+            ch = str_to_bool(valstr, conf_file, lineno, &success);
+
+            if (likely(success)) {
+                opt->is_daily = ch;
+            }
+        } else if (strcasecmp(keystr, "allowbigquotes") == 0) {
+            ch = str_to_bool(valstr, conf_file, lineno, &success);
+
+            if (likely(success)) {
+                opt->allow_big = ch;
+            }
         } else {
             fprintf(stderr, "%s:%d: ignoring unknown conf option: \"%s\"\n", conf_file, lineno, keystr);
         }
@@ -210,7 +253,7 @@ static char *file_read_line(FILE *fh, const char *filename, unsigned int *lineno
 
     if (buffer == NULL) {
         perror("Unable to allocate memory for readline");
-        confcleanup(1);
+        cleanup(1, true);
     }
 
     for (i = 0; i < BUFFER_SIZE; i++) {
@@ -242,45 +285,29 @@ static char *file_read_line(FILE *fh, const char *filename, unsigned int *lineno
 
     /* Ran out of buffer space */
     fprintf(stderr, "%s:%i: line is too long, must be under %d bytes.\n", filename, *lineno, BUFFER_SIZE);
-    free(buffer);
-    confcleanup(1);
+    cleanup(1, true);
+
+    /* Should never reach here */
     return NULL;
 }
 
-static bool str_equals_ignore_case(const char *string, const char *lowercase_string)
+static bool str_to_bool(const char *string, const char *filename, const unsigned int lineno, bool *success)
 {
-    size_t i;
-    for (i = 0; string[i] || lowercase_string[i]; i++) {
-        if (tolower(string[i]) != lowercase_string[i]) {
-            return false;
-        }
-    }
-
-    return !string[i] && !lowercase_string[i];
-}
-
-static bool str_to_bool(const char *string, const char *filename, const unsigned int lineno)
-{
-    if (str_equals_ignore_case(string, "yes") || str_equals_ignore_case(string, "true")) {
+    if (strcasecmp(string, "yes") == 0
+            || strcasecmp(string, "true") == 0
+            || strcmp(string, "1") == 0) {
+        *success = true;
         return true;
-    } else if (str_equals_ignore_case(string, "no") || str_equals_ignore_case(string, "false")) {
+    } else if (strcasecmp(string, "no") == 0
+            || strcasecmp(string, "false") == 0
+            || strcmp(string, "0") == 0) {
+        *success = true;
         return false;
     } else {
         fprintf(stderr, "%s:%d: not a boolean value: \"%s\"\n", filename, lineno, string);
-        confcleanup(1);
+        *success = false;
         return false;
     }
-}
-
-static void confcleanup(const int ret)
-{
-    if (line) {
-        free(line);
-        line = NULL;
-    }
-
-    fclose(fh);
-    cleanup(ret, true);
 }
 
 #ifdef __cplusplus

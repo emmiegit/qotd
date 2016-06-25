@@ -32,7 +32,7 @@ struct arguments {
     const char **argv;
 };
 
-void load_config();
+void load_config(bool first_time);
 void cleanup(int ret, bool quiet);
 
 # ifdef __cplusplus

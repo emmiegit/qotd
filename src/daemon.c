@@ -43,18 +43,22 @@ extern "C" {
 #endif /* __cplusplus */
 
 #define CONNECTION_BACKLOG 50
+#define ROOT_USER_ID       0
+#define ROOT_GROUP_ID      0
+#define DAEMON_USER_ID     2
+#define DAEMON_GROUP_ID    2
 
 #define UNUSED(x)    ((void)(x))
-#define STREQUALS(x, y)  (strcmp((x), (y)) == 0)
 
 /* Static function declarations */
 static int daemonize();
 static int main_loop();
+static void drop_privileges();
 static void setup_ipv4_socket();
 static void setup_ipv6_socket();
 static bool tcp_accept_connection();
 static bool udp_accept_connection();
-static void check_errno(int errno_);
+static void check_socket_creation_errno();
 static void save_args(const int argc, const char *argv[]);
 static void check_config();
 static void write_pidfile();
@@ -79,7 +83,7 @@ int main(int argc, const char *argv[])
     save_args(argc, argv);
 
     /* Load configuration */
-    load_config();
+    load_config(true);
 
     /* TODO open journal */
 
@@ -95,7 +99,7 @@ static int daemonize()
         return 1;
     } else if (pid != 0) {
         /* If we're the parent, then quit */
-        printf("Successfully created background daemon, pid %d.\n", pid);
+        journal("Successfully created background daemon, pid %d.\n", pid);
         cleanup(0, true);
         return 0;
     }
@@ -104,7 +108,7 @@ static int daemonize()
     pid = setsid();
 
     if (pid < 0) {
-        perror("Unable to create new session");
+        journal("Unable to create new session: %s.\n", strerror(errno));
         cleanup(1, true);
         return 1;
     }
@@ -113,7 +117,7 @@ static int daemonize()
         int ret = chdir("/");
 
         if (ret < 0) {
-            perror("Unable to chdir to root dir");
+            journal("Unable to chdir to root dir: %s.\n", strerror(errno));
         }
     }
 
@@ -123,6 +127,7 @@ static int daemonize()
 static int main_loop()
 {
     bool (*accept_connection)();
+
     write_pidfile();
 
     switch (opt.iproto) {
@@ -134,8 +139,12 @@ static int main_loop()
             setup_ipv4_socket();
             break;
         default:
-            fprintf(stderr, "Internal error: invalid enum value for \"iproto\": %d.\n", opt.iproto);
+            journal("Internal error: invalid enum value for \"iproto\": %d.\n", opt.iproto);
             cleanup(1, true);
+    }
+
+    if (opt.drop_privileges) {
+        drop_privileges();
     }
 
     switch (opt.tproto) {
@@ -146,7 +155,7 @@ static int main_loop()
             accept_connection = &udp_accept_connection;
             break;
         default:
-            fprintf(stderr, "Internal error: invalid enum value for \"tproto\": %d.\n", opt.tproto);
+            journal("Internal error: invalid enum value for \"tproto\": %d.\n", opt.tproto);
             cleanup(1, true);
             return EXIT_FAILURE;
     }
@@ -158,27 +167,50 @@ static int main_loop()
     return EXIT_SUCCESS;
 }
 
+static void drop_privileges()
+{
+    int ret;
+
+    if (geteuid() != ROOT_USER_ID) {
+        journal("Not root, no privileges to drop.\n");
+        return;
+    }
+
+    journal("Connected to socket, dropping privileges.\n");
+
+    /* POSIX specifies that the group should be dropped first */
+    ret = setgid(DAEMON_GROUP_ID);
+    if (unlikely(ret < 0)) {
+        journal("Unable to set effective group id to %d: %s.\n", DAEMON_GROUP_ID, strerror(errno));
+    }
+
+    ret = setuid(DAEMON_USER_ID);
+    if (unlikely(ret < 0)) {
+        journal("Unable to set effective user id to %d: %s.\n", DAEMON_USER_ID, strerror(errno));
+    }
+}
+
 static void setup_ipv4_socket()
 {
     struct sockaddr_in serv_addr;
     int ret, one = 1;
 
     if (opt.tproto == PROTOCOL_TCP) {
-        printf("Setting up IPv4 socket connection over TCP...\n");
+        journal("Setting up IPv4 socket connection over TCP...\n");
         sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     } else {
-        printf("Setting up IPv4 socket connection over UDP...\n");
+        journal("Setting up IPv4 socket connection over UDP...\n");
         sockfd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     }
 
     if (sockfd < 0) {
-        perror("Unable to create IPv4 socket");
+        journal("Unable to create IPv4 socket: %s.\n", strerror(errno));
         cleanup(1, true);
     }
 
     ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (void *)(&one), sizeof(one));
     if (ret < 0) {
-        perror("Unable to set the socket to allow address reuse");
+        journal("Unable to set the socket to allow address reuse: %s.\n", strerror(errno));
     }
 
     serv_addr.sin_family = AF_INET;
@@ -187,7 +219,7 @@ static void setup_ipv4_socket()
 
     ret = bind(sockfd, (const struct sockaddr *)(&serv_addr), sizeof(struct sockaddr_in));
     if (ret < 0) {
-        perror("Unable to bind to IPv4 socket");
+        journal("Unable to bind to IPv4 socket: %s.\n", strerror(errno));
         cleanup(1, true);
     }
 }
@@ -198,31 +230,31 @@ static void setup_ipv6_socket()
     int ret, one = 1;
 
     if (opt.tproto == PROTOCOL_TCP) {
-        printf("Setting up IPv%s6 socket connection over TCP...\n",
+        journal("Setting up IPv%s6 socket connection over TCP...\n",
                 ((opt.iproto == PROTOCOL_BOTH) ? "4/" : ""));
         sockfd = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP);
     } else {
-        printf("Setting up IPv%s6 socket connection over UDP...\n",
+        journal("Setting up IPv%s6 socket connection over UDP...\n",
                 ((opt.iproto == PROTOCOL_BOTH) ? "4/" : ""));
         sockfd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
     }
 
     if (sockfd < 0) {
-        perror("Unable to create IPv6 socket");
+        journal("Unable to create IPv6 socket: %s.\n", strerror(errno));
         cleanup(1, true);
     }
 
     if (opt.iproto == PROTOCOL_IPv6) {
         ret = setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)(&one), sizeof(one));
         if (ret < 0) {
-            perror("Unable to set IPv4 compatibility option");
+            journal("Unable to set IPv4 compatibility option: %s.\n", strerror(errno));
             cleanup(1, true);
         }
     }
 
     ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (void *)(&one), sizeof(one));
     if (ret < 0) {
-        perror("Unable to set the socket to allow address reuse");
+        journal("Unable to set the socket to allow address reuse: %s.\n", strerror(errno));
     }
 
     serv_addr.sin6_family = AF_INET6;
@@ -231,7 +263,7 @@ static void setup_ipv6_socket()
 
     ret = bind(sockfd, (const struct sockaddr *)(&serv_addr), sizeof(struct sockaddr_in6));
     if (ret < 0) {
-        perror("Unable to bind to socket");
+        journal("Unable to bind to socket: %s.\n", strerror(errno));
         cleanup(1, true);
     }
 }
@@ -242,15 +274,16 @@ static bool tcp_accept_connection()
     socklen_t cli_len;
     int consockfd, ret;
 
-    printf("Listening for connection...\n");
+    journal("Listening for connection...\n");
     listen(sockfd, CONNECTION_BACKLOG);
 
     cli_len = sizeof(cli_addr);
     consockfd = accept(sockfd, (struct sockaddr *)(&cli_addr), &cli_len);
     if (consockfd < 0) {
         int errno_ = errno;
-        perror("Unable to accept connection");
-        check_errno(errno_);
+        journal("Unable to accept connection: %s.\n", strerror(errno));
+        errno = errno_;
+        check_socket_creation_errno();
         return false;
     }
 
@@ -262,7 +295,7 @@ static bool tcp_accept_connection()
 
     ret = close(consockfd);
     if (ret < 0) {
-        perror("Unable to close connection");
+        journal("Unable to close connection: %s.\n", strerror(errno));
         return false;
     }
 
@@ -275,12 +308,13 @@ static bool udp_accept_connection()
     socklen_t cli_len;
     int ret;
 
-    printf("Listening for connection...\n");
+    journal("Listening for connection...\n");
     ret = recvfrom(sockfd, NULL, 0, 0, (struct sockaddr *)(&cli_addr), &cli_len);
     if (ret < 0) {
         int errno_ = errno;
-        perror("Unable to write to socket");
-        check_errno(errno_);
+        journal("Unable to write to socket: %s.\n", strerror(errno));
+        errno = errno_;
+        check_socket_creation_errno();
         return false;
     }
 
@@ -294,31 +328,12 @@ static bool udp_accept_connection()
     return true;
 }
 
-static void check_errno(int errno_)
-{
-    /* Certain errors are fatal and should not be repeated */
-    switch (errno_) {
-        case EBADF:
-        case EFAULT:
-        case EINVAL:
-        case EMFILE:
-        case ENFILE:
-        case ENOBUFS:
-        case ENOMEM:
-        case ENOTSOCK:
-        case EOPNOTSUPP:
-        case EPROTO:
-            cleanup(1, true);
-            break;
-    }
-}
-
 void cleanup(int ret, bool quiet)
 {
     int ret2;
 
     if (!quiet) {
-        ret2 = printf("Quitting with exit code %d.\n", ret);
+        ret2 = journal("Quitting with exit code %d.\n", ret);
 
         if (ret2 < 0) {
             ret++;
@@ -328,7 +343,7 @@ void cleanup(int ret, bool quiet)
     if (sockfd >= 0) {
         ret2 = close(sockfd);
         if (ret2 < 0) {
-            ret2 = fprintf(stderr, "Unable to close socket file descriptor %d: %s.\n",
+            ret2 = journal("Unable to close socket file descriptor %d: %s.\n",
                     sockfd, strerror(errno));
             ret++;
 
@@ -341,7 +356,7 @@ void cleanup(int ret, bool quiet)
     if (wrote_pidfile) {
         ret2 = unlink(opt.pidfile);
         if (ret2 < 0) {
-            ret2 = fprintf(stderr, "Unable to remove pid file (%s): %s.\n",
+            ret2 = journal("Unable to remove pid file (%s): %s.\n",
                     opt.pidfile, strerror(errno));
             ret++;
 
@@ -364,12 +379,76 @@ void cleanup(int ret, bool quiet)
     exit(ret);
 }
 
-void load_config()
+void load_config(bool first_time)
 {
-    printf("Loading configuration settings...\n");
+    struct options old_opt = opt;
+
+    if (!first_time) {
+        journal("Reloading configuration settings...\n");
+    }
+
     parse_args(&opt, args.argc, args.argv);
     check_config();
-    /* TODO rebind connection if needed */
+
+    /* not finished yet */
+    if (false && !first_time && (
+            opt.port != old_opt.port ||
+            opt.tproto != old_opt.tproto ||
+            opt.iproto != old_opt.iproto)) {
+        int ret;
+
+        journal("Connection settings changed, remaking socket...\n");
+
+        if (opt.drop_privileges && getuid() == ROOT_USER_ID) {
+            /* Regain privileges */
+            ret = setuid(getuid());
+
+            if (ret < 0) {
+                journal("Unable to set effective user ID to %d: %s.\n",
+                        getuid(), strerror(errno));
+                return;
+            }
+
+            /* Close old socket */
+            ret = close(sockfd);
+
+            if (ret < 0) {
+                journal("Unable to close existing socket: %s.\n", strerror(errno));
+                return;
+            }
+
+            /* Create new socket */
+            /* TODO */
+
+            /* Drop privileges again */
+            drop_privileges();
+        }
+    }
+}
+
+static void check_socket_creation_errno()
+{
+    /* If the returned error is one of these, then you
+     * should not attempt to remake the socket.
+     * Getting one of these errors should be fatal.
+     */
+    switch (errno) {
+        case EBADF:
+        case EFAULT:
+        case EINVAL:
+        case EMFILE:
+        case ENFILE:
+        case ENOBUFS:
+        case ENOMEM:
+        case ENOTSOCK:
+        case EOPNOTSUPP:
+        case EPROTO:
+        case EPERM:
+        case ENOSR:
+        case ESOCKTNOSUPPORT:
+        case EPROTONOSUPPORT:
+            cleanup(1, true);
+    }
 }
 
 static void save_args(int argc, const char *argv[])
@@ -384,8 +463,8 @@ static void write_pidfile()
     int ret;
     FILE *fh;
 
-    if (STREQUALS(opt.pidfile, "none")) {
-        printf("No pidfile was written at the request of the user.\n");
+    if (opt.pidfile == NULL) {
+        journal("No pidfile was written at the request of the user.\n");
         return;
     }
 
@@ -393,7 +472,7 @@ static void write_pidfile()
     ret = stat(opt.pidfile, &statbuf);
 
     if (ret == 0) {
-        printf("The pid file already exists. Quitting.\n");
+        journal("The pid file already exists. Quitting.\n");
         cleanup(1, true);
     }
 
@@ -401,7 +480,7 @@ static void write_pidfile()
     fh = fopen(opt.pidfile, "w+");
 
     if (fh == NULL) {
-        perror("Unable to open pid file");
+        journal("Unable to open pid file: %s.\n", strerror(errno));
 
         if (opt.require_pidfile) {
             cleanup(1, true);
@@ -424,7 +503,7 @@ static void write_pidfile()
 
     ret = fclose(fh);
     if (ret < 0) {
-        perror("Unable to close pid file handle");
+        journal("Unable to close pid file handle: %s.\n", strerror(errno));
 
         if (opt.require_pidfile) {
             cleanup(1, true);
@@ -437,20 +516,20 @@ static void check_config()
     struct stat statbuf;
     int ret;
 
-    if (opt.port < 1024 && geteuid() != 0) {
-        fprintf(stderr, "Only root can bind to ports below 1024.\n");
+    if (opt.port < 1024 && geteuid() != ROOT_USER_ID) {
+        journal("Only root can bind to ports below 1024.\n");
         cleanup(1, true);
     }
 
     if (opt.pidfile[0] != '/') {
-        fprintf(stderr, "Specified pid file is not an absolute path.\n");
+        journal("Specified pid file is not an absolute path.\n");
         cleanup(1, true);
     }
 
     ret = stat(opt.quotesfile, &statbuf);
 
     if (ret < 0) {
-        perror("Unable to stat quotes file");
+        journal("Unable to stat quotes file: %s.\n");
         cleanup(1, true);
     }
 }
@@ -458,3 +537,4 @@ static void check_config()
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+

@@ -71,38 +71,29 @@ _systemd_ users can run the new service:
 Those running the daemon directly should be aware of its options:
 
 ```
-Usage:
-   qotdd [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file] [-4 | -6]
-
-   qotdd [--help | --version]
-
-Options:
-   -f, --foreground
-          Do not fork, but run in the foreground.
-
-   -c, --config config-file
-          Specify  an  alternate  configuration  file  location. The default is at /etc/qotd.conf.  (Overrides a previous -N option)
-
-   -N, --noconfig
-          Do not read from a configuration file, but use the default options instead. (Overrides a previous -c option)
-
-   -P, --pidfile pidfile
-          Override the pidfile name given in the configuration file with the given file instead.
-
-   -s, --quotes quotes-file
-          Override  the  quotes  file  given  in  the  configuration  file with the given filename instead.
-
-   -4, --ipv4
-          Only listen on IPv4.
-
-   -6, --ipv6
-          Only listen on IPv6.
-
-   --help
-          List all options and what they do.
-
-   --version
-          Print the version and some basic license information.
+qotd - A simple QOTD daemon.
+Usage: qotdd [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file] [-4 | -6] [-T | -U] [-q]
+Usage: qotdd [--help | --version]
+ -f, --foreground      Do not fork, but run in the foreground.
+ -c, --config (file)   Specify an alternate configuration file location. The default
+                       is at /etc/qotd.conf
+ -N, --noconfig        Do not read from a configuration file, but use the default
+                       options instead.
+ -P, --pidfile (file)  Override the pidfile name given in the configuration file with
+                       the given file instead.
+ -s, --quotes (file)   Override the quotes file given in the configuration file with
+                       the given filename instead.
+ -j, --journal (file)  Override the journal file given in the configuration file with
+                       the given filename instead.
+ -4, --ipv4            Only listen on IPv4. The default behavior is to listen on both
+                       IPv4 and IPv6.
+ -6, --ipv6            Only listen on IPv6.
+ -T, --tcp             Use TCP. This is the default behavior.
+ -U, --udp             Use UDP instead of TCP. (Not fully implemented yet)
+ -q, --quiet           Only output error messages. This is the same as using
+                       "--journal /dev/null".
+ --help                List all options and what they do.
+ --version             Print the version and some basic license information.
 ```
 
 ### FAQ

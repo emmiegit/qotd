@@ -25,6 +25,11 @@
 
 #include "daemon.h"
 #include "journal.h"
+#include "standard.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
 static FILE *journal_fh = NULL;
 
@@ -34,6 +39,10 @@ void open_journal(const char *path)
         journal_fh = NULL;
         return;
     }
+
+#if DEBUG
+    printf("Setting journal to be \"%s\".\n", path);
+#endif /* DEBUG */
 
     journal_fh = fopen(path, "w");
     if (journal_fh == NULL) {
@@ -50,6 +59,10 @@ void open_journal_as_fd(int fd)
         journal_fh = NULL;
         return;
     }
+
+#if DEBUG
+    printf("Setting journal to be the same as file descriptor %d.\n", fd);
+#endif /* DEBUG */
 
     journal_fh = fdopen(fd, "w");
     if (journal_fh == NULL) {
@@ -75,6 +88,11 @@ int close_journal()
     return 0;
 }
 
+bool journal_is_open()
+{
+    return journal_fh != NULL;
+}
+
 int journal(const char *format, ...)
 {
     va_list args;
@@ -89,4 +107,8 @@ int journal(const char *format, ...)
     va_end(args);
     return ret;
 }
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 

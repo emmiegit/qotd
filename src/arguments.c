@@ -31,6 +31,7 @@
 #include "configuration.h"
 #include "daemon.h"
 #include "info.h"
+#include "journal.h"
 #include "options.h"
 #include "standard.h"
 
@@ -38,35 +39,53 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#define STREQUALS(x, y)     (strcmp((x), (y)) == 0)
 #define BOOLEAN_UNSET       2
 
 #if DEBUG
-# define DEBUG_BUFFER_SIZE 50
-# define BOOLSTR(x) ((x) ? "true" : "false")
+# define DEBUG_BUFFER_SIZE  50
+# define BOOLSTR(x)         ((x) ? "true" : "false")
+# define BOOLSTR2(x)        (((x) == BOOLEAN_UNSET) ? "(unset)" : ((x) ? "true" : "false"))
 #endif /* DEBUG */
 
+struct argument_flags {
+    const char *program_name;
+    const char *conf_file;
+    const char *quotes_file;
+    const char *pid_file;
+    const char *journal_file;
+    char daemonize;
+    enum transport_protocol tproto;
+    enum internet_protocol iproto;
+};
+
+static void parse_short_options(const char *argument, const char *next_arg, int *index, struct argument_flags *flags);
+static void parse_long_option(const int argc, const char *argv[], int *i, struct argument_flags *flags);
 static char *default_pidfile();
 static void help_and_exit(const char *program_name);
 static void usage_and_exit(const char *program_name);
 static void version_and_exit();
 
 #if DEBUG
-static const char *name_option_protocol(struct options *opt);
+static const char *name_option_protocol(enum transport_protocol tproto, enum internet_protocol iproto);
 static const char *name_option_quote_divider(enum quote_divider value);
 #endif /* DEBUG */
 
 void parse_args(struct options *opt, const int argc, const char *argv[])
 {
-    const char *program_name = basename((char *)argv[0]);
-    char *conf_file = "/etc/qotd.conf";
-    const char *quotes_file = NULL;
-    const char *pid_file = NULL;
-    char daemonize = BOOLEAN_UNSET;
-    enum transport_protocol tproto = PROTOCOL_TNONE;
-    enum internet_protocol iproto = PROTOCOL_INONE;
+    struct argument_flags flags;
     int i;
 
+    /* Set override flags */
+    flags.program_name = basename((char *)argv[0]),
+    flags.conf_file = NULL;
+    flags.quotes_file = NULL,
+    flags.pid_file = NULL,
+    flags.journal_file = NULL,
+    flags.daemonize = BOOLEAN_UNSET,
+    flags.tproto = PROTOCOL_TNONE,
+    flags.iproto = PROTOCOL_INONE,
+
+    /* Set default options */
     opt->port = 17;
     opt->tproto = PROTOCOL_TCP;
     opt->iproto = PROTOCOL_BOTH;
@@ -76,125 +95,271 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
     opt->quotesmalloc = false;
     opt->pidmalloc = false;
     opt->daemonize = true;
+    opt->drop_privileges = true;
     opt->is_daily = true;
     opt->allow_big = false;
     opt->chdir_root = true;
 
     /* Parse arguments */
     for (i = 1; i < argc; i++) {
-        if (STREQUALS(argv[i], "--help")) {
-            help_and_exit(program_name);
-        } else if (STREQUALS(argv[i], "--version")) {
-            version_and_exit();
-        } else if (STREQUALS(argv[i], "-f") ||
-                   STREQUALS(argv[i], "--foreground")) {
-            daemonize = false;
-        } else if (STREQUALS(argv[i], "-c") ||
-                   STREQUALS(argv[i], "--config")) {
-            if (++i == argc) {
-                fprintf(stderr, "You must specify a configuration file.\n");
-                cleanup(1, true);
-            } else {
-                conf_file = (char *)argv[i];
-            }
-        } else if (STREQUALS(argv[i], "-N") ||
-                   STREQUALS(argv[i], "--noconfig")) {
-            conf_file = NULL;
-        } else if (STREQUALS(argv[i], "-P") ||
-                   STREQUALS(argv[i], "--pidfile")) {
-            if (++i == argc) {
-                fprintf(stderr, "You must specify a pid file.\n");
-                cleanup(1, true);
-            } else {
-                pid_file = argv[i];
-            }
-        } else if (STREQUALS(argv[i], "-s") ||
-                   STREQUALS(argv[i], "--quotes")) {
-            if (++i == argc) {
-                fprintf(stderr, "You must specify a quotes file.\n");
-                cleanup(1, true);
-            } else {
-                quotes_file = argv[i];
-            }
-        } else if (STREQUALS(argv[i], "-4") ||
-                   STREQUALS(argv[i], "--ipv4")) {
-            if (iproto == PROTOCOL_IPv6) {
-                fprintf(stderr, "Conflicting options passed: -4 and -6.\n");
-                cleanup(1, true);
-            }
-
-            iproto = PROTOCOL_IPv4;
-        } else if (STREQUALS(argv[i], "-6") ||
-                   STREQUALS(argv[i], "--ipv6")) {
-            if (opt->iproto == PROTOCOL_IPv4) {
-                fprintf(stderr, "Conflicting options passed: -4 and -6.\n");
-                cleanup(1, true);
-            }
-
-            iproto = PROTOCOL_IPv6;
-        } else if (STREQUALS(argv[i], "-U") ||
-                   STREQUALS(argv[i], "--udp")) {
-            tproto = PROTOCOL_UDP;
+        if (strcmp(argv[i], "--") == 0) {
+            break;
+        } else if (strncmp(argv[i], "--", 2) == 0) {
+            parse_long_option(argc, argv, &i, &flags);
+        } else if (argv[i][0] == '-') {
+            const char *next_arg = (i + 1 == argc) ? NULL : argv[i + 1];
+            parse_short_options(argv[i] + 1, next_arg, &i, &flags);
         } else {
             printf("Unrecognized option: %s.\n", argv[i]);
-            usage_and_exit(program_name);
+            usage_and_exit(flags.program_name);
         }
     }
 
-    if (conf_file) {
-        if (conf_file[0] != '/') {
+    /* Override config file options */
+    if (flags.conf_file) {
+        if (flags.conf_file[0] != '/') {
             opt->chdir_root = false;
         }
 
-        parse_config(conf_file, opt);
+        parse_config(flags.conf_file, opt);
     }
 
-    if (pid_file) {
+    if (flags.pid_file) {
         if (opt->pidmalloc) {
             free((char *)opt->pidfile);
         }
 
-        opt->pidfile = pid_file;
+        opt->pidfile = flags.pid_file;
         opt->pidmalloc = false;
     }
 
-    if (quotes_file) {
+    if (flags.quotes_file) {
         if (opt->quotesmalloc) {
             free((char *)opt->quotesfile);
         }
 
-        opt->quotesfile = quotes_file;
+        opt->quotesfile = flags.quotes_file;
         opt->quotesmalloc = false;
     }
 
-    if (iproto != PROTOCOL_INONE) {
-        opt->iproto = iproto;
+    if (flags.journal_file) {
+        close_journal();
+        if (strcmp(flags.journal_file, "-") == 0) {
+            open_journal_as_fd(STDOUT_FILENO);
+        } else if (strcmp(flags.journal_file, "none") != 0) {
+            open_journal(flags.journal_file);
+        }
+    } else if (!journal_is_open()) {
+        open_journal_as_fd(STDOUT_FILENO);
     }
 
-    if (tproto != PROTOCOL_TNONE) {
-        opt->tproto = tproto;
+    if (flags.iproto != PROTOCOL_INONE) {
+        opt->iproto = flags.iproto;
     }
 
-    if (daemonize != BOOLEAN_UNSET) {
-        opt->daemonize = daemonize;
+    if (flags.tproto != PROTOCOL_TNONE) {
+        opt->tproto = flags.tproto;
+    }
+
+    if (flags.daemonize != BOOLEAN_UNSET) {
+        opt->daemonize = flags.daemonize;
     }
 
 #if DEBUG
-    printf("\nContents of struct 'opt':\n");
-    printf("opt = {\n");
-    printf("    Daemonize: %s\n",       BOOLSTR(opt->daemonize));
-    printf("    Protocol: %s\n",        name_option_protocol(opt));
-    printf("    Port: %d\n",            opt->port);
-    printf("    QuotesMalloc: %s\n",    BOOLSTR(opt->quotesmalloc));
-    printf("    PidMalloc: %s\n",       BOOLSTR(opt->pidmalloc));
-    printf("    QuotesFile: %s\n",      opt->quotesfile);
-    printf("    QuoteDivider: %s\n",    name_option_quote_divider(opt->linediv));
-    printf("    PidFile: %s\n",         opt->pidfile);
-    printf("    RequirePidFile: %s\n",  BOOLSTR(opt->require_pidfile));
-    printf("    DailyQuotes: %s\n",     BOOLSTR(opt->is_daily));
-    printf("    AllowBigQuotes: %s\n",  BOOLSTR(opt->allow_big));
-    printf("}\n\n");
+    journal("\nContents of struct 'opt':\n");
+    journal("opt = {\n");
+    journal("    QuotesFile: %s\n",          BOOLSTR(opt->quotesfile));
+    journal("    PidFile: %s\n",             opt->pidfile);
+    journal("    Port: %u\n",                opt->port);
+    journal("    QuoteDivider: %s\n",        name_option_quote_divider(opt->linediv));
+    journal("    Protocol: %s\n",            name_option_protocol(opt->tproto, opt->iproto));
+    journal("    QuotesMalloc: %s\n",        BOOLSTR(opt->quotesmalloc));
+    journal("    PidMalloc: %s\n",           BOOLSTR(opt->quotesmalloc));
+    journal("    Daemonize: %s\n",           BOOLSTR(opt->daemonize));
+    journal("    RequirePidfile: %s\n",      BOOLSTR(opt->require_pidfile));
+    journal("    DropPrivileges: %s\n",      BOOLSTR(opt->drop_privileges));
+    journal("    DailyQuotes: %s\n",         BOOLSTR(opt->is_daily));
+    journal("    AllowBigQuotes: %s\n",      BOOLSTR(opt->allow_big));
+    journal("    ChdirRoot: %s\n",           BOOLSTR(opt->chdir_root));
+    journal("}\n\n");
 #endif /* DEBUG */
+}
+
+static void parse_short_options(const char *argument, const char *next_arg, int *index, struct argument_flags *flags)
+{
+    size_t i;
+
+    printf("Parsing options in \"-%s\":\n", argument);
+    for (i = 0; argument[i]; i++) {
+#if DEBUG
+        journal("    Parsing flag \"-%c\".\n", argument[i]);
+        journal("    flags = {\n");
+        journal("        ProgramName: %s\n",     flags->program_name);
+        journal("        ConfFile: %s\n",        flags->conf_file);
+        journal("        QuotesFile: %s\n",      flags->quotes_file);
+        journal("        PidFile: %s\n",         flags->pid_file);
+        journal("        JournalFile: %s\n",     flags->journal_file);
+        journal("        Daemonize: %s\n",       BOOLSTR2(flags->daemonize));
+        journal("        Protocol: %s\n",        name_option_protocol(flags->tproto, flags->iproto));
+        journal("    }\n\n");
+#endif /* DEBUG */
+
+        switch (argument[i]) {
+            case 'f':
+                flags->daemonize = false;
+                break;
+            case 'c':
+                if (next_arg == NULL) {
+                    fprintf(stderr, "You must specify a configuration file.\n");
+                    cleanup(1, true);
+                }
+
+                (*index)++;
+                flags->conf_file = next_arg;
+                break;
+            case 'N':
+                flags->conf_file = NULL;
+            case 'P':
+                if (next_arg == NULL) {
+                    fprintf(stderr, "You must specify a pid file.\n");
+                    cleanup(1, true);
+                }
+
+                (*index)++;
+                flags->pid_file = next_arg;
+                break;
+            case 's':
+                if (next_arg == NULL) {
+                    fprintf(stderr, "You must specify a quotes file.\n");
+                    cleanup(1, true);
+                }
+
+                (*index)++;
+                flags->quotes_file = next_arg;
+                break;
+            case 'j':
+                if (next_arg == NULL) {
+                    fprintf(stderr, "You must specify a journal file.\n");
+                    cleanup(1, true);
+                }
+
+                (*index)++;
+                flags->journal_file = next_arg;
+                break;
+            case '4':
+                if (flags->iproto == PROTOCOL_IPv6) {
+                    fprintf(stderr, "Conflicting options passed: -4 and -6.\n");
+                    cleanup(1, true);
+                }
+
+                flags->iproto = PROTOCOL_IPv4;
+                break;
+            case '6':
+                if (flags->iproto == PROTOCOL_IPv4) {
+                    fprintf(stderr, "Conflicting options passed: -4 and -6.\n");
+                    cleanup(1, true);
+                }
+
+                flags->iproto = PROTOCOL_IPv6;
+                break;
+            case 'T':
+                if (flags->tproto == PROTOCOL_UDP) {
+                    fprintf(stderr, "Conflicting options passed: -T and -U.\n");
+                    cleanup(1, true);
+                }
+
+                flags->tproto = PROTOCOL_TCP;
+                break;
+            case 'U':
+                if (flags->tproto == PROTOCOL_TCP) {
+                    fprintf(stderr, "Conflicting options passed: -T and -U.\n");
+                    cleanup(1, true);
+                }
+
+                flags->tproto = PROTOCOL_UDP;
+                break;
+            case 'q':
+                close_journal();
+                break;
+            default:
+                fprintf(stderr, "Unknown short option: -%c.\n", argument[i]);
+                usage_and_exit(flags->program_name);
+        }
+    }
+}
+
+static void parse_long_option(const int argc, const char *argv[], int *i, struct argument_flags *flags)
+{
+    if (strcmp(argv[*i], "--help") == 0) {
+        help_and_exit(flags->program_name);
+    } else if (strcmp(argv[*i], "--version") == 0) {
+        version_and_exit();
+    } else if (strcmp(argv[*i], "--foreground") == 0) {
+        flags->daemonize = false;
+    } else if (strcmp(argv[*i], "--config") == 0) {
+        if (++(*i) == argc) {
+            fprintf(stderr, "You must specify a configuration file.\n");
+            cleanup(1, true);
+        }
+
+        flags->conf_file = argv[*i];
+    } else if (strcmp(argv[*i], "--noconfig") == 0) {
+        flags->conf_file = NULL;
+    } else if (strcmp(argv[*i], "--pidfile") == 0) {
+        if (++(*i) == argc) {
+            fprintf(stderr, "You must specify a pid file.\n");
+            cleanup(1, true);
+        }
+
+        flags->pid_file = argv[*i];
+    } else if (strcmp(argv[*i], "--quotes") == 0) {
+        if (++(*i) == argc) {
+            fprintf(stderr, "You must specify a quotes file.\n");
+            cleanup(1, true);
+        }
+
+        flags->quotes_file = argv[*i];
+    } else if (strcmp(argv[*i], "--journal") == 0) {
+        if (++(*i) == argc) {
+            fprintf(stderr, "You must specify a journal file.\n");
+            cleanup(1, true);
+        }
+
+        flags->journal_file = argv[*i];
+    } else if (strcmp(argv[*i], "--ipv4") == 0) {
+        if (flags->iproto == PROTOCOL_IPv6) {
+            fprintf(stderr, "Conflicting options passed: -4 and -6.\n");
+            cleanup(1, true);
+        }
+
+        flags->iproto = PROTOCOL_IPv4;
+    } else if (strcmp(argv[*i], "--ipv6") == 0) {
+        if (flags->iproto == PROTOCOL_IPv4) {
+            fprintf(stderr, "Conflicting options passed: -4 and -6.\n");
+            cleanup(1, true);
+        }
+
+        flags->iproto = PROTOCOL_IPv6;
+    } else if (strcmp(argv[*i], "--tcp") == 0) {
+        if (flags->tproto == PROTOCOL_UDP) {
+            fprintf(stderr, "Conflicting options passed: -T and -U.\n");
+            cleanup(1, true);
+        }
+
+        flags->tproto = PROTOCOL_TCP;
+    } else if (strcmp(argv[*i], "--udp") == 0) {
+        if (flags->tproto == PROTOCOL_TCP) {
+            fprintf(stderr, "Conflicting options passed: -T and -U.\n");
+            cleanup(1, true);
+        }
+
+        flags->tproto = PROTOCOL_UDP;
+    } else if (strcmp(argv[*i], "--quiet") == 0) {
+        close_journal();
+    } else {
+        printf("Unrecognized long option: %s.\n", argv[*i]);
+        usage_and_exit(flags->program_name);
+    }
 }
 
 static char *default_pidfile()
@@ -206,30 +371,47 @@ static char *default_pidfile()
 }
 
 #if DEBUG
-static const char *name_option_protocol(struct options *opt)
+static const char *name_option_protocol(enum transport_protocol tproto, enum internet_protocol iproto)
 {
-    switch (opt->tproto) {
+    switch (tproto) {
         case PROTOCOL_TCP:
-            switch (opt->iproto) {
+            switch (iproto) {
                 case PROTOCOL_IPv4:
                     return "TCP IPv4 only";
                 case PROTOCOL_IPv6:
                     return "TCP IPv6 only";
                 case PROTOCOL_BOTH:
                     return "TCP IPv4 and IPv6";
+                case PROTOCOL_INONE:
+                    return "TCP <UNSET>";
                 default:
                     return "TCP ???";
             }
         case PROTOCOL_UDP:
-            switch (opt->iproto) {
+            switch (iproto) {
                 case PROTOCOL_IPv4:
                     return "UDP IPv4 only";
                 case PROTOCOL_IPv6:
                     return "UDP IPv6 only";
                 case PROTOCOL_BOTH:
                     return "UDP IPv4 and IPv6";
+                case PROTOCOL_INONE:
+                    return "UDP <UNSET>";
                 default:
                     return "UDP ???";
+            }
+        case PROTOCOL_TNONE:
+            switch (iproto) {
+                case PROTOCOL_IPv4:
+                    return "<UNSET> IPv4 only";
+                case PROTOCOL_IPv6:
+                    return "<UNSET> IPv6 only";
+                case PROTOCOL_BOTH:
+                    return "<UNSET> IPv4 and IPv6";
+                case PROTOCOL_INONE:
+                    return "<UNSET> <UNSET>";
+                default:
+                    return "<UNSET> ???";
             }
         default:
             return "???";
@@ -254,8 +436,9 @@ static const char *name_option_quote_divider(enum quote_divider value)
 
 static void help_and_exit(const char *program_name)
 {
+    /* Split into sections to comply with -pedantic */
     printf("%s - A simple QOTD daemon.\n"
-           "Usage: %s [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file] [-4 | -6] [-U]\n"
+           "Usage: %s [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file] [-4 | -6] [-T | -U] [-q]\n"
            "Usage: %s [--help | --version]\n"
            " -f, --foreground      Do not fork, but run in the foreground.\n"
            " -c, --config (file)   Specify an alternate configuration file location. The default\n"
@@ -267,17 +450,23 @@ static void help_and_exit(const char *program_name)
            "                       the given file instead.\n"
            " -s, --quotes (file)   Override the quotes file given in the configuration file with\n"
            "                       the given filename instead.\n"
-           " -4, --ipv4            Only listen on IPv4.\n"
+           " -j, --journal (file)  Override the journal file given in the configuration file with\n"
+           "                       the given filename instead.\n"
+           " -4, --ipv4            Only listen on IPv4. The default behavior is to listen on both\n");
+    printf("                       IPv4 and IPv6.\n"
            " -6, --ipv6            Only listen on IPv6.\n"
-           " -U, --udp             Use UDP instead of TCP/IP.\n");
-    printf(" --help                List all options and what they do.\n"
+           " -T, --tcp             Use TCP. This is the default behavior.\n"
+           " -U, --udp             Use UDP instead of TCP. (Not fully implemented yet)\n"
+           " -q, --quiet           Only output error messages. This is the same as using \"--journal\n"
+           "                       /dev/null\".\n"
+           " --help                List all options and what they do.\n"
            " --version             Print the version and some basic license information.\n");
     cleanup(0, false);
 }
 
 static void usage_and_exit(const char *program_name)
 {
-    printf("Usage: %s [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file] [-4 | -6] [-U]\n",
+    printf("Usage: %s [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file] [-4 | -6] [-T | -U] [-q]\n",
            program_name);
     cleanup(1, false);
 }
@@ -298,3 +487,4 @@ static void version_and_exit()
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+

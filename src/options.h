@@ -59,6 +59,7 @@ struct options {
 
     bool daemonize;                 /* whether to fork to the background or not */
     bool require_pidfile;           /* whether to quit if the pidfile cannot be made */
+    bool drop_privileges;           /* whether to setuid() after opening the connection */
     bool is_daily;                  /* whether quotes are random every day or every visit */
     bool allow_big;                 /* ignore 512-byte limit */
     bool chdir_root;                /* whether to chdir to / when running */
