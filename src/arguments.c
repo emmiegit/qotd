@@ -44,7 +44,7 @@ extern "C" {
 #if DEBUG
 # define DEBUG_BUFFER_SIZE 50
 # define BOOLSTR(x)  ((x) ? "true" : "false")
-# define BOOLSTR2(x) (((x) == BOOLEAN_UNSET) ? "unset" : ((x) ? "true" : "false"))
+# define BOOLSTR2(x) (((x) == BOOLEAN_UNSET) ? "(unset)" : ((x) ? "true" : "false"))
 #endif /* DEBUG */
 
 struct argument_flags {
@@ -140,9 +140,16 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
         opt->quotesmalloc = false;
     }
 
-    if (flags.journal_file) {
+    if (strcmp(flags.journal_file, "-") == 0) {
+        close_journal();
+        open_journal_as_fd(STDOUT_FILENO);
+    } else if (strcmp(flags.journal_file, "none") == 0) {
+        close_journal();
+    } else if (flags.journal_file) {
         close_journal();
         open_journal(flags.journal_file);
+    } else if (!journal_is_open()) {
+        open_journal_as_fd(STDOUT_FILENO);
     }
 
     if (flags.iproto != PROTOCOL_INONE) {
@@ -158,22 +165,22 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
     }
 
 #if DEBUG
-    printf("\nContents of struct 'opt':\n");
-    printf("opt = {\n");
-    printf("    QuotesFile: %s\n",          BOOLSTR(opt->quotesfile));
-    printf("    PidFile: %s\n",             opt->pidfile);
-    printf("    Port: %u\n",                opt->port);
-    printf("    QuoteDivider: %s\n",        name_option_quote_divider(opt->linediv));
-    printf("    Protocol: %s\n",            name_option_protocol(opt->tproto, opt->iproto));
-    printf("    QuotesMalloc: %s\n",        BOOLSTR(opt->quotesmalloc));
-    printf("    PidMalloc: %s\n",           BOOLSTR(opt->quotesmalloc));
-    printf("    Daemonize: %s\n",           BOOLSTR(opt->daemonize));
-    printf("    RequirePidfile: %s\n",      BOOLSTR(opt->require_pidfile));
-    printf("    DropPrivileges: %s\n",      BOOLSTR(opt->drop_privileges));
-    printf("    DailyQuotes: %s\n",         BOOLSTR(opt->is_daily));
-    printf("    AllowBigQuotes: %s\n",      BOOLSTR(opt->allow_big));
-    printf("    ChdirRoot: %s\n",           BOOLSTR(opt->chdir_root));
-    printf("}\n\n");
+    journal("\nContents of struct 'opt':\n");
+    journal("opt = {\n");
+    journal("    QuotesFile: %s\n",          BOOLSTR(opt->quotesfile));
+    journal("    PidFile: %s\n",             opt->pidfile);
+    journal("    Port: %u\n",                opt->port);
+    journal("    QuoteDivider: %s\n",        name_option_quote_divider(opt->linediv));
+    journal("    Protocol: %s\n",            name_option_protocol(opt->tproto, opt->iproto));
+    journal("    QuotesMalloc: %s\n",        BOOLSTR(opt->quotesmalloc));
+    journal("    PidMalloc: %s\n",           BOOLSTR(opt->quotesmalloc));
+    journal("    Daemonize: %s\n",           BOOLSTR(opt->daemonize));
+    journal("    RequirePidfile: %s\n",      BOOLSTR(opt->require_pidfile));
+    journal("    DropPrivileges: %s\n",      BOOLSTR(opt->drop_privileges));
+    journal("    DailyQuotes: %s\n",         BOOLSTR(opt->is_daily));
+    journal("    AllowBigQuotes: %s\n",      BOOLSTR(opt->allow_big));
+    journal("    ChdirRoot: %s\n",           BOOLSTR(opt->chdir_root));
+    journal("}\n\n");
 #endif /* DEBUG */
 }
 
@@ -184,16 +191,16 @@ static void parse_short_options(const char *argument, const char *next_arg, int 
     printf("Parsing options in \"-%s\":\n", argument);
     for (i = 0; argument[i]; i++) {
 #if DEBUG
-        printf("    Parsing flag \"-%c\".\n", argument[i]);
-        printf("    flags = {\n");
-        printf("        ProgramName: %s\n",     flags->program_name);
-        printf("        ConfFile: %s\n",        flags->conf_file);
-        printf("        QuotesFile: %s\n",      flags->quotes_file);
-        printf("        PidFile: %s\n",         flags->pid_file);
-        printf("        JournalFile: %s\n",     flags->journal_file);
-        printf("        Daemonize: %s\n",       BOOLSTR2(flags->daemonize));
-        printf("        Protocol: %s\n",        name_option_protocol(flags->tproto, flags->iproto));
-        printf("    }\n\n");
+        journal("    Parsing flag \"-%c\".\n", argument[i]);
+        journal("    flags = {\n");
+        journal("        ProgramName: %s\n",     flags->program_name);
+        journal("        ConfFile: %s\n",        flags->conf_file);
+        journal("        QuotesFile: %s\n",      flags->quotes_file);
+        journal("        PidFile: %s\n",         flags->pid_file);
+        journal("        JournalFile: %s\n",     flags->journal_file);
+        journal("        Daemonize: %s\n",       BOOLSTR2(flags->daemonize));
+        journal("        Protocol: %s\n",        name_option_protocol(flags->tproto, flags->iproto));
+        journal("    }\n\n");
 #endif /* DEBUG */
 
         switch (argument[i]) {
