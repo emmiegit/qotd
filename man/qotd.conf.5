@@ -24,7 +24,7 @@ qotd.conf \- The QOTD daemon configuration file
 .SH SYNOPSIS
 .BR /etc/qotd.conf
 .SH DESCRIPTION
-\fBqotdd\fR(8) reads configuration options from \fI/etc/qotd.conf\fR, or some other file specified by the \fB-c\fR argument. This file contains lines of keyword-arguments pairs, which describe how the daemon is to behave. Empty lines or those starting with `#' are ignored and treated as comments. Optionally, you can surround your arguments with single or double quotes in order to represent arguments containing spaces.
+\fBqotdd\fR(8) reads configuration options from \fI/etc/qotd.conf\fR, or some other file specified by the \fB-c\fR argument. This file contains lines of keyword-arguments pairs, which describe how the daemon is to behave. Empty lines or those starting with `#' are ignored and treated as comments. Optionally, you can surround your arguments with single or double quotes in order to represent arguments containing spaces. However you cannot specify escape sequences inside the quotes.
 .P
 The supported keywords and their possible meanings are as follows. Keywords and their arguments are case-insensitive, except for filenames. Some options take a \fIboolean\fR, meaning you can write either `yes', `true', or `1' to enable an option, or `no', `false', or `0' to disable it.
 .TP

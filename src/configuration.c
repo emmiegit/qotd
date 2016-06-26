@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,16 +39,21 @@ extern "C" {
 #define PORT_MAX         65535    /* Not in limits.h */
 #define BUFFER_SIZE      PATH_MAX /* The longest possible value is the longest possible path */
 
-static char *file_read_line(FILE *fh, const char *filename, unsigned int *lineno);
-static bool str_to_bool(const char *string, const char *filename, const unsigned int lineno, bool *success);
+struct buffer {
+    char data[BUFFER_SIZE];
+    size_t length;
+};
+
+static bool read_key_and_value(const char *conf_file, unsigned int lineno, const struct buffer *line, struct buffer *key, struct buffer *val);
+static bool file_read_line(FILE *fh, const char *filename, unsigned int *lineno, struct buffer *line);
+static bool str_to_bool(const char *string, const char *filename, unsigned int lineno, bool *success);
 
 void parse_config(const char *conf_file, struct options *opt)
 {
     FILE *fh;
-    char key[BUFFER_SIZE], val[BUFFER_SIZE];
-    char *keystr, *valstr, *line;
     unsigned int lineno = 1;
-    size_t vallen;
+    struct buffer line;
+    bool perfect = true;
 
     fh = fopen(conf_file, "r");
 
@@ -61,183 +67,140 @@ void parse_config(const char *conf_file, struct options *opt)
     printf("Raw key/value pairs from config file:\n");
 #endif /* DEBUG */
 
-    while ((line = file_read_line(fh, conf_file, &lineno)) != NULL) {
-        int i, j;
-        char ch;
+    while (file_read_line(fh, conf_file, &lineno, &line)) {
+        struct buffer key, val;
         bool success;
+        int ch;
 
-        /* Eat up whitespace */
-        for (i = 0; isspace(line[i]); i++);
-
-        /* Ignore comments and blank lines */
-        if (line[i] == '\0' || line[i] == '#') {
-            free(line);
-            line = NULL;
+        if (!read_key_and_value(conf_file, lineno, &line, &key, &val)) {
+            perfect = false;
             continue;
         }
 
-        /* Read the key */
-        for (j = 0; !isspace((ch = line[i++])); j++) {
-            key[j] = ch;
-
-            if (ch == '\0') {
-                fprintf(stderr, "%s:%i: unexpected end of line.\n", conf_file, lineno);
-                free(line);
-                line = NULL;
-                break;
-            }
-        }
-
-        if (line == NULL) {
-            continue;
-        }
-
-        key[j] = '\0';
-
-        /* Eat up whitespace */
-        for (; isspace(line[i]); i++);
-
-        /* Read the value */
-        for (j = 0; !isspace((ch = line[i++])); j++) {
-            val[j] = ch;
-
-            if (ch == '\0') {
-                break;
-            }
-        }
-
-        if (line == NULL) {
-            continue;
-        }
-
-        free(line);
-        line = NULL;
-
-        keystr = (char *)key;
-        valstr = (char *)val;
-
-#if DEBUG
-        printf("[%s] = [%s]\n", keystr, valstr);
-#endif /* DEBUG */
-
-        vallen = strlen(valstr);
-        if (vallen > 1 && ((valstr[0] == '\'' && valstr[vallen - 1] == '\'') ||
-                           (valstr[0] == '\"' && valstr[vallen - 1] == '\"'))) {
-            /* Strip quotation marks from string */
-            valstr[vallen - 1] = '\0';
-            valstr++;
-            vallen -= 2;
-
-#if DEBUG
-            printf("[%s] = [%s] <\n", keystr, valstr);
-#endif /* DEBUG */
-        }
-
-        /* Parse each line */
-        if (strcasecmp(keystr, "daemonize") == 0) {
-            ch = str_to_bool(valstr, conf_file, lineno, &success);
+        /* Check option by key */
+        if (strcasecmp(key.data, "daemonize") == 0) {
+            ch = str_to_bool(val.data, conf_file, lineno, &success);
 
             if (likely(success)) {
                 opt->daemonize = ch;
+            } else {
+                perfect = false;
             }
-        } else if (strcasecmp(keystr, "transportprotocol") == 0) {
-            if (strcasecmp(valstr, "tcp") == 0) {
+        } else if (strcasecmp(key.data, "transportprotocol") == 0) {
+            if (strcasecmp(val.data, "tcp") == 0) {
                 opt->tproto = PROTOCOL_TCP;
-            } else if (strcasecmp(valstr, "udp") == 0) {
+            } else if (strcasecmp(val.data, "udp") == 0) {
                 opt->tproto = PROTOCOL_UDP;
             } else {
-                fprintf(stderr, "%s:%d: invalid transport protocol: \"%s\"\n", conf_file, lineno, valstr);
+                fprintf(stderr, "%s:%d: invalid transport protocol: \"%s\"\n", conf_file, lineno, val.data);
+                perfect = false;
             }
-        } else if (strcasecmp(keystr, "internetprotocol") == 0) {
-            if (strcasecmp(valstr, "both") == 0) {
+        } else if (strcasecmp(key.data, "internetprotocol") == 0) {
+            if (strcasecmp(val.data, "both") == 0) {
                 opt->iproto = PROTOCOL_BOTH;
-            } else if (strcasecmp(valstr, "ipv4") == 0) {
+            } else if (strcasecmp(val.data, "ipv4") == 0) {
                 opt->iproto = PROTOCOL_IPv4;
-            } else if (strcasecmp(valstr, "ipv6") == 0) {
+            } else if (strcasecmp(val.data, "ipv6") == 0) {
                 opt->iproto = PROTOCOL_IPv6;
             } else {
-                fprintf(stderr, "%s:%d: invalid internet protocol: \"%s\"\n", conf_file, lineno, valstr);
+                fprintf(stderr, "%s:%d: invalid internet protocol: \"%s\"\n", conf_file, lineno, val.data);
+                perfect = false;
             }
-        } else if (strcasecmp(keystr, "port") == 0) {
+        } else if (strcasecmp(key.data, "port") == 0) {
             /* atoi is ok because it returns 0 in case of failure, and 0 isn't a valid port */
-            int port = atoi(valstr);
+            int port = atoi(val.data);
             if (0 >= port || port > PORT_MAX) {
-                fprintf(stderr, "%s:%d: invalid port number: \"%s\"\n", conf_file, lineno, valstr);
+                fprintf(stderr, "%s:%d: invalid port number: \"%s\"\n", conf_file, lineno, val.data);
+                perfect = false;
             } else {
                 opt->port = port;
             }
-        } else if (strcasecmp(keystr, "dropprivileges") == 0) {
-            ch = str_to_bool(valstr, conf_file, lineno, &success);
+        } else if (strcasecmp(key.data, "dropprivileges") == 0) {
+            ch = str_to_bool(val.data, conf_file, lineno, &success);
 
             if (likely(success)) {
                 opt->drop_privileges = ch;
+            } else {
+                perfect = false;
             }
-        } else if (strcasecmp(keystr, "pidfile") == 0) {
+        } else if (strcasecmp(key.data, "pidfile") == 0) {
             char *ptr;
 
-            if (strcmp(valstr, "none") == 0 || strcmp(valstr, "/dev/null") == 0) {
+            if (strcmp(val.data, "none") == 0 || strcmp(val.data, "/dev/null") == 0) {
                 opt->pidfile = NULL;
                 opt->pidmalloc = false;
                 continue;
             }
 
-            ptr = malloc(vallen + 1);
+            ptr = malloc(val.length + 1);
             if (ptr == NULL) {
                 perror("Unable to allocate memory for config value");
                 fclose(fh);
                 cleanup(1, true);
             }
 
+            strcpy(ptr, val.data);
             opt->pidfile = ptr;
             opt->pidmalloc = true;
-            strcpy((char *)opt->pidfile, valstr);
-        } else if (strcasecmp(keystr, "requirepidfile") == 0) {
-            ch = str_to_bool(valstr, conf_file, lineno, &success);
+        } else if (strcasecmp(key.data, "requirepidfile") == 0) {
+            ch = str_to_bool(val.data, conf_file, lineno, &success);
 
             if (likely(success)) {
                 opt->require_pidfile = ch;
+            } else {
+                perfect = false;
             }
-        } else if (strcasecmp(keystr, "journalfile") == 0) {
+        } else if (strcasecmp(key.data, "journalfile") == 0) {
             close_journal();
 
-            if (strcmp(valstr, "-") == 0) {
+            if (strcmp(val.data, "-") == 0) {
                 open_journal_as_fd(STDOUT_FILENO);
-            } else if (strcmp(valstr, "none") != 0) {
-                open_journal(valstr);
+            } else if (strcmp(val.data, "none") != 0) {
+                open_journal(val.data);
             }
-        } else if (strcasecmp(keystr, "quotesfile") == 0) {
-            char *ptr = malloc(vallen + 1);
+        } else if (strcasecmp(key.data, "quotesfile") == 0) {
+            char *ptr;
+
+            ptr = malloc(val.length + 1);
             if (ptr == NULL) {
                 perror("Unable to allocate memory for config value");
+                fclose(fh);
+                cleanup(1, true);
             }
 
+            strcpy(ptr, val.data);
             opt->quotesfile = ptr;
             opt->quotesmalloc = true;
-            strcpy((char *)opt->quotesfile, valstr);
-        } else if (strcasecmp(keystr, "quotedivider") == 0) {
-            if (strcasecmp(valstr, "line") == 0) {
+        } else if (strcasecmp(key.data, "quotedivider") == 0) {
+            if (strcasecmp(val.data, "line") == 0) {
                 opt->linediv = DIV_EVERYLINE;
-            } else if (strcasecmp(valstr, "percent") == 0) {
+            } else if (strcasecmp(val.data, "percent") == 0) {
                 opt->linediv = DIV_PERCENT;
-            } else if (strcasecmp(valstr, "file") == 0) {
+            } else if (strcasecmp(val.data, "file") == 0) {
                 opt->linediv = DIV_WHOLEFILE;
             } else {
-                fprintf(stderr, "%s:%d: unsupported division type: \"%s\"\n", conf_file, lineno, valstr);
+                fprintf(stderr, "%s:%d: unsupported division type: \"%s\"\n", conf_file, lineno, val.data);
+                perfect = false;
             }
-        } else if (strcasecmp(keystr, "dailyquotes") == 0) {
-            ch = str_to_bool(valstr, conf_file, lineno, &success);
+        } else if (strcasecmp(key.data, "dailyquotes") == 0) {
+            ch = str_to_bool(val.data, conf_file, lineno, &success);
 
             if (likely(success)) {
                 opt->is_daily = ch;
+            } else {
+                perfect = false;
             }
-        } else if (strcasecmp(keystr, "allowbigquotes") == 0) {
-            ch = str_to_bool(valstr, conf_file, lineno, &success);
+        } else if (strcasecmp(key.data, "allowbigquotes") == 0) {
+            ch = str_to_bool(val.data, conf_file, lineno, &success);
 
             if (likely(success)) {
                 opt->allow_big = ch;
+            } else {
+                perfect = false;
             }
         } else {
-            fprintf(stderr, "%s:%d: ignoring unknown conf option: \"%s\"\n", conf_file, lineno, keystr);
+            fprintf(stderr, "%s:%d: unknown conf option: \"%s\"\n", conf_file, lineno, key.data);
+            perfect = false;
         }
 
         lineno++;
@@ -246,23 +209,88 @@ void parse_config(const char *conf_file, struct options *opt)
     fclose(fh);
 }
 
-static char *file_read_line(FILE *fh, const char *filename, unsigned int *lineno)
+static bool read_key_and_value(const char *conf_file, unsigned int lineno, const struct buffer *line, struct buffer *key, struct buffer *val)
 {
-    char *buffer = malloc(BUFFER_SIZE);
-    int ch, i;
+    size_t l_index; /* position in the line */
+    size_t b_index; /* position in the buffer */
+    int ch;      /* current character */
 
-    if (buffer == NULL) {
-        perror("Unable to allocate memory for readline");
-        cleanup(1, true);
+    /* Eat up whitespace */
+    for (l_index = 0; isspace(line->data[l_index]); l_index++);
+
+    /* Ignore comments and blank lines */
+    if (line->data[l_index] == '\0' || line->data[l_index] == '#') {
+        return false;
     }
+
+    /* Read the key */
+    for (b_index = 0; !isspace((ch = line->data[l_index++])); b_index++) {
+        /* We don't need to check for buffer overflows here because line->data
+         * is at most as long as this buffer
+         */
+        key->data[b_index] = ch;
+
+        if (ch == '\0') {
+            fprintf(stderr, "%s:%d: unexpected end of line.\n", conf_file, lineno);
+            return false;
+        }
+
+        key->data[b_index] = '\0';
+        key->length = b_index;
+    }
+
+    /* Eat up whitespace */
+    for (; isspace(line->data[l_index]); l_index++);
+
+    /* Read the value */
+    for (b_index = 0; !isspace((ch = line->data[l_index++])); b_index++) {
+        /* No buffer size check for reasons mentioned above */
+        val->data[b_index] = ch;
+
+        if (ch == '\0') {
+            val->data[b_index] = '\0';
+            val->length = b_index;
+            break;
+        }
+    }
+
+#if DEBUG
+    printf("[%s] = [%s]\n", key->data, val->data);
+#endif /* DEBUG */
+
+    /* Remove quotes around the value */
+    if (val->length > 1 &&
+            ((val->data[0] == '\'' && val->data[val->length - 1] == '\'') &&
+             (val->data[0] == '\"' && val->data[val->length - 1] == '\"'))) {
+        size_t i;
+        for (i = 0; i < val->length - 2; i++) {
+            val->data[i] = val->data[i + 1];
+        }
+
+        val->length -= 2;
+        val->data[val->length] = '\0';
+
+#if DEBUG
+        printf("[%s] = [%s] <\n", key->data, val->data);
+#endif /* DEBUG */
+    }
+
+    return true;
+}
+
+static bool file_read_line(FILE *fh, const char *filename, unsigned int *lineno, struct buffer *line)
+{
+    int ch;
+    int i;
 
     for (i = 0; i < BUFFER_SIZE; i++) {
         ch = fgetc(fh);
 
         if (ch == '\n') {
             if (i) {
-                buffer[i] = '\0';
-                return (char *)buffer;
+                line->data[i] = '\0';
+                line->length = i;
+                return true;
             } else {
                 /* Ignore empty lines */
                 i--;
@@ -271,27 +299,25 @@ static char *file_read_line(FILE *fh, const char *filename, unsigned int *lineno
         } else if (ch == EOF) {
             if (i) {
                 /* Return rest of line when EOF hits before newline */
-                buffer[i] = '\0';
-                return (char *)buffer;
+                line->data[i] = '\0';
+                line->length = i;
+                return true;
             } else {
-                /* Return NULL when a EOF hits */
-                free(buffer);
-                return NULL;
+                /* EOF */
+                return false;
             }
         } else {
-            buffer[i] = (char)ch;
+            line->data[i] = (char)ch;
         }
     }
 
     /* Ran out of buffer space */
     fprintf(stderr, "%s:%i: line is too long, must be under %d bytes.\n", filename, *lineno, BUFFER_SIZE);
     cleanup(1, true);
-
-    /* Should never reach here */
-    return NULL;
+    return false;
 }
 
-static bool str_to_bool(const char *string, const char *filename, const unsigned int lineno, bool *success)
+static bool str_to_bool(const char *string, const char *filename, unsigned int lineno, bool *success)
 {
     if (strcasecmp(string, "yes") == 0
             || strcasecmp(string, "true") == 0

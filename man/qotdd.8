@@ -23,7 +23,7 @@
 qotdd \- A daemon to provide an interesting quote every day.
 .SH SYNOPSIS
 .P
-qotdd [\fB\-f\fR] [\fB\-c\fR \fIconfig\-file\fR | \fB\-N\fR] [\fB\-P\fR pidfile] [\fB\-s\fR \fIquotes\-file\fR] [\fB\-4\fR | \fB\-6\fR] [\fB\-T\fR | \fB\-U\fR] [\fB\-q\fR]
+qotdd [\fB\-f\fR] [\fB\-c\fR \fIconfig\-file\fR | \fB\-N\fR] [\fB\-\-strict\fR] [\fB\-P\fR \fIpidfile\fR] [\fB\-s\fR \fIquotes\-file\fR] [\fB\-4\fR | \fB\-6\fR] [\fB\-T\fR | \fB\-U\fR] [\fB\-q\fR]
 .P
 qotdd [\fB\-\-help\fR | \fB\-\-version\fR]
 .SH DESCRIPTION
@@ -39,6 +39,9 @@ Specify an alternate configuration file location. The default is at `\fI/etc/qot
 .TP
 \fB\-N\fR, \fB\-\-noconfig\fR
 Do not read from a configuration file, but use the default options instead. (Overrides a previous \fB\-c\fR option)
+.TP
+\fB\-\-strict\fR
+Enables strict configuration parsing. When this option is present, the daemon will refuse to run when passed a configuration file with any issues, such as unused or duplicate keys. In addition, file ownership and permissions will be checked. If the file is owned by somebody other than the calling user or the file's permissions allow others to write to it, the file will be rejected.
 .TP
 For more information on the following three options, see \fBqotd.conf\fR(5):
 .TP
@@ -57,10 +60,10 @@ Only listen on IPv4. The default behavior is to listen on both IPv4 and IPv6.
 \fB\-6\fR, \fB\-\-ipv6\fR
 Only listen on IPv6.
 .TP
-\fB\-T\fR, \fB\-\-tcp\fR
+\fB\-t\fR, \fB\-\-tcp\fR
 Use TCP instead of UDP. This is the default behavior.
 .TP
-\fB\-U\fR, \fB\-\-udp\fR
+\fB\-u\fR, \fB\-\-udp\fR
 Use UDP instead of TCP. (Not fully implemented yet)
 .TP
 \fB\-q\fR, \fB\-\-quiet\fR

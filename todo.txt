@@ -1,22 +1,10 @@
-<<<<<<< HEAD
-[Version 0.7]
-Fix fd and socket op bugs
-Add journaling
-
 [Version 0.8]
-Single flags argument parsing (getopt?)
-=======
-[Version 0.8]
->>>>>>> development
-Add user/mode checking for config files
 Add --strict option for checking config files
+Add user/mode checking for config files
 
 [Version 0.9]
-<<<<<<< HEAD
-=======
 UDP support
 
 [Version 0.10]
->>>>>>> development
-Rebind connection when reloading config.
+Rebind connection when reloading config
 

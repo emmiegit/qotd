@@ -53,9 +53,10 @@ struct argument_flags {
     const char *quotes_file;
     const char *pid_file;
     const char *journal_file;
-    char daemonize;
     enum transport_protocol tproto;
     enum internet_protocol iproto;
+    char daemonize;
+    bool strict;
 };
 
 static void parse_short_options(const char *argument, const char *next_arg, int *index, struct argument_flags *flags);
@@ -76,14 +77,15 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
     int i;
 
     /* Set override flags */
-    flags.program_name = basename((char *)argv[0]),
+    flags.program_name = basename((char *)argv[0]);
     flags.conf_file = NULL;
-    flags.quotes_file = NULL,
-    flags.pid_file = NULL,
-    flags.journal_file = NULL,
-    flags.daemonize = BOOLEAN_UNSET,
-    flags.tproto = PROTOCOL_TNONE,
-    flags.iproto = PROTOCOL_INONE,
+    flags.quotes_file = NULL;
+    flags.pid_file = NULL;
+    flags.journal_file = NULL;
+    flags.tproto = PROTOCOL_TNONE;
+    flags.iproto = PROTOCOL_INONE;
+    flags.daemonize = BOOLEAN_UNSET;
+    flags.strict = false;
 
     /* Set default options */
     opt->port = 17;
@@ -116,6 +118,8 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
     }
 
     /* Override config file options */
+    opt->strict_config = flags.strict;
+
     if (flags.conf_file) {
         if (flags.conf_file[0] != '/') {
             opt->chdir_root = false;
@@ -262,17 +266,17 @@ static void parse_short_options(const char *argument, const char *next_arg, int 
 
                 flags->iproto = PROTOCOL_IPv6;
                 break;
-            case 'T':
+            case 't':
                 if (flags->tproto == PROTOCOL_UDP) {
-                    fprintf(stderr, "Conflicting options passed: -T and -U.\n");
+                    fprintf(stderr, "Conflicting options passed: -t and -u.\n");
                     cleanup(1, true);
                 }
 
                 flags->tproto = PROTOCOL_TCP;
                 break;
-            case 'U':
+            case 'u':
                 if (flags->tproto == PROTOCOL_TCP) {
-                    fprintf(stderr, "Conflicting options passed: -T and -U.\n");
+                    fprintf(stderr, "Conflicting options passed: -t and -u.\n");
                     cleanup(1, true);
                 }
 
@@ -305,6 +309,8 @@ static void parse_long_option(const int argc, const char *argv[], int *i, struct
         flags->conf_file = argv[*i];
     } else if (strcmp(argv[*i], "--noconfig") == 0) {
         flags->conf_file = NULL;
+    } else if (strcmp(argv[*i], "--strict") == 0) {
+        flags->strict = true;
     } else if (strcmp(argv[*i], "--pidfile") == 0) {
         if (++(*i) == argc) {
             fprintf(stderr, "You must specify a pid file.\n");
@@ -438,35 +444,36 @@ static void help_and_exit(const char *program_name)
 {
     /* Split into sections to comply with -pedantic */
     printf("%s - A simple QOTD daemon.\n"
-           "Usage: %s [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file] [-4 | -6] [-T | -U] [-q]\n"
-           "Usage: %s [--help | --version]\n"
-           " -f, --foreground      Do not fork, but run in the foreground.\n"
-           " -c, --config (file)   Specify an alternate configuration file location. The default\n"
-           "                       is at /etc/qotd.conf\n"
-           " -N, --noconfig        Do not read from a configuration file, but use the default\n"
-           "                       options instead.\n",
-           PROGRAM_NAME, program_name, program_name);
-    printf(" -P, --pidfile (file)  Override the pidfile name given in the configuration file with\n"
-           "                       the given file instead.\n"
-           " -s, --quotes (file)   Override the quotes file given in the configuration file with\n"
-           "                       the given filename instead.\n"
-           " -j, --journal (file)  Override the journal file given in the configuration file with\n"
-           "                       the given filename instead.\n"
-           " -4, --ipv4            Only listen on IPv4. The default behavior is to listen on both\n");
-    printf("                       IPv4 and IPv6.\n"
-           " -6, --ipv6            Only listen on IPv6.\n"
-           " -T, --tcp             Use TCP. This is the default behavior.\n"
-           " -U, --udp             Use UDP instead of TCP. (Not fully implemented yet)\n"
-           " -q, --quiet           Only output error messages. This is the same as using \"--journal\n"
-           "                       /dev/null\".\n"
-           " --help                List all options and what they do.\n"
-           " --version             Print the version and some basic license information.\n");
+           "Usage: %s [-f] [-c config-file | -N] [--strict] [-P pidfile] [-s quotes-file] [-4 | -6] [-T | -U] [-q]\n"
+           "Usage: %s [--help | --version]\n\n", PROGRAM_NAME, program_name, program_name);
+
+    printf("  -f, --foreground      Do not fork, but run in the foreground.\n"
+           "  -c, --config (file)   Specify an alternate configuration file location. The default\n"
+           "                        is at \"/etc/qotd.conf\".\n"
+           "  -N, --noconfig        Do not read from a configuration file, but use the default\n"
+           "                        options instead.\n"
+           "      --strict          When parsing the configuration, check file permissions and\n"
+           "                        ownership and treat warnings as errors.\n");
+    printf("  -P, --pidfile (file)  Override the pidfile name given in the configuration file with\n"
+           "                        the given file instead.\n"
+           "  -s, --quotes (file)   Override the quotes file given in the configuration file with\n"
+           "                        the given filename instead.\n"
+           "  -j, --journal (file)  Override the journal file given in the configuration file with\n"
+           "                        the given filename instead.\n"
+           "  -4, --ipv4            Only listen on IPv4.\n");
+    printf("  -6, --ipv6            Only listen on IPv6. (By default the daemon listens on both)\n"
+           "  -t, --tcp             Use TCP. This is the default behavior.\n"
+           "  -u, --udp             Use UDP instead of TCP. (Not fully implemented yet)\n"
+           "  -q, --quiet           Only output error messages. This is the same as using\n"
+           "                        \"--journal /dev/null\".\n"
+           "  --help                List all options and what they do.\n"
+           "  --version             Print the version and some basic license information.\n");
     cleanup(0, false);
 }
 
 static void usage_and_exit(const char *program_name)
 {
-    printf("Usage: %s [-f] [-c config-file | -N] [-P pidfile] [-s quotes-file] [-4 | -6] [-T | -U] [-q]\n",
+    printf("Usage: %s [-f] [-c config-file | -N] [--strict] [-P pidfile] [-s quotes-file] [-4 | -6] [-T | -U] [-q]\n",
            program_name);
     cleanup(1, false);
 }
