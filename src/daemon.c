@@ -35,6 +35,7 @@
 #include "info.h"
 #include "journal.h"
 #include "quotes.h"
+#include "security.h"
 #include "signal_handler.h"
 #include "standard.h"
 
@@ -42,18 +43,13 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#define CONNECTION_BACKLOG 50
-#define ROOT_USER_ID       0
-#define ROOT_GROUP_ID      0
-#define DAEMON_USER_ID     2
-#define DAEMON_GROUP_ID    2
+#define CONNECTION_BACKLOG  50
 
-#define UNUSED(x)    ((void)(x))
+#define UNUSED(x)           ((void)(x))
 
 /* Static function declarations */
 static int daemonize();
 static int main_loop();
-static void drop_privileges();
 static void setup_ipv4_socket();
 static void setup_ipv6_socket();
 static bool tcp_accept_connection();
@@ -82,18 +78,17 @@ int main(int argc, const char *argv[])
     /* Make a static copy of the arguments */
     save_args(argc, argv);
 
-    /* Load configuration */
+    /* Load configuration and open journal */
     load_config(true);
-
-    /* TODO open journal */
 
     return opt.daemonize ? daemonize() : main_loop();
 }
 
 static int daemonize()
 {
-    /* Fork to background */
     pid_t pid;
+
+    /* Fork to background */
     if ((pid = fork()) < 0) {
         cleanup(1, true);
         return 1;
@@ -165,29 +160,6 @@ static int main_loop()
     }
 
     return EXIT_SUCCESS;
-}
-
-static void drop_privileges()
-{
-    int ret;
-
-    if (geteuid() != ROOT_USER_ID) {
-        journal("Not root, no privileges to drop.\n");
-        return;
-    }
-
-    journal("Connected to socket, dropping privileges.\n");
-
-    /* POSIX specifies that the group should be dropped first */
-    ret = setgid(DAEMON_GROUP_ID);
-    if (unlikely(ret < 0)) {
-        journal("Unable to set effective group id to %d: %s.\n", DAEMON_GROUP_ID, strerror(errno));
-    }
-
-    ret = setuid(DAEMON_USER_ID);
-    if (unlikely(ret < 0)) {
-        journal("Unable to set effective user id to %d: %s.\n", DAEMON_USER_ID, strerror(errno));
-    }
 }
 
 static void setup_ipv4_socket()
@@ -400,14 +372,8 @@ void load_config(bool first_time)
         journal("Connection settings changed, remaking socket...\n");
 
         if (opt.drop_privileges && getuid() == ROOT_USER_ID) {
-            /* Regain privileges */
-            ret = setuid(getuid());
-
-            if (ret < 0) {
-                journal("Unable to set effective user ID to %d: %s.\n",
-                        getuid(), strerror(errno));
-                return;
-            }
+            /* Get root access back */
+            regain_privileges();
 
             /* Close old socket */
             ret = close(sockfd);

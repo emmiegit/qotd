@@ -85,7 +85,7 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
     flags.tproto = PROTOCOL_TNONE;
     flags.iproto = PROTOCOL_INONE;
     flags.daemonize = BOOLEAN_UNSET;
-    flags.strict = false;
+    flags.strict = true;
 
     /* Set default options */
     opt->port = 17;
@@ -118,7 +118,7 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
     }
 
     /* Override config file options */
-    opt->strict_config = flags.strict;
+    opt->strict = flags.strict;
 
     if (flags.conf_file) {
         if (flags.conf_file[0] != '/') {
@@ -193,7 +193,10 @@ static void parse_short_options(const char *argument, const char *next_arg, int 
 {
     size_t i;
 
-    printf("Parsing options in \"-%s\":\n", argument);
+#if DEBUG
+    journal("Parsing options in \"-%s\":\n", argument);
+#endif /* DEBUG */
+
     for (i = 0; argument[i]; i++) {
 #if DEBUG
         journal("    Parsing flag \"-%c\".\n", argument[i]);
@@ -309,8 +312,8 @@ static void parse_long_option(const int argc, const char *argv[], int *i, struct
         flags->conf_file = argv[*i];
     } else if (strcmp(argv[*i], "--noconfig") == 0) {
         flags->conf_file = NULL;
-    } else if (strcmp(argv[*i], "--strict") == 0) {
-        flags->strict = true;
+    } else if (strcmp(argv[*i], "--lax") == 0) {
+        flags->strict = false;
     } else if (strcmp(argv[*i], "--pidfile") == 0) {
         if (++(*i) == argc) {
             fprintf(stderr, "You must specify a pid file.\n");
@@ -444,7 +447,7 @@ static void help_and_exit(const char *program_name)
 {
     /* Split into sections to comply with -pedantic */
     printf("%s - A simple QOTD daemon.\n"
-           "Usage: %s [-f] [-c config-file | -N] [--strict] [-P pidfile] [-s quotes-file] [-4 | -6] [-T | -U] [-q]\n"
+           "Usage: %s [OPTION]...\n"
            "Usage: %s [--help | --version]\n\n", PROGRAM_NAME, program_name, program_name);
 
     printf("  -f, --foreground      Do not fork, but run in the foreground.\n"
@@ -473,8 +476,9 @@ static void help_and_exit(const char *program_name)
 
 static void usage_and_exit(const char *program_name)
 {
-    printf("Usage: %s [-f] [-c config-file | -N] [--strict] [-P pidfile] [-s quotes-file] [-4 | -6] [-T | -U] [-q]\n",
-           program_name);
+    printf("Usage: %s [OPTION]...\n"
+           "Usage: %s [--help | --version]\n",
+            program_name, program_name);
     cleanup(1, false);
 }
 

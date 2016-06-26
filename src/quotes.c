@@ -36,12 +36,10 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#if DEBUG
-# define PLURAL(x)      ((x == 1) ? "" : "s")
-#endif /* DEBUG */
 
-#define QUOTE_SIZE      512  /* Set by RFC 856 */
+#define QUOTE_SIZE      512  /* Set by RFC 865 */
 #define EMPTYSTR(x)     (((x)[0]) == '\0')
+#define PLURAL(x)      (((x) == 1) ? "" : "s")
 #define MIN(x, y)       (((x) < (y)) ? (x) : (y))
 
 /* Static declarations */
