@@ -23,7 +23,7 @@
 qotdd \- A daemon to provide an interesting quote every day.
 .SH SYNOPSIS
 .P
-qotdd [\fB\-f\fR] [\fB\-c\fR \fIconfig\-file\fR | \fB\-N\fR] [\fB\-\-strict\fR] [\fB\-P\fR \fIpidfile\fR] [\fB\-s\fR \fIquotes\-file\fR] [\fB\-4\fR | \fB\-6\fR] [\fB\-T\fR | \fB\-U\fR] [\fB\-q\fR]
+qotdd [\fIOPTION\fR]...
 .P
 qotdd [\fB\-\-help\fR | \fB\-\-version\fR]
 .SH DESCRIPTION
@@ -40,8 +40,8 @@ Specify an alternate configuration file location. The default is at `\fI/etc/qot
 \fB\-N\fR, \fB\-\-noconfig\fR
 Do not read from a configuration file, but use the default options instead. (Overrides a previous \fB\-c\fR option)
 .TP
-\fB\-\-strict\fR
-Enables strict configuration parsing. When this option is present, the daemon will refuse to run when passed a configuration file with any issues, such as unused or duplicate keys. In addition, file ownership and permissions will be checked. If the file is owned by somebody other than the calling user or the file's permissions allow others to write to it, the file will be rejected.
+\fB\-\-lax\fR
+Disable strict configuration parsing. Without this option, the daemon will perform security checks on input files. Be aware that using this option makes the program vulnerable to confused deputy attacks.
 .TP
 For more information on the following three options, see \fBqotd.conf\fR(5):
 .TP

@@ -30,11 +30,14 @@
 #include "configuration.h"
 #include "daemon.h"
 #include "journal.h"
+#include "security.h"
 #include "standard.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
+
+#define PLURAL(x)        (((x) == 1) ? "" : "s")
 
 #define PORT_MAX         65535    /* Not in limits.h */
 #define BUFFER_SIZE      PATH_MAX /* The longest possible value is the longest possible path */
@@ -51,15 +54,19 @@ static bool str_to_bool(const char *string, const char *filename, unsigned int l
 void parse_config(const char *conf_file, struct options *opt)
 {
     FILE *fh;
-    unsigned int lineno = 1;
     struct buffer line;
-    bool perfect = true;
+    unsigned int lineno = 1;
+    int errors = 0;
+
+    if (opt->strict) {
+        conf_file_check(conf_file);
+    }
 
     fh = fopen(conf_file, "r");
 
     if (fh == NULL) {
         /* Can't write to the journal, it hasn't been opened yet */
-        fprintf(stderr, "Unable to open configuration file (%s): %s\n", conf_file, strerror(errno));
+        fprintf(stderr, "Unable to open configuration file \"%s\": %s.\n", conf_file, strerror(errno));
         cleanup(1, true);
     }
 
@@ -73,18 +80,21 @@ void parse_config(const char *conf_file, struct options *opt)
         int ch;
 
         if (!read_key_and_value(conf_file, lineno, &line, &key, &val)) {
-            perfect = false;
+            if (key.length) {
+                errors++;
+            }
+
             continue;
         }
 
-        /* Check option by key */
+        /* Check each possible option */
         if (strcasecmp(key.data, "daemonize") == 0) {
             ch = str_to_bool(val.data, conf_file, lineno, &success);
 
             if (likely(success)) {
                 opt->daemonize = ch;
             } else {
-                perfect = false;
+                errors++;
             }
         } else if (strcasecmp(key.data, "transportprotocol") == 0) {
             if (strcasecmp(val.data, "tcp") == 0) {
@@ -93,7 +103,7 @@ void parse_config(const char *conf_file, struct options *opt)
                 opt->tproto = PROTOCOL_UDP;
             } else {
                 fprintf(stderr, "%s:%d: invalid transport protocol: \"%s\"\n", conf_file, lineno, val.data);
-                perfect = false;
+                errors++;
             }
         } else if (strcasecmp(key.data, "internetprotocol") == 0) {
             if (strcasecmp(val.data, "both") == 0) {
@@ -104,14 +114,14 @@ void parse_config(const char *conf_file, struct options *opt)
                 opt->iproto = PROTOCOL_IPv6;
             } else {
                 fprintf(stderr, "%s:%d: invalid internet protocol: \"%s\"\n", conf_file, lineno, val.data);
-                perfect = false;
+                errors++;
             }
         } else if (strcasecmp(key.data, "port") == 0) {
             /* atoi is ok because it returns 0 in case of failure, and 0 isn't a valid port */
             int port = atoi(val.data);
             if (0 >= port || port > PORT_MAX) {
                 fprintf(stderr, "%s:%d: invalid port number: \"%s\"\n", conf_file, lineno, val.data);
-                perfect = false;
+                errors++;
             } else {
                 opt->port = port;
             }
@@ -121,7 +131,7 @@ void parse_config(const char *conf_file, struct options *opt)
             if (likely(success)) {
                 opt->drop_privileges = ch;
             } else {
-                perfect = false;
+                errors++;
             }
         } else if (strcasecmp(key.data, "pidfile") == 0) {
             char *ptr;
@@ -148,7 +158,7 @@ void parse_config(const char *conf_file, struct options *opt)
             if (likely(success)) {
                 opt->require_pidfile = ch;
             } else {
-                perfect = false;
+                errors++;
             }
         } else if (strcasecmp(key.data, "journalfile") == 0) {
             close_journal();
@@ -180,7 +190,7 @@ void parse_config(const char *conf_file, struct options *opt)
                 opt->linediv = DIV_WHOLEFILE;
             } else {
                 fprintf(stderr, "%s:%d: unsupported division type: \"%s\"\n", conf_file, lineno, val.data);
-                perfect = false;
+                errors++;
             }
         } else if (strcasecmp(key.data, "dailyquotes") == 0) {
             ch = str_to_bool(val.data, conf_file, lineno, &success);
@@ -188,7 +198,7 @@ void parse_config(const char *conf_file, struct options *opt)
             if (likely(success)) {
                 opt->is_daily = ch;
             } else {
-                perfect = false;
+                errors++;
             }
         } else if (strcasecmp(key.data, "allowbigquotes") == 0) {
             ch = str_to_bool(val.data, conf_file, lineno, &success);
@@ -196,35 +206,44 @@ void parse_config(const char *conf_file, struct options *opt)
             if (likely(success)) {
                 opt->allow_big = ch;
             } else {
-                perfect = false;
+                errors++;
             }
         } else {
             fprintf(stderr, "%s:%d: unknown conf option: \"%s\"\n", conf_file, lineno, key.data);
-            perfect = false;
+            errors++;
         }
 
         lineno++;
     }
 
     fclose(fh);
+
+    if (opt->strict && errors) {
+        fprintf(stderr,
+                "Your configuration file has %d issue%s. The daemon will not start.\n"
+                "(To disable this behavior, use the --lax flag when running).\n",
+                errors, PLURAL(errors));
+        cleanup(errors, true);
+    }
 }
 
 static bool read_key_and_value(const char *conf_file, unsigned int lineno, const struct buffer *line, struct buffer *key, struct buffer *val)
 {
     size_t l_index; /* position in the line */
     size_t b_index; /* position in the buffer */
-    int ch;      /* current character */
+    int ch;         /* current character */
 
     /* Eat up whitespace */
     for (l_index = 0; isspace(line->data[l_index]); l_index++);
 
     /* Ignore comments and blank lines */
     if (line->data[l_index] == '\0' || line->data[l_index] == '#') {
+        key->length = 0;
         return false;
     }
 
     /* Read the key */
-    for (b_index = 0; !isspace((ch = line->data[l_index++])); b_index++) {
+    for (b_index = 0; !isspace((ch = line->data[l_index])); b_index++, l_index++) {
         /* We don't need to check for buffer overflows here because line->data
          * is at most as long as this buffer
          */
@@ -234,25 +253,28 @@ static bool read_key_and_value(const char *conf_file, unsigned int lineno, const
             fprintf(stderr, "%s:%d: unexpected end of line.\n", conf_file, lineno);
             return false;
         }
-
-        key->data[b_index] = '\0';
-        key->length = b_index;
     }
+
+    /* Terminate key string */
+    key->data[b_index] = '\0';
+    key->length = b_index;
 
     /* Eat up whitespace */
     for (; isspace(line->data[l_index]); l_index++);
 
     /* Read the value */
-    for (b_index = 0; !isspace((ch = line->data[l_index++])); b_index++) {
+    for (b_index = 0; !isspace((ch = line->data[l_index])); b_index++, l_index++) {
         /* No buffer size check for reasons mentioned above */
         val->data[b_index] = ch;
 
         if (ch == '\0') {
-            val->data[b_index] = '\0';
-            val->length = b_index;
             break;
         }
     }
+
+    /* Terminate value string */
+    val->data[b_index] = '\0';
+    val->length = b_index;
 
 #if DEBUG
     printf("[%s] = [%s]\n", key->data, val->data);
@@ -260,7 +282,7 @@ static bool read_key_and_value(const char *conf_file, unsigned int lineno, const
 
     /* Remove quotes around the value */
     if (val->length > 1 &&
-            ((val->data[0] == '\'' && val->data[val->length - 1] == '\'') &&
+            ((val->data[0] == '\'' && val->data[val->length - 1] == '\'') ||
              (val->data[0] == '\"' && val->data[val->length - 1] == '\"'))) {
         size_t i;
         for (i = 0; i < val->length - 2; i++) {
@@ -271,7 +293,7 @@ static bool read_key_and_value(const char *conf_file, unsigned int lineno, const
         val->data[val->length] = '\0';
 
 #if DEBUG
-        printf("[%s] = [%s] <\n", key->data, val->data);
+        printf("DEQUOTED: %s\n", val->data);
 #endif /* DEBUG */
     }
 
@@ -280,8 +302,8 @@ static bool read_key_and_value(const char *conf_file, unsigned int lineno, const
 
 static bool file_read_line(FILE *fh, const char *filename, unsigned int *lineno, struct buffer *line)
 {
-    int ch;
     int i;
+    int ch;
 
     for (i = 0; i < BUFFER_SIZE; i++) {
         ch = fgetc(fh);
@@ -312,7 +334,7 @@ static bool file_read_line(FILE *fh, const char *filename, unsigned int *lineno,
     }
 
     /* Ran out of buffer space */
-    fprintf(stderr, "%s:%i: line is too long, must be under %d bytes.\n", filename, *lineno, BUFFER_SIZE);
+    fprintf(stderr, "%s:%d: line is too long, must be under %d bytes.\n", filename, *lineno, BUFFER_SIZE);
     cleanup(1, true);
     return false;
 }

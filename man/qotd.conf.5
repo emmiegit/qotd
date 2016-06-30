@@ -41,14 +41,14 @@ Specifies an alternate port to listen on. The default value is `17', which is th
 Takes a boolean. If this option is set, then once a connection is established, the program will drop privileges and run itself as the \fIdaemon\fR user. The default behavior is to relinquish root privileges when running as the superuser.
 .TP
 .BR PidFile
-Specifies what pid file is to be used by the daemon. If this value is \fInone\fR or \fI/dev/null\fR, then no pid file is written. The default is \fI/run/qotd.pid\fR, but if there is no \fI/run\fR directory, then \fI/var/run/qotd.pid\fR will be used instead.
+Specifies what pid file is to be used by the daemon. If this value is `none' or `/dev/null', then no pid file is written. The default is \fI/run/qotd.pid\fR, but if there is no \fI/run\fR directory, then \fI/var/run/qotd.pid\fR will be used instead.
 .TP
 .BR RequirePidFile
 If the daemon is unable to write to the pid file for any reason and this option is set, then the daemon will quit. Otherwise, the attempt to produce a pid file will be treated as an warning. This setting is ignored if \fBPidFile\fR is set to `none'.
 This option is a boolean, and the default argument is `yes'.
 .TP
 .BR JournalFile
-When the daemon wants to print a log message, it does so the given file. If this file is set to `-', then it is interpreted as being the \fIstandard output\fR, or if it the value is set to `none', then the journal output is suppressed. The default behavior is to have the journal be the same as the standard output.
+This option specifies what file the daemon uses to log status messages. If this file is set to `-', then the program's \fIstandard output\fR is used, and if the value is set to `none' or `/dev/null', then the journal output is suppressed. The default behavior is to use \fIstandard output\fR as the journal.
 .TP
 .BR QuotesFile
 The source of the quotations to be displayed to the user. Note that any null bytes (`\\0') found in the quotes file will be read as spaces instead. The default is to use the pre-installed quotes located at \fI/usr/share/qotd/quotes.txt\fR.

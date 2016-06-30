@@ -1,7 +1,3 @@
-[Version 0.8]
-Add --strict option for checking config files
-Add user/mode checking for config files
-
 [Version 0.9]
 UDP support
 

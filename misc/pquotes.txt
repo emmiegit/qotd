@@ -1,5 +1,4 @@
-If you find a random command on the internet, try running it as root.
-What's the worse that could happen?
+If you find a random command on the internet, try running it as root. What's the worse that could happen?
 %
 Can root create a process that even root can't kill?
 %
@@ -9,17 +8,15 @@ Thou shalt not kill -9.
 %
 You don't exist. Go away.
 %
-ERROR: Root device mounted successfully, but /sbin/init does not exist.
-Bailing out, you are on your own. Good luck.
-%
-The 'n' in unmount is missing, leaving it as umount.
-If you find it, please write to Bell Labs, 600 Mountain Avenue Murray Hill, NJ.
+The 'n' in unmount is missing, leaving it as umount! If you find it,
+please write to Bell Labs, 600 Mountain Avenue Murray Hill, NJ.
 %
 echo "Just another useless use of cat." | cat
 %
 `echo "Just another useless use of backticks."`
 %
-We've created a special character device for handling complaints. It's located at /dev/null.
+We've just created a special character device for handling complaints,
+so please forward them there. It is located at /dev/null.
 %
 false - do nothing, unsuccessfully
 %

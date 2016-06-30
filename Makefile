@@ -42,7 +42,7 @@ OBJ_EXT = o
 DEP_EXT = d
 SOURCES = $(wildcard $(SRC_DIR)/*.$(SRC_EXT))
 OBJECTS = $(patsubst $(SRC_DIR)/%,$(BIN_DIR)/%,$(SOURCES:.$(SRC_EXT)=.$(OBJ_EXT)))
-DEPS = $(OBJECTS:.$(HDR_EXT)=.$(DEP_EXT))
+DEPS = $(OBJECTS:.$(OBJ_EXT)=.$(DEP_EXT))
 EXE = $(BIN_DIR)/qotdd
 
 # Man pages
@@ -67,11 +67,21 @@ release: update-versions
 $(BIN_DIR)/%.$(OBJ_EXT): $(SRC_DIR)/%.$(SRC_EXT)
 	@mkdir -p $(BIN_DIR)
 	@echo '[CC] $(notdir $@)'
-	@$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -c -o $@ $<
+	@$(CC) $(FLAGS) $(CFLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -c -o $@ $<
+
+# Make .d files - currently unused
+$(BIN_DIR)/%.$(DEP_EXT): $(SRC_DIR)/%.$(SRC_EXT)
+	@echo '[DEP] $(notdir $@)'
+	@$(CC) $(CFLAGS) -MM $< > $@
+	@set -e; \
+	 cp -f $*.$(DEP_EXT) $@.tmp; \
+	 sed -e 's/.*://' -e 's/\\$$//' < $@.tmp | fmt -1 | \
+	 sed -e 's/^ *//' -e 's/$$/:/' >> $@; \
+	 rm -f $*.$(DEP_EXT).tmp
 
 $(EXE): $(OBJECTS)
 	@echo '[LD] $(notdir $@)'
-	@$(CC) $(FLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -o $(EXE) $^
+	@$(CC) $(FLAGS) $(CFLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -o $(EXE) $^
 
 install:
 	@echo '[INSTALL] $(ROOT)/usr/bin/qotdd'
@@ -134,4 +144,5 @@ clean:
 	@echo '[RMDIR] $(DOC_DIR)'
 	@rm -rf '$(DOC_DIR)'
 
--include: $(DEPS)
+# Not used :<
+#-include $(DEPS)
