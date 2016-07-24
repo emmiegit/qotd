@@ -26,11 +26,7 @@
 #include "journal.h"
 #include "signal_handler.h"
 
-#define JOURNAL(x)          (journal_is_open() ? journal(x) : fprintf(stderr, x))
-
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
+#define JOURNAL(x)		(journal_is_open() ? journal(x) : fprintf(stderr, (x)))
 
 /* Static declarations */
 static void handle_signal(const int signum);
@@ -38,34 +34,30 @@ static void handle_signal(const int signum);
 /* Function implementations */
 void set_up_handlers()
 {
-    signal(SIGSEGV, handle_signal);
-    signal(SIGTERM, handle_signal);
-    signal(SIGINT,  handle_signal);
-    signal(SIGHUP,  handle_signal);
+	signal(SIGSEGV, handle_signal);
+	signal(SIGTERM, handle_signal);
+	signal(SIGINT,  handle_signal);
+	signal(SIGHUP,  handle_signal);
 }
 
 static void handle_signal(const int signum)
 {
-    switch (signum) {
-        case SIGSEGV:
-            journal("Error: segmentation fault. Dumping core (if enabled).\n");
-            cleanup(signum, true);
-            break;
-        case SIGTERM:
-            journal("Termination signal received. Exiting...\n");
-            cleanup(0, true);
-            break;
-        case SIGINT:
-            journal("Interrupt signal received. Exiting...\n");
-            cleanup(signum, true);
-            break;
-        case SIGHUP:
-            journal("Hangup signal recieved. Reloading configuration...\n");
-            load_config(false);
-    }
+	switch (signum) {
+	case SIGSEGV:
+		journal("Error: segmentation fault. Dumping core (if enabled).\n");
+		cleanup(signum, true);
+		break;
+	case SIGTERM:
+		journal("Termination signal received. Exiting...\n");
+		cleanup(0, true);
+		break;
+	case SIGINT:
+		journal("Interrupt signal received. Exiting...\n");
+		cleanup(signum, true);
+		break;
+	case SIGHUP:
+		journal("Hangup signal recieved. Reloading configuration...\n");
+		load_config(false);
+	}
 }
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
 

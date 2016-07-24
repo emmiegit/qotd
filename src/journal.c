@@ -27,88 +27,80 @@
 #include "journal.h"
 #include "standard.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
 static FILE *journal_fh = NULL;
 
 void open_journal(const char *path)
 {
-    if (path == NULL) {
-        journal_fh = NULL;
-        return;
-    }
+	if (path == NULL) {
+		journal_fh = NULL;
+		return;
+	}
 
 #if DEBUG
-    printf("Setting journal to be \"%s\".\n", path);
+	printf("Setting journal to be \"%s\".\n", path);
 #endif /* DEBUG */
 
-    journal_fh = fopen(path, "w");
-    if (journal_fh == NULL) {
-        fprintf(stderr, "Unable to open journal handle for \"%s\": %s.\n",
-                path, strerror(errno));
-        perror("Unable to open journal handle");
-        cleanup(1, true);
-    }
+	journal_fh = fopen(path, "w");
+	if (journal_fh == NULL) {
+		fprintf(stderr, "Unable to open journal handle for \"%s\": %s.\n",
+				path, strerror(errno));
+		perror("Unable to open journal handle");
+		cleanup(1, true);
+	}
 }
 
 void open_journal_as_fd(int fd)
 {
-    if (fd < 0) {
-        journal_fh = NULL;
-        return;
-    }
+	if (fd < 0) {
+		journal_fh = NULL;
+		return;
+	}
 
 #if DEBUG
-    printf("Setting journal to be the same as file descriptor %d.\n", fd);
+	printf("Setting journal to be the same as file descriptor %d.\n", fd);
 #endif /* DEBUG */
 
-    journal_fh = fdopen(fd, "w");
-    if (journal_fh == NULL) {
-        fprintf(stderr, "Unable to open journal handle for file descriptor \"%d\": %s.\n",
-                fd, strerror(errno));
-        perror("Unable to open journal handle");
-        cleanup(1, true);
-    }
+	journal_fh = fdopen(fd, "w");
+	if (journal_fh == NULL) {
+		fprintf(stderr, "Unable to open journal handle for file descriptor \"%d\": %s.\n",
+				fd, strerror(errno));
+		perror("Unable to open journal handle");
+		cleanup(1, true);
+	}
 }
 
 int close_journal()
 {
-    if (journal_fh) {
-        int ret = fclose(journal_fh);
-        if (ret < 0) {
-            fprintf(stderr, "Unable to close journal handle: %s.\n",
-                    strerror(errno));
-        }
+	if (journal_fh) {
+		int ret = fclose(journal_fh);
+		if (ret < 0) {
+			fprintf(stderr, "Unable to close journal handle: %s.\n",
+					strerror(errno));
+		}
 
-        return ret;
-    }
+		return ret;
+	}
 
-    return 0;
+	return 0;
 }
 
 bool journal_is_open()
 {
-    return journal_fh != NULL;
+	return journal_fh != NULL;
 }
 
 int journal(const char *format, ...)
 {
-    va_list args;
-    int ret;
+	va_list args;
+	int ret;
 
-    if (journal_fh == NULL) {
-        return 0;
-    }
+	if (journal_fh == NULL) {
+		return 0;
+	}
 
-    va_start(args, format);
-    ret = vfprintf(journal_fh, format, args);
-    va_end(args);
-    return ret;
+	va_start(args, format);
+	ret = vfprintf(journal_fh, format, args);
+	va_end(args);
+	return ret;
 }
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
 

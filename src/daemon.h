@@ -28,8 +28,8 @@ extern "C" {
 # endif /* __cplusplus */
 
 struct arguments {
-    int argc;
-    const char **argv;
+	int argc;
+	const char **argv;
 };
 
 void load_config(bool first_time);

@@ -21,7 +21,14 @@
 #ifndef __SIGHANDLER_H
 # define __SIGHANDLER_H
 
+# ifdef __cplusplus
+extern "C" {
+# endif /* __cplusplus */
+
 void set_up_handlers();
 
+# ifdef __cplusplus
+}
+# endif /* __cplusplus */
 #endif /* __SIGHANDLER_H */
 

@@ -21,14 +21,24 @@
 #ifndef __STANDARD_H
 # define __STANDARD_H
 
-# define DEBUG          0
+# define DEBUG		0
+
+# define UNUSED(x)	((void)(x))
+# define EMPTYSTR(x)	(((x)[0]) == '\0')
+# define PLURAL(x)	(((x) == 1) ? "" : "s")
+# define MIN(x, y)	(((x) < (y)) ? (x) : (y))
+# define MAX(x, y)	(((x) > (y)) ? (x) : (y))
 
 # if DEBUG
 #  pragma message("Compiling with debug statements.")
 # endif /* DEBUG */
 
-# define likely(x)      __builtin_expect(!!(x), 1)
-# define unlikely(x)    __builtin_expect(!!(x), 0)
-
+# if defined(__GNUC__) || defined(__clang__)
+#  define likely(x)	__builtin_expect(!!(x), 1)
+#  define unlikely(x)	__builtin_expect(!!(x), 0)
+# else
+#  define likely(x)	(x)
+#  define unlikely(x)	(x)
+# endif /* __GNUC__ || __clang__ */
 #endif /* __STANDARD_H */
 
