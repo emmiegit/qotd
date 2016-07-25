@@ -27,10 +27,13 @@
 extern "C" {
 # endif /* __cplusplus */
 
-struct arguments {
-	int argc;
-	const char **argv;
-};
+# define EXIT_ARGUMENTS			17
+# define EXIT_CONFIGURATION		18
+# define EXIT_SECURITY			19
+# define EXIT_MEMORY			20
+# define EXIT_IO			21
+# define EXIT_SIGNAL			22
+# define EXIT_INTERNAL			23
 
 void load_config(bool first_time);
 void cleanup(int ret, bool quiet);

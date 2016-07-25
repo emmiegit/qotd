@@ -45,15 +45,15 @@ static void handle_signal(const int signum)
 	switch (signum) {
 	case SIGSEGV:
 		journal("Error: segmentation fault. Dumping core (if enabled).\n");
-		cleanup(signum, true);
+		cleanup(EXIT_SIGNAL, true);
 		break;
 	case SIGTERM:
 		journal("Termination signal received. Exiting...\n");
-		cleanup(0, true);
+		cleanup(EXIT_SUCCESS, true);
 		break;
 	case SIGINT:
 		journal("Interrupt signal received. Exiting...\n");
-		cleanup(signum, true);
+		cleanup(EXIT_SIGNAL, true);
 		break;
 	case SIGHUP:
 		journal("Hangup signal recieved. Reloading configuration...\n");

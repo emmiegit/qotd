@@ -45,7 +45,7 @@ void open_journal(const char *path)
 		fprintf(stderr, "Unable to open journal handle for \"%s\": %s.\n",
 				path, strerror(errno));
 		perror("Unable to open journal handle");
-		cleanup(1, true);
+		cleanup(EXIT_IO, true);
 	}
 }
 
@@ -65,7 +65,7 @@ void open_journal_as_fd(int fd)
 		fprintf(stderr, "Unable to open journal handle for file descriptor \"%d\": %s.\n",
 				fd, strerror(errno));
 		perror("Unable to open journal handle");
-		cleanup(1, true);
+		cleanup(EXIT_IO, true);
 	}
 }
 

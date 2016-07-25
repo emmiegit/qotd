@@ -54,10 +54,14 @@ static void check_config();
 static void write_pidfile();
 
 /* Static member declarations */
-static struct arguments args;
 static struct options opt;
 static int sockfd;
 static bool wrote_pidfile;
+
+static struct {
+	int argc;
+	const char **argv;
+} arguments;
 
 /* Function implementations */
 int main(int argc, const char *argv[])
@@ -65,11 +69,15 @@ int main(int argc, const char *argv[])
 	/* Set up signal handlers */
 	set_up_handlers();
 
+#if DEBUG
+	printf("(Running in debug mode)\n");
+#endif /* DEBUG */
+
 	/* Set default values for static variables */
 	sockfd = -1;
 	wrote_pidfile = false;
 
-	/* Make a static copy of the arguments */
+	/* Make a copy of the arguments */
 	save_args(argc, argv);
 
 	/* Load configuration and open journal */
@@ -84,13 +92,12 @@ static int daemonize()
 
 	/* Fork to background */
 	if ((pid = fork()) < 0) {
-		cleanup(1, true);
-		return 1;
+		journal("Unable to fork: %s.\n", strerror(errno));
+		cleanup(EXIT_FAILURE, true);
 	} else if (pid != 0) {
 		/* If we're the parent, then quit */
 		journal("Successfully created background daemon, pid %d.\n", pid);
-		cleanup(0, true);
-		return 0;
+		cleanup(EXIT_SUCCESS, true);
 	}
 
 	/* We're the child, so daemonize */
@@ -98,8 +105,7 @@ static int daemonize()
 
 	if (pid < 0) {
 		journal("Unable to create new session: %s.\n", strerror(errno));
-		cleanup(1, true);
-		return 1;
+		cleanup(EXIT_FAILURE, true);
 	}
 
 	if (opt.chdir_root) {
@@ -129,11 +135,11 @@ static int main_loop()
 			break;
 		default:
 			journal("Internal error: invalid enum value for \"iproto\": %d.\n", opt.iproto);
-			cleanup(1, true);
+			cleanup(EXIT_INTERNAL, true);
 	}
 
 	if (opt.drop_privileges) {
-		drop_privileges();
+		drop_privileges(&opt);
 	}
 
 	switch (opt.tproto) {
@@ -145,8 +151,8 @@ static int main_loop()
 			break;
 		default:
 			journal("Internal error: invalid enum value for \"tproto\": %d.\n", opt.tproto);
-			cleanup(1, true);
-			return EXIT_FAILURE;
+			cleanup(EXIT_INTERNAL, true);
+			return -1;
 	}
 
 	for (;;) {
@@ -171,7 +177,7 @@ static void setup_ipv4_socket()
 
 	if (sockfd < 0) {
 		journal("Unable to create IPv4 socket: %s.\n", strerror(errno));
-		cleanup(1, true);
+		cleanup(EXIT_IO, true);
 	}
 
 	ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (void *)(&one), sizeof(one));
@@ -186,7 +192,7 @@ static void setup_ipv4_socket()
 	ret = bind(sockfd, (const struct sockaddr *)(&serv_addr), sizeof(struct sockaddr_in));
 	if (ret < 0) {
 		journal("Unable to bind to IPv4 socket: %s.\n", strerror(errno));
-		cleanup(1, true);
+		cleanup(EXIT_IO, true);
 	}
 }
 
@@ -207,14 +213,14 @@ static void setup_ipv6_socket()
 
 	if (sockfd < 0) {
 		journal("Unable to create IPv6 socket: %s.\n", strerror(errno));
-		cleanup(1, true);
+		cleanup(EXIT_IO, true);
 	}
 
 	if (opt.iproto == PROTOCOL_IPv6) {
 		ret = setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)(&one), sizeof(one));
 		if (ret < 0) {
 			journal("Unable to set IPv4 compatibility option: %s.\n", strerror(errno));
-			cleanup(1, true);
+			cleanup(EXIT_IO, true);
 		}
 	}
 
@@ -230,7 +236,7 @@ static void setup_ipv6_socket()
 	ret = bind(sockfd, (const struct sockaddr *)(&serv_addr), sizeof(struct sockaddr_in6));
 	if (ret < 0) {
 		journal("Unable to bind to socket: %s.\n", strerror(errno));
-		cleanup(1, true);
+		cleanup(EXIT_IO, true);
 	}
 }
 
@@ -296,92 +302,111 @@ static bool udp_accept_connection()
 
 void cleanup(int ret, bool quiet)
 {
-	int ret2;
-
 	if (!quiet) {
-		ret2 = journal("Quitting with exit code %d.\n", ret);
-
-		if (ret2 < 0) {
-			ret++;
-		}
+		journal("Quitting with exit code %d.\n", ret);
 	}
 
 	if (sockfd >= 0) {
-		ret2 = close(sockfd);
+		int ret2 = close(sockfd);
 		if (ret2 < 0) {
-			ret2 = journal("Unable to close socket file descriptor %d: %s.\n",
-					sockfd, strerror(errno));
-			ret++;
-
-			if (ret2 < 0) {
-				ret++;
-			}
+			journal("Unable to close socket file descriptor %d: %s.\n",
+				sockfd, strerror(errno));
 		}
 	}
 
 	if (wrote_pidfile) {
-		ret2 = unlink(opt.pidfile);
+		int ret2 = unlink(opt.pidfile);
 		if (ret2 < 0) {
-			ret2 = journal("Unable to remove pid file (%s): %s.\n",
-					opt.pidfile, strerror(errno));
-			ret++;
-
-			if (ret2 < 0) {
-				ret++;
-			}
+			journal("Unable to remove pid file (%s): %s.\n",
+				opt.pidfile, strerror(errno));
 		}
 	}
 
-	if (opt.quotesmalloc) {
-		free((char *)opt.quotesfile);
-	}
-
-	if (opt.pidmalloc) {
-		free((char *)opt.pidfile);
-	}
-
-	ret += close_journal();
-
+	close_journal();
 	exit(ret);
 }
 
 void load_config(bool first_time)
 {
 	struct options old_opt = opt;
+	int ret;
 
 	if (!first_time) {
 		journal("Reloading configuration settings...\n");
 	}
 
-	parse_args(&opt, args.argc, args.argv);
+	parse_args(&opt, arguments.argc, arguments.argv);
 	check_config();
 
+	if (first_time) {
+		ret = open_quotes_file(opt.quotesfile);
+		if (ret) {
+			journal("Unable to open quotes file: %s.\n", strerror(errno));
+			cleanup(EXIT_IO, true);
+		}
+		return;
+	}
+
 	/* not finished yet */
-	if (false && !first_time && (
-			opt.port != old_opt.port ||
-			opt.tproto != old_opt.tproto ||
-			opt.iproto != old_opt.iproto)) {
-		int ret;
+	if (opt.quotesfile != old_opt.quotesfile &&
+		strcmp(opt.quotesfile, old_opt.quotesfile)) {
+
+		journal("Quotes file changed, opening new file handle...\n");
+
+			/* Close old quotes file */
+			ret = close_quotes_file();
+			if (ret) {
+				journal("Unable to close quotes file: %s.\n", strerror(errno));
+				cleanup(EXIT_IO, true);
+			}
+
+			/* Reopen quotes file */
+			ret = open_quotes_file(opt.quotesfile);
+			if (ret) {
+				journal("Unable to reopen quotes file: %s.\n", strerror(errno));
+				cleanup(EXIT_IO, true);
+			}
+	}
+
+	if (!opt.pidfile || !old_opt.pidfile ||
+		(opt.pidfile != old_opt.pidfile && strcmp(opt.pidfile, old_opt.pidfile))) {
+		journal("Pid file changed, switching them out...\n");
+
+		ret = unlink(old_opt.pidfile);
+		if (ret) {
+			ERR_TRACE();
+			journal("Unable to remove old pidfile: %s.\n", strerror(errno));
+			cleanup(EXIT_IO, true);
+		}
+
+		write_pidfile();
+	}
+
+	if (opt.port != old_opt.port ||
+		opt.tproto != old_opt.tproto ||
+		opt.iproto != old_opt.iproto) {
 
 		journal("Connection settings changed, remaking socket...\n");
 
 		if (opt.drop_privileges && getuid() == ROOT_USER_ID) {
 			/* Get root access back */
 			regain_privileges();
+		}
 
-			/* Close old socket */
-			ret = close(sockfd);
+		/* Close old socket */
+		ret = close(sockfd);
+		if (ret) {
+			journal("Unable to close existing socket: %s.\n", strerror(errno));
+			cleanup(EXIT_IO, true);
+		}
 
-			if (ret < 0) {
-				journal("Unable to close existing socket: %s.\n", strerror(errno));
-				return;
-			}
 
-			/* Create new socket */
-			/* TODO */
+		/* Create new socket */
+		/* TODO */
 
+		if (opt.drop_privileges) {
 			/* Drop privileges again */
-			drop_privileges();
+			drop_privileges(&opt);
 		}
 	}
 }
@@ -407,14 +432,14 @@ static void check_socket_creation_errno()
 	case ENOSR:
 	case ESOCKTNOSUPPORT:
 	case EPROTONOSUPPORT:
-		cleanup(1, true);
+		cleanup(EXIT_IO, true);
 	}
 }
 
 static void save_args(int argc, const char *argv[])
 {
-	args.argc = argc;
-	args.argv = argv;
+	arguments.argc = argc;
+	arguments.argv = argv;
 }
 
 static void write_pidfile()
@@ -430,10 +455,14 @@ static void write_pidfile()
 
 	/* Check if the pidfile already exists */
 	ret = stat(opt.pidfile, &statbuf);
-
-	if (ret == 0) {
+	if (ret) {
+		if (errno != ENOENT) {
+			journal("Unable to stat pid file \"%s\": %s.\n", opt.pidfile, strerror(errno));
+			cleanup(EXIT_IO, true);
+		}
+	} else {
 		journal("The pid file already exists. Quitting.\n");
-		cleanup(1, true);
+		cleanup(EXIT_FAILURE, true);
 	}
 
 	/* Write the pidfile */
@@ -443,7 +472,7 @@ static void write_pidfile()
 		journal("Unable to open pid file: %s.\n", strerror(errno));
 
 		if (opt.require_pidfile) {
-			cleanup(1, true);
+			cleanup(EXIT_IO, true);
 		} else {
 			return;
 		}
@@ -455,7 +484,7 @@ static void write_pidfile()
 
 		if (opt.require_pidfile) {
 			fclose(fh);
-			cleanup(1, true);
+			cleanup(EXIT_IO, true);
 		}
 	}
 
@@ -466,7 +495,7 @@ static void write_pidfile()
 		journal("Unable to close pid file handle: %s.\n", strerror(errno));
 
 		if (opt.require_pidfile) {
-			cleanup(1, true);
+			cleanup(EXIT_IO, true);
 		}
 	}
 }
@@ -478,19 +507,19 @@ static void check_config()
 
 	if (opt.port < 1024 && geteuid() != ROOT_USER_ID) {
 		journal("Only root can bind to ports below 1024.\n");
-		cleanup(1, true);
+		cleanup(EXIT_ARGUMENTS, true);
 	}
 
 	if (opt.pidfile[0] != '/') {
 		journal("Specified pid file is not an absolute path.\n");
-		cleanup(1, true);
+		cleanup(EXIT_ARGUMENTS, true);
 	}
 
 	ret = stat(opt.quotesfile, &statbuf);
 
 	if (ret < 0) {
-		journal("Unable to stat quotes file: %s.\n");
-		cleanup(1, true);
+		journal("Unable to stat quotes file \"%s\": %s.\n", opt.quotesfile, strerror(errno));
+		cleanup(EXIT_IO, true);
 	}
 }
 

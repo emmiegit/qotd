@@ -65,8 +65,8 @@ struct options {
 	enum transport_protocol tproto; 	/* which transport protocol to use */
 	enum internet_protocol iproto;  	/* which internet protocol to use */
 
-	bool quotesmalloc;			/* if quotesfile needs to be free'd */
-	bool pidmalloc;				/* if pidfile needs to be free'd */
+	bool quotesalloc;			/* if quotesfile needs to be free'd */
+	bool pidalloc;				/* if pidfile needs to be free'd */
 
 	bool daemonize;				/* whether to fork to the background or not */
 	bool require_pidfile;			/* whether to quit if the pidfile cannot be made */

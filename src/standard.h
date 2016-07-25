@@ -21,13 +21,15 @@
 #ifndef __STANDARD_H
 # define __STANDARD_H
 
-# define DEBUG		0
-
 # define UNUSED(x)	((void)(x))
 # define EMPTYSTR(x)	(((x)[0]) == '\0')
 # define PLURAL(x)	(((x) == 1) ? "" : "s")
 # define MIN(x, y)	(((x) < (y)) ? (x) : (y))
 # define MAX(x, y)	(((x) > (y)) ? (x) : (y))
+
+# ifndef DEBUG
+#  define DEBUG		0
+# endif /* DEBUG */
 
 # if DEBUG
 #  pragma message("Compiling with debug statements.")

@@ -29,6 +29,8 @@
 extern "C" {
 # endif /* __cplusplus */
 
+int open_quotes_file(const char *path);
+int close_quotes_file();
 int tcp_send_quote(int fd, const struct options *opt);
 int udp_send_quote(int fd, const struct sockaddr *cli_addr, socklen_t cli_len, const struct options *opt);
 

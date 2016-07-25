@@ -1,6 +1,9 @@
 [Version 0.9]
-UDP support
+Keep quotes file open
 
 [Version 0.10]
 Rebind connection when reloading config
+
+[Version 0.11]
+UDP support
 

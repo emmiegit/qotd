@@ -67,7 +67,7 @@ void parse_config(const char *conf_file, struct options *opt)
 	if (fh == NULL) {
 		/* Can't write to the journal, it hasn't been opened yet */
 		fprintf(stderr, "Unable to open configuration file \"%s\": %s.\n", conf_file, strerror(errno));
-		cleanup(1, true);
+		cleanup(EXIT_IO, true);
 	}
 
 #if DEBUG
@@ -138,7 +138,7 @@ void parse_config(const char *conf_file, struct options *opt)
 
 			if (!strcmp(val.data, "none") || !strcmp(val.data, "/dev/null")) {
 				opt->pidfile = NULL;
-				opt->pidmalloc = false;
+				opt->pidalloc = false;
 				continue;
 			}
 
@@ -146,12 +146,12 @@ void parse_config(const char *conf_file, struct options *opt)
 			if (ptr == NULL) {
 				perror("Unable to allocate memory for config value");
 				fclose(fh);
-				cleanup(1, true);
+				cleanup(EXIT_MEMORY, true);
 			}
 
 			strcpy(ptr, val.data);
 			opt->pidfile = ptr;
-			opt->pidmalloc = true;
+			opt->pidalloc = true;
 		} else if (!strcasecmp(key.data, "requirepidfile")) {
 			ch = str_to_bool(val.data, conf_file, lineno, &success);
 
@@ -175,12 +175,12 @@ void parse_config(const char *conf_file, struct options *opt)
 			if (ptr == NULL) {
 				perror("Unable to allocate memory for config value");
 				fclose(fh);
-				cleanup(1, true);
+				cleanup(EXIT_MEMORY, true);
 			}
 
 			strcpy(ptr, val.data);
 			opt->quotesfile = ptr;
-			opt->quotesmalloc = true;
+			opt->quotesalloc = true;
 		} else if (!strcasecmp(key.data, "quotedivider")) {
 			if (strcasecmp(val.data, "line") == 0) {
 				opt->linediv = DIV_EVERYLINE;
@@ -223,7 +223,7 @@ void parse_config(const char *conf_file, struct options *opt)
 				"Your configuration file has %d issue%s. The daemon will not start.\n"
 				"(To disable this behavior, use the --lax flag when running).\n",
 				errors, PLURAL(errors));
-		cleanup(errors, true);
+		cleanup(EXIT_SECURITY, true);
 	}
 }
 
@@ -335,7 +335,7 @@ static bool file_read_line(FILE *fh, const char *filename, unsigned int *lineno,
 
 	/* Ran out of buffer space */
 	fprintf(stderr, "%s:%d: line is too long, must be under %d bytes.\n", filename, *lineno, BUFFER_SIZE);
-	cleanup(1, true);
+	cleanup(EXIT_CONFIGURATION, true);
 	return false;
 }
 
