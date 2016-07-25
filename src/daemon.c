@@ -25,37 +25,28 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #include "arguments.h"
 #include "daemon.h"
 #include "info.h"
 #include "journal.h"
+#include "network.h"
 #include "quotes.h"
 #include "security.h"
 #include "signal_handler.h"
 #include "standard.h"
 
-#define TCP_CONNECTION_BACKLOG		50
-
 /* Static function declarations */
 static int daemonize();
 static int main_loop();
-static void setup_ipv4_socket();
-static void setup_ipv6_socket();
-static bool tcp_accept_connection();
-static bool udp_accept_connection();
-static void check_socket_creation_errno();
 static void save_args(const int argc, const char *argv[]);
 static void check_config();
 static void write_pidfile();
 
 /* Static member declarations */
 static struct options opt;
-static int sockfd;
 static bool wrote_pidfile;
 
 static struct {
@@ -74,7 +65,6 @@ int main(int argc, const char *argv[])
 #endif /* DEBUG */
 
 	/* Set default values for static variables */
-	sockfd = -1;
 	wrote_pidfile = false;
 
 	/* Make a copy of the arguments */
@@ -121,17 +111,17 @@ static int daemonize()
 
 static int main_loop()
 {
-	bool (*accept_connection)();
+	bool (*accept_connection)(const struct options *opt);
 
 	write_pidfile();
 
 	switch (opt.iproto) {
 		case PROTOCOL_BOTH:
 		case PROTOCOL_IPv6:
-			setup_ipv6_socket();
+			set_up_ipv6_socket(&opt);
 			break;
 		case PROTOCOL_IPv4:
-			setup_ipv4_socket();
+			set_up_ipv4_socket(&opt);
 			break;
 		default:
 			journal("Internal error: invalid enum value for \"iproto\": %d.\n", opt.iproto);
@@ -156,174 +146,31 @@ static int main_loop()
 	}
 
 	for (;;) {
-		accept_connection();
+		accept_connection(&opt);
 	}
 
 	return EXIT_SUCCESS;
 }
 
-static void setup_ipv4_socket()
+void cleanup(int retcode, bool quiet)
 {
-	struct sockaddr_in serv_addr;
-	int ret, one = 1;
-
-	if (opt.tproto == PROTOCOL_TCP) {
-		journal("Setting up IPv4 socket connection over TCP...\n");
-		sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-	} else {
-		journal("Setting up IPv4 socket connection over UDP...\n");
-		sockfd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	}
-
-	if (sockfd < 0) {
-		journal("Unable to create IPv4 socket: %s.\n", strerror(errno));
-		cleanup(EXIT_IO, true);
-	}
-
-	ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (void *)(&one), sizeof(one));
-	if (ret < 0) {
-		journal("Unable to set the socket to allow address reuse: %s.\n", strerror(errno));
-	}
-
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = INADDR_ANY;
-	serv_addr.sin_port = htons(opt.port);
-
-	ret = bind(sockfd, (const struct sockaddr *)(&serv_addr), sizeof(struct sockaddr_in));
-	if (ret < 0) {
-		journal("Unable to bind to IPv4 socket: %s.\n", strerror(errno));
-		cleanup(EXIT_IO, true);
-	}
-}
-
-static void setup_ipv6_socket()
-{
-	struct sockaddr_in6 serv_addr;
-	int ret, one = 1;
-
-	if (opt.tproto == PROTOCOL_TCP) {
-		journal("Setting up IPv%s6 socket connection over TCP...\n",
-				((opt.iproto == PROTOCOL_BOTH) ? "4/" : ""));
-		sockfd = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP);
-	} else {
-		journal("Setting up IPv%s6 socket connection over UDP...\n",
-				((opt.iproto == PROTOCOL_BOTH) ? "4/" : ""));
-		sockfd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-	}
-
-	if (sockfd < 0) {
-		journal("Unable to create IPv6 socket: %s.\n", strerror(errno));
-		cleanup(EXIT_IO, true);
-	}
-
-	if (opt.iproto == PROTOCOL_IPv6) {
-		ret = setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)(&one), sizeof(one));
-		if (ret < 0) {
-			journal("Unable to set IPv4 compatibility option: %s.\n", strerror(errno));
-			cleanup(EXIT_IO, true);
-		}
-	}
-
-	ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (void *)(&one), sizeof(one));
-	if (ret < 0) {
-		journal("Unable to set the socket to allow address reuse: %s.\n", strerror(errno));
-	}
-
-	serv_addr.sin6_family = AF_INET6;
-	serv_addr.sin6_addr = in6addr_any;
-	serv_addr.sin6_port = htons(opt.port);
-
-	ret = bind(sockfd, (const struct sockaddr *)(&serv_addr), sizeof(struct sockaddr_in6));
-	if (ret < 0) {
-		journal("Unable to bind to socket: %s.\n", strerror(errno));
-		cleanup(EXIT_IO, true);
-	}
-}
-
-static bool tcp_accept_connection()
-{
-	struct sockaddr_in cli_addr;
-	socklen_t cli_len;
-	int consockfd, ret;
-
-	journal("Listening for connection...\n");
-	listen(sockfd, TCP_CONNECTION_BACKLOG);
-
-	cli_len = sizeof(cli_addr);
-	consockfd = accept(sockfd, (struct sockaddr *)(&cli_addr), &cli_len);
-	if (consockfd < 0) {
-		int errno_ = errno;
-		journal("Unable to accept connection: %s.\n", strerror(errno));
-		errno = errno_;
-		check_socket_creation_errno();
-		return false;
-	}
-
-	ret = tcp_send_quote(consockfd, &opt);
-	if (ret < 0) {
-		/* Error message is printed by tcp_send_quote */
-		return false;
-	}
-
-	ret = close(consockfd);
-	if (ret < 0) {
-		journal("Unable to close connection: %s.\n", strerror(errno));
-		return false;
-	}
-
-	return true;
-}
-
-static bool udp_accept_connection()
-{
-	struct sockaddr_in cli_addr;
-	socklen_t cli_len;
 	int ret;
 
-	journal("Listening for connection...\n");
-	ret = recvfrom(sockfd, NULL, 0, 0, (struct sockaddr *)(&cli_addr), &cli_len);
-	if (ret < 0) {
-		int errno_ = errno;
-		journal("Unable to write to socket: %s.\n", strerror(errno));
-		errno = errno_;
-		check_socket_creation_errno();
-		return false;
-	}
-
-	cli_len = sizeof(cli_addr);
-	ret = udp_send_quote(sockfd, (struct sockaddr *)(&cli_addr), cli_len, &opt);
-	if (ret < 0) {
-		/* Error message is printed by udp_send_quote */
-		return false;
-	}
-
-	return true;
-}
-
-void cleanup(int ret, bool quiet)
-{
 	if (!quiet) {
-		journal("Quitting with exit code %d.\n", ret);
-	}
-
-	if (sockfd >= 0) {
-		int ret2 = close(sockfd);
-		if (ret2 < 0) {
-			journal("Unable to close socket file descriptor %d: %s.\n",
-				sockfd, strerror(errno));
-		}
+		journal("Quitting with exit code %d.\n", retcode);
 	}
 
 	if (wrote_pidfile) {
-		int ret2 = unlink(opt.pidfile);
-		if (ret2 < 0) {
+		ret = unlink(opt.pidfile);
+		if (ret) {
 			journal("Unable to remove pid file (%s): %s.\n",
 				opt.pidfile, strerror(errno));
 		}
 	}
 
+	close_socket();
 	close_journal();
-	exit(ret);
+	exit(retcode);
 }
 
 void load_config(bool first_time)
@@ -394,12 +241,7 @@ void load_config(bool first_time)
 		}
 
 		/* Close old socket */
-		ret = close(sockfd);
-		if (ret) {
-			journal("Unable to close existing socket: %s.\n", strerror(errno));
-			cleanup(EXIT_IO, true);
-		}
-
+		close_socket();
 
 		/* Create new socket */
 		/* TODO */
@@ -408,31 +250,6 @@ void load_config(bool first_time)
 			/* Drop privileges again */
 			drop_privileges(&opt);
 		}
-	}
-}
-
-static void check_socket_creation_errno()
-{
-	/* If the returned error is one of these, then you
-	 * should not attempt to remake the socket.
-	 * Getting one of these errors should be fatal.
-	 */
-	switch (errno) {
-	case EBADF:
-	case EFAULT:
-	case EINVAL:
-	case EMFILE:
-	case ENFILE:
-	case ENOBUFS:
-	case ENOMEM:
-	case ENOTSOCK:
-	case EOPNOTSUPP:
-	case EPROTO:
-	case EPERM:
-	case ENOSR:
-	case ESOCKTNOSUPPORT:
-	case EPROTONOSUPPORT:
-		cleanup(EXIT_IO, true);
 	}
 }
 
