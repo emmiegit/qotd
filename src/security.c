@@ -20,10 +20,10 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "daemon.h"
 #include "journal.h"

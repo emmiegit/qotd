@@ -27,6 +27,12 @@
 # define MIN(x, y)	(((x) < (y)) ? (x) : (y))
 # define MAX(x, y)	(((x) > (y)) ? (x) : (y))
 
+# ifdef RELEASE
+#  define FINAL_FREE(x)	UNUSED(x)
+# else
+#  define FINAL_FREE(x)	free(x)
+# endif /* RELEASE */
+
 # ifndef DEBUG
 #  define DEBUG		0
 # endif /* DEBUG */

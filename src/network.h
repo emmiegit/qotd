@@ -31,8 +31,8 @@ void set_up_ipv4_socket(const struct options *opt);
 void set_up_ipv6_socket(const struct options *opt);
 void close_socket();
 
-bool tcp_accept_connection(const struct options *opt);
-bool udp_accept_connection(const struct options *opt);
+void tcp_accept_connection(const struct options *opt);
+void udp_accept_connection(const struct options *opt);
 
 # ifdef __cplusplus
 }

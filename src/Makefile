@@ -37,7 +37,7 @@ CC      := gcc
 FLAGS   := -ansi -pipe
 WARN    := -Wall -Wextra -Wpedantic
 COMPILE := -I. -D_XOPEN_SOURCE=500 -DGITHASH='"$(shell git rev-parse --short HEAD)"'
-LINKING := -lpthread
+LINKING :=
 
 # Program sources
 SOURCES := $(wildcard *.c)
@@ -49,7 +49,7 @@ EXE     := qotdd
 all: CFLAGS += -O3
 all: $(EXE)
 
-release: CFLAGS += -fstack-protector-all
+release: CFLAGS += -fstack-protector-all -DRELEASE
 release: $(EXE)
 
 debug: CFLAGS += -g -DDEBUG=1

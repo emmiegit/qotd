@@ -23,10 +23,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "arguments.h"
 #include "daemon.h"
@@ -111,7 +111,7 @@ static int daemonize()
 
 static int main_loop()
 {
-	bool (*accept_connection)(const struct options *opt);
+	void (*accept_connection)(const struct options *opt);
 
 	write_pidfile();
 
@@ -168,6 +168,15 @@ void cleanup(int retcode, bool quiet)
 		}
 	}
 
+	if (opt.pidalloc) {
+		FINAL_FREE((char *)opt.pidfile);
+	}
+
+	if (opt.quotesalloc) {
+		FINAL_FREE((char *)opt.quotesfile);
+	}
+
+	destroy_quote_buffers();
 	close_socket();
 	close_journal();
 	exit(retcode);

@@ -19,11 +19,12 @@
 
 #include <ctype.h>
 #include <errno.h>
-#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <limits.h>
 #include <strings.h>
 #include <unistd.h>
 
@@ -133,7 +134,7 @@ void parse_config(const char *conf_file, struct options *opt)
 			} else {
 				errors++;
 			}
-		} else if (strcasecmp(key.data, "pidfile") == 0) {
+		} else if (!strcasecmp(key.data, "pidfile")) {
 			char *ptr;
 
 			if (!strcmp(val.data, "none") || !strcmp(val.data, "/dev/null")) {
@@ -182,7 +183,7 @@ void parse_config(const char *conf_file, struct options *opt)
 			opt->quotesfile = ptr;
 			opt->quotesalloc = true;
 		} else if (!strcasecmp(key.data, "quotedivider")) {
-			if (strcasecmp(val.data, "line") == 0) {
+			if (!strcasecmp(val.data, "line")) {
 				opt->linediv = DIV_EVERYLINE;
 			} else if (!strcasecmp(val.data, "percent")) {
 				opt->linediv = DIV_PERCENT;
@@ -190,6 +191,14 @@ void parse_config(const char *conf_file, struct options *opt)
 				opt->linediv = DIV_WHOLEFILE;
 			} else {
 				fprintf(stderr, "%s:%d: unsupported division type: \"%s\"\n", conf_file, lineno, val.data);
+				errors++;
+			}
+		} else if (!strcasecmp(key.data, "padquotes")) {
+			ch = str_to_bool(val.data, conf_file, lineno, &success);
+
+			if (likely(success)) {
+				opt->pad_quotes = ch;
+			} else {
 				errors++;
 			}
 		} else if (!strcasecmp(key.data, "dailyquotes")) {

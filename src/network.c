@@ -20,10 +20,12 @@
 
 #include <errno.h>
 #include <string.h>
-#include <unistd.h>
 
+#include <ifaddrs.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "daemon.h"
 #include "journal.h"
@@ -57,9 +59,8 @@
 	} while(0)
 
 #define TCP_CONNECTION_BACKLOG		50
-#define __scope 0
 
-/* Static declarations */
+/* Static member declarations */
 static int sockfd = -1;
 
 void set_up_ipv4_socket(const struct options *opt)
@@ -133,7 +134,7 @@ void set_up_ipv6_socket(const struct options *opt)
 	serv_addr.sin6_addr = in6addr_any;
 	serv_addr.sin6_port = htons(opt->port);
 	serv_addr.sin6_flowinfo = 0;
-	serv_addr.sin6_scope_id = __scope;
+	serv_addr.sin6_scope_id = 0;
 
 	ret = bind(sockfd, (const struct sockaddr *)(&serv_addr), sizeof(struct sockaddr_in6));
 	if (ret < 0) {
@@ -157,7 +158,7 @@ void close_socket()
 	}
 }
 
-bool tcp_accept_connection(const struct options *opt)
+void tcp_accept_connection(const struct options *opt)
 {
 	struct sockaddr_in cli_addr;
 	socklen_t cli_len;
@@ -172,25 +173,23 @@ bool tcp_accept_connection(const struct options *opt)
 		int errsave = errno;
 		journal("Unable to accept connection: %s.\n", strerror(errsave));
 		CHECK_SOCKET_ERROR(errsave);
-		return false;
+		return;
 	}
 
 	ret = tcp_send_quote(consockfd, opt);
-	if (ret < 0) {
+	if (ret) {
 		/* Error message is printed by tcp_send_quote */
-		return false;
+		return;
 	}
 
 	ret = close(consockfd);
-	if (ret < 0) {
+	if (ret) {
 		journal("Unable to close connection: %s.\n", strerror(errno));
-		return false;
+		return;
 	}
-
-	return true;
 }
 
-bool udp_accept_connection(const struct options *opt)
+void udp_accept_connection(const struct options *opt)
 {
 	struct sockaddr_in cli_addr;
 	socklen_t cli_len;
@@ -198,21 +197,16 @@ bool udp_accept_connection(const struct options *opt)
 
 	journal("Listening for connection...\n");
 	ret = recvfrom(sockfd, NULL, 0, 0, (struct sockaddr *)(&cli_addr), &cli_len);
-	if (ret < 0) {
+	if (ret) {
 		int errsave = errno;
 		journal("Unable to write to socket: %s.\n", strerror(errsave));
 		CHECK_SOCKET_ERROR(errsave);
-		return false;
 	}
 
 	cli_len = sizeof(cli_addr);
 	ret = udp_send_quote(sockfd, (struct sockaddr *)(&cli_addr), cli_len, opt);
-	if (ret < 0) {
+	if (ret) {
 		/* Error message is printed by udp_send_quote */
-		return false;
 	}
-
-	return true;
 }
-
 

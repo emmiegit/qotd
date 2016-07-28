@@ -60,7 +60,7 @@ enum internet_protocol {
 struct options {
 	const char *quotesfile;			/* string containing path to quotes file */
 	const char *pidfile;			/* string containing path to pid file */
-	unsigned int port;			/* port to listen on */
+	unsigned int port;			/* what port to listen on */
 	enum quote_divider linediv;	 	/* how to read the quotes file */
 	enum transport_protocol tproto; 	/* which transport protocol to use */
 	enum internet_protocol iproto;  	/* which internet protocol to use */
@@ -73,6 +73,7 @@ struct options {
 	bool strict;				/* enables extra checks to ensure security */
 	bool drop_privileges;			/* whether to setuid() after opening the connection */
 	bool is_daily;				/* whether quotes are random every day or every visit */
+	bool pad_quotes;			/* whether to pad the quote with newlines */
 	bool allow_big;				/* ignore 512-byte limit */
 	bool chdir_root;			/* whether to chdir to / when running */
 };

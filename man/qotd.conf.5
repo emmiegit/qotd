@@ -59,6 +59,10 @@ If the value is `line', then each non-empty line is treated as a quotation to be
 If `percent' is set, then the program is instructed to separate each quote with a line that has only a percent sign (`%') on it. More specifically, the program looks for a sequence of newline, percent sign, and newline, and separates the string there. This is the same format that is used by \fBfortune\fP(6).
 If `file' is used, then the whole file is treated as one quote. The default argument is `line'.
 .TP
+.BR PadQuotes
+Whether to place whitespace around the quotes to make them look nicer. When this is disabled, the daemon will only transmit the quotation itself.
+This option is a boolean, and the default argument is `yes'.
+.TP
 .BR DailyQuotes
 Whether to choose a random quote every day, or for every visit. If this option is set, then the same randomly-chosen quotation will be provided for all visits on the same day. Otherwise, each visit will yield a different quotation.
 This option is a boolean, and the default argument is `yes'.

@@ -28,27 +28,29 @@ VERSION      := 0.7
 SRC_DIR      := src
 MAN_DIR      := man
 
+export		 V PROGRAM_NAME VERSION
+
 # Goal Targets
 all:
-	@make -C $(SRC_DIR) V=$(V)
+	@make -C $(SRC_DIR)
 
 release: update-versions
 	@echo '[RELEASE]'
-	@make -C $(SRC_DIR) release V=$(V)
+	@make -C $(SRC_DIR) release
 
 debug:
 	@echo '[DEBUG]'
-	@make -C $(SRC_DIR) debug V=$(V)
+	@make -C $(SRC_DIR) debug
 
 profile:
 	@echo '[PROFILE]'
-	@make -C $(SRC_DIR) profile V=$(V)
+	@make -C $(SRC_DIR) profile
 
 man:
-	@make -C $(MAN_DIR) all V=$(V)
+	@make -C $(MAN_DIR) all
 
 pdf:
-	@make -C $(MAN_DIR) pdf V=$(V)
+	@make -C $(MAN_DIR) pdf
 
 clean:
 	@echo '[CLEAN]'
