@@ -285,10 +285,6 @@ static bool read_key_and_value(const char *conf_file, unsigned int lineno, const
 	val->data[b_index] = '\0';
 	val->length = b_index;
 
-    /* Terminate value string */
-    val->data[b_index] = '\0';
-    val->length = b_index;
-
 #if DEBUG
 	printf("[%s] = [%s]\n", key->data, val->data);
 #endif /* DEBUG */
