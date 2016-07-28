@@ -101,7 +101,7 @@ static int daemonize()
 	if (opt.chdir_root) {
 		int ret = chdir("/");
 
-		if (ret < 0) {
+		if (ret) {
 			journal("Unable to chdir to root dir: %s.\n", strerror(errno));
 		}
 	}
@@ -208,24 +208,30 @@ void load_config(bool first_time)
 
 		journal("Quotes file changed, opening new file handle...\n");
 
-			/* Close old quotes file */
-			ret = close_quotes_file();
-			if (ret) {
-				journal("Unable to close quotes file: %s.\n", strerror(errno));
-				cleanup(EXIT_IO, true);
-			}
+		/* Close old quotes file */
+		ret = close_quotes_file();
+		if (ret) {
+			journal("Unable to close quotes file: %s.\n", strerror(errno));
+			cleanup(EXIT_IO, true);
+		}
 
-			/* Reopen quotes file */
-			ret = open_quotes_file(opt.quotesfile);
-			if (ret) {
-				journal("Unable to reopen quotes file: %s.\n", strerror(errno));
-				cleanup(EXIT_IO, true);
-			}
+		/* Reopen quotes file */
+		ret = open_quotes_file(opt.quotesfile);
+		if (ret) {
+			journal("Unable to reopen quotes file: %s.\n", strerror(errno));
+			cleanup(EXIT_IO, true);
+		}
 	}
 
 	if (!opt.pidfile || !old_opt.pidfile ||
 		(opt.pidfile != old_opt.pidfile && strcmp(opt.pidfile, old_opt.pidfile))) {
+
 		journal("Pid file changed, switching them out...\n");
+
+		if (opt.drop_privileges) {
+			journal("We can't change the pid file, we don't have root privileges anymore.\n");
+			cleanup(EXIT_ARGUMENTS, true);
+		}
 
 		ret = unlink(old_opt.pidfile);
 		if (ret) {
@@ -243,9 +249,11 @@ void load_config(bool first_time)
 
 		journal("Connection settings changed, remaking socket...\n");
 
-		if (opt.drop_privileges && getuid() == ROOT_USER_ID) {
-			/* Get root access back */
-			regain_privileges();
+		if (opt.drop_privileges && opt.port < MIN_NORMAL_PORT) {
+			journal("Configuration file specifies port %d (which is below %d),\n",
+				opt.port, MIN_NORMAL_PORT);
+			journal("but we don't have root privileges anymore.\n");
+			cleanup(EXIT_ARGUMENTS, true);
 		}
 
 		/* Close old socket */
@@ -253,11 +261,6 @@ void load_config(bool first_time)
 
 		/* Create new socket */
 		/* TODO */
-
-		if (opt.drop_privileges) {
-			/* Drop privileges again */
-			drop_privileges(&opt);
-		}
 	}
 }
 
@@ -293,7 +296,7 @@ static void write_pidfile()
 	/* Write the pidfile */
 	fh = fopen(opt.pidfile, "w+");
 
-	if (fh == NULL) {
+	if (!fh) {
 		journal("Unable to open pid file: %s.\n", strerror(errno));
 
 		if (opt.require_pidfile) {
@@ -316,7 +319,7 @@ static void write_pidfile()
 	wrote_pidfile = true;
 
 	ret = fclose(fh);
-	if (ret < 0) {
+	if (ret) {
 		journal("Unable to close pid file handle: %s.\n", strerror(errno));
 
 		if (opt.require_pidfile) {

@@ -98,6 +98,7 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
 	opt->daemonize = DEFAULT_DAEMONIZE;
 	opt->drop_privileges = DEFAULT_DROP_PRIVILEGES;
 	opt->is_daily = DEFAULT_IS_DAILY;
+	opt->pad_quotes = DEFAULT_PAD_QUOTES;
 	opt->allow_big = DEFAULT_ALLOW_BIG;
 	opt->chdir_root = DEFAULT_CHDIR_ROOT;
 

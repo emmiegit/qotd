@@ -23,65 +23,7 @@ If you use _systemd_, install with `make install SYSTEMD=1`. This will add a QOT
 If you're creating a package, you can have `make` install to the packaging directory by setting `ROOT`, e.g. `make install ROOT=/tmp/my_package`.
 
 ### Configuration
-The default configuration file is located at `/etc/qotd.conf` (though this can be changed with the `-c` flag). The following options are supported:
-
-**TransportProtocol**:  
-  Which transport protocol to use. This setting is either 'udp' or 'tcp'.  
-  Default: TCP
-
-**InternetProtocol**:  
-  Which IP protocol to use. This setting is either 'ipv4', 'ipv6', or 'both'.  
-  Default: Both
-
-**Port**:  
-  Specifies an alternate port to listen on.  
-  Default: 17
-
-**DropPrivileges**:  
-  Takes a boolean. If this option is set, then once a connection is established, the program will drop
-  privileges and run itself as the daemon user.  
-  Default: yes
-
-**PidFile**:  
-  Specifies what pid file is to be used by the daemon. If this value is `none` or `/dev/null`, then no pid
-  file is written.  
-  Default: `/run/qotd.pid`, but if there is no `/run`, then `/var/run/qotd.pid` is used instead.
-
-**RequirePidFile**:  
-  If the daemon is unable to write to the pid file for any reason and this option is set, then the daemon
-  will quit.  
-  Default: yes
-
-**JournalFile**:  
-  This option specifies what file the daemon uses to log status messages. If this file is set to `-`, then
-  the program's standard output is used, and if the value is set to `none` or `/dev/null`, then the journal
-  output is suppressed.  
-  Default: the program's standard output
-
-**QuotesFile**:  
-  The source  of  the quotations to be displayed to the user. Note that any null bytes (`\0`) found in
-  the quotes file will be read as spaces instead. The default is to use the pre-installed quotes located
-  at `/usr/share/qotd/quotes.txt`.
-
-**QuoteDivider**:  
-  How quotes in the quotes file are separated. There are currently three possible options: 'line',
-  'percent', or 'file'. If the value is 'line', then each non-empty line is treated as a quotation to
-  be possibly transmitted. If 'percent' is set, then the program is instructed to separate each quote
-  with a line that has only a percent sign (%) on it. More specifically, the program looks for a
-  sequence of newline, percent sign, and newline, and separates the string there. If 'file' is used, then
-  the whole file is treated as one quote.  
-  Default: line
-
-**DailyQuotes**:  
-  Whether to choose a random quote every day, or for every visit. If this option is set, then the same
-  randomly-chosen quotation will be provided for all visits on the same day. Otherwise, each visit will
-  yield a different quotation.
-  Default: yes
-
-**AllowBigQuotes**:
-  RFC 865 specifies  that quotes should be no bigger than 512 bytes. If this option is set, then this
-  limit is ignored. Otherwise, quotes are automatically truncated to meet the byte limit.  
-  Default: no
+The default configuration file is located at `/etc/qotd.conf` (though this can be changed with the `-c` flag). Read the man pages or look at the example configuration files for more information about each setting and what it does.
 
 ### Running
 _systemd_ users can run the new service:

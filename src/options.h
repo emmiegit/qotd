@@ -54,6 +54,7 @@ enum internet_protocol {
 # define DEFAULT_DAEMONIZE		true
 # define DEFAULT_DROP_PRIVILEGES	true
 # define DEFAULT_IS_DAILY		true
+# define DEFAULT_PAD_QUOTES		true
 # define DEFAULT_ALLOW_BIG		false
 # define DEFAULT_CHDIR_ROOT		true
 

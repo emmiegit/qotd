@@ -34,16 +34,10 @@ void drop_privileges(struct options *opt)
 {
 	int ret;
 
+	UNUSED(opt);
+
 	if (geteuid() != ROOT_USER_ID) {
 		journal("Not running as root, no privileges to drop.\n");
-		return;
-	}
-
-	journal("Changing ownership of pid file.\n");
-	ret = chown(opt->pidfile, DAEMON_USER_ID, DAEMON_GROUP_ID);
-	if (unlikely(ret)) {
-		journal("Unable to change ownership of file to %d:%d: %s.\n",
-			DAEMON_USER_ID, DAEMON_GROUP_ID, strerror(errno));
 		return;
 	}
 
@@ -59,21 +53,10 @@ void drop_privileges(struct options *opt)
 	if (unlikely(ret)) {
 		journal("Unable to set effective user id to %d: %s.\n", DAEMON_USER_ID, strerror(errno));
 	}
-}
 
-void regain_privileges()
-{
-	int ret;
-
-	journal("Regaining privileges to reconnect to socket.\n");
-
-	/* Regain privileges */
-	ret = setuid(getuid());
-
-	if (unlikely(ret)) {
-		journal("Unable to set effective user ID to %d: %s.\n",
-			getuid(), strerror(errno));
-		return;
+	if (unlikely(!setuid(ROOT_USER_ID))) {
+		journal("Managed to regain root privileges. Bailing out.\n");
+		cleanup(EXIT_SECURITY, true);
 	}
 }
 
