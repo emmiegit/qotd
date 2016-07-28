@@ -1,5 +1,5 @@
 /*
- * sighandler.h
+ * network.h
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -18,17 +18,24 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __SIGHANDLER_H
-# define __SIGHANDLER_H
+#ifndef __NETWORK_H
+# define __NETWORK_H
+
+# include "options.h"
 
 # ifdef __cplusplus
 extern "C" {
 # endif /* __cplusplus */
 
-void set_up_handlers();
+void set_up_ipv4_socket(const struct options *opt);
+void set_up_ipv6_socket(const struct options *opt);
+void close_socket();
+
+void tcp_accept_connection(const struct options *opt);
+void udp_accept_connection(const struct options *opt);
 
 # ifdef __cplusplus
 }
 # endif /* __cplusplus */
-#endif /* __SIGHANDLER_H */
+#endif /* __NETWORK_H */
 

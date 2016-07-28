@@ -22,7 +22,10 @@
 # define __INFO_H
 
 # define PROGRAM_NAME   "qotd"
-# define VERSION_STRING "0.7"
+# define VERSION_STRING "0.8"
+# ifndef GITHASH
+#  define GITHASH	"nogithash"
+# endif /* GITHASH */
 
 #endif /* __INFO_H */
 

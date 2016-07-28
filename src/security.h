@@ -24,12 +24,14 @@
 extern "C" {
 # endif /* __cplusplus */
 
+# include "options.h"
+
 # define ROOT_USER_ID               0
 # define ROOT_GROUP_ID              0
 # define DAEMON_USER_ID             2
 # define DAEMON_GROUP_ID            2
 
-void drop_privileges();
+void drop_privileges(struct options *opt);
 void regain_privileges();
 void file_check(const char *path, const char *file_type);
 

@@ -23,12 +23,20 @@
 
 # include <stdbool.h>
 
+# ifdef __cplusplus
+extern "C" {
+# endif /* __cplusplus */
+
 void open_journal(const char *path);
-void open_journal_as_fd(int fd);
 int close_journal();
 bool journal_is_open();
 
 int journal(const char *message, ...);
 
+# define ERR_TRACE()		journal("%s:%d: ", __FILE__, __LINE__)
+
+# ifdef __cplusplus
+}
+# endif /* __cplusplus */
 #endif /* __JOURNAL_H */
 

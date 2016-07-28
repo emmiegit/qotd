@@ -17,71 +17,50 @@
 # along with qotd.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-.PHONY: all pdf install force forcedebug clean
+.PHONY: all pdf install clean
 
 # Constant declarations
-PROGRAM_NAME = qotd
-VERSION = 0.7
+V            := 0
+PROGRAM_NAME := qotd
+VERSION      := 0.8
 
 # Directories
-SRC_DIR = src
-MAN_DIR = man
-BIN_DIR = bin
-DOC_DIR = doc
+SRC_DIR      := src
+MAN_DIR      := man
 
-# Compile options
-CC = gcc
-FLAGS = -ansi -pipe -O3 -D_XOPEN_SOURCE=500
-WARN_FLAGS = -pedantic -Wall -Wextra
-INCLUDE = -I.
+export		 V PROGRAM_NAME VERSION
 
-# Program sources
-SRC_EXT = c
-HDR_EXT = h
-OBJ_EXT = o
-DEP_EXT = d
-SOURCES = $(wildcard $(SRC_DIR)/*.$(SRC_EXT))
-OBJECTS = $(patsubst $(SRC_DIR)/%,$(BIN_DIR)/%,$(SOURCES:.$(SRC_EXT)=.$(OBJ_EXT)))
-DEPS = $(OBJECTS:.$(OBJ_EXT)=.$(DEP_EXT))
-EXE = $(BIN_DIR)/qotdd
-
-# Man pages
-MAN_SOURCES = $(wildcard $(MAN_DIR)/*.5 $(MAN_DIR)/*.8)
-GZ_FILES = $(patsubst $(MAN_DIR)/%,$(DOC_DIR)/%,$(addsuffix .gz,$(MAN_SOURCES)))
-PS_FILES = $(patsubst $(MAN_DIR)/%,$(DOC_DIR)/%,$(addsuffix .ps,$(MAN_SOURCES)))
-PDF_TARGET = $(DOC_DIR)/$(PROGRAM_NAME).pdf
-
-# Targets
-all: $(EXE) $(GZ_FILES) $(PDF_TARGET)
-pdf: $(PDF_TARGET)
-
-# Program targets
-update-versions:
-	@sed -i '1 s/"$(PROGRAM_NAME) [^"]*"/"$(PROGRAM_NAME) $(VERSION)"/' $(MAN_SOURCES)
-	@sed -i 's/VERSION_STRING .*/VERSION_STRING "$(VERSION)"/' $(SRC_DIR)/info.$(HDR_EXT)
+# Goal Targets
+all:
+	@make -C $(SRC_DIR)
 
 release: update-versions
 	@echo '[RELEASE]'
-	@make clean all EXTRA_FLAGS='-fstack-protector-all'
+	@make -BC $(SRC_DIR) release
 
-$(BIN_DIR)/%.$(OBJ_EXT): $(SRC_DIR)/%.$(SRC_EXT)
-	@mkdir -p $(BIN_DIR)
-	@echo '[CC] $(notdir $@)'
-	@$(CC) $(FLAGS) $(CFLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -c -o $@ $<
+debug:
+	@echo '[DEBUG]'
+	@make -C $(SRC_DIR) debug
 
-# Make .d files - currently unused
-$(BIN_DIR)/%.$(DEP_EXT): $(SRC_DIR)/%.$(SRC_EXT)
-	@echo '[DEP] $(notdir $@)'
-	@$(CC) $(CFLAGS) -MM $< > $@
-	@set -e; \
-	 cp -f $*.$(DEP_EXT) $@.tmp; \
-	 sed -e 's/.*://' -e 's/\\$$//' < $@.tmp | fmt -1 | \
-	 sed -e 's/^ *//' -e 's/$$/:/' >> $@; \
-	 rm -f $*.$(DEP_EXT).tmp
+profile:
+	@echo '[PROFILE]'
+	@make -C $(SRC_DIR) profile
 
-$(EXE): $(OBJECTS)
-	@echo '[LD] $(notdir $@)'
-	@$(CC) $(FLAGS) $(CFLAGS) $(WARN_FLAGS) $(INCLUDE) $(EXTRA_FLAGS) -o $(EXE) $^
+man:
+	@make -C $(MAN_DIR) all
+
+pdf:
+	@make -C $(MAN_DIR) pdf
+
+clean:
+	@echo '[CLEAN]'
+	@make -C $(SRC_DIR) clean
+	@make -C $(MAN_DIR) clean
+
+# Primary targets
+update-versions:
+	@sed -i '1 s/"$(PROGRAM_NAME) [^"]*"/"$(PROGRAM_NAME) $(VERSION)"/' $(wildcard $(MAN_DIR)/*.5 $(MAN_DIR)/*.8)
+	@sed -i 's/VERSION_STRING .*/VERSION_STRING "$(VERSION)"/' $(SRC_DIR)/info.h
 
 install:
 	@echo '[INSTALL] $(ROOT)/usr/bin/qotdd'
@@ -98,7 +77,7 @@ ifeq ($(SYSTEMD),1)
 	@install -D -m644 misc/qotd.service '$(ROOT)/usr/lib/systemd/system/qotd.service'
 endif
 
-	@cd $(DOC_DIR); \
+	@cd $(MAN_DIR); \
 	for section in 5 8; do \
 		for filename in *.$${section}.gz; do \
 			echo "[INSTALL] $(ROOT)/usr/share/man/man$${section}/$${filename}"; \
@@ -106,43 +85,3 @@ endif
 		done \
 	done
 
-# Documentation targets
-$(DOC_DIR)/%.5.gz: $(MAN_DIR)/%.5
-	@mkdir -p $(DOC_DIR)
-	@echo '[GZ] $(notdir $@)'
-	@gzip -c $< > $@
-
-$(DOC_DIR)/%.8.gz: $(MAN_DIR)/%.8
-	@mkdir -p $(DOC_DIR)
-	@echo '[GZ] $(notdir $@)'
-	@gzip -c $< > $@
-
-$(DOC_DIR)/%.5.ps: $(MAN_DIR)/%.5
-	@mkdir -p $(DOC_DIR)
-	@echo '[PS] $(notdir $@)'
-	@groff -Tps -mandoc $< > $@
-
-$(DOC_DIR)/%.8.ps: $(MAN_DIR)/%.8
-	@mkdir -p $(DOC_DIR)
-	@echo '[PS] $(notdir $@)'
-	@groff -Tps -mandoc $< > $@
-
-$(PDF_TARGET): $(PS_FILES)
-	@echo '[PDF] $(notdir $@)'
-	@gs -q -sPAPERSIZE=letter -dNOPAUSE -dBATCH -sDEVICE=pdfwrite \
-		-sOutputFile=$@ $^
-
-# Utility targets
-debug:
-	@echo '[DEBUG]'
-	@make $(EXE) EXTRA_FLAGS='-g -Og -DDEBUG=1'
-
-clean:
-	@echo '[RMDIR] $(BIN_DIR)'
-	@rm -rf '$(BIN_DIR)'
-
-	@echo '[RMDIR] $(DOC_DIR)'
-	@rm -rf '$(DOC_DIR)'
-
-# Not used :<
-#-include $(DEPS)
