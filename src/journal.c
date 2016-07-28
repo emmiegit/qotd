@@ -49,26 +49,6 @@ void open_journal(const char *path)
 	}
 }
 
-void open_journal_as_fd(int fd)
-{
-	if (fd < 0) {
-		journal_fh = NULL;
-		return;
-	}
-
-#if DEBUG
-	printf("Setting journal to be the same as file descriptor %d.\n", fd);
-#endif /* DEBUG */
-
-	journal_fh = fdopen(fd, "w");
-	if (journal_fh == NULL) {
-		fprintf(stderr, "Unable to open journal handle for file descriptor \"%d\": %s.\n",
-				fd, strerror(errno));
-		perror("Unable to open journal handle");
-		cleanup(EXIT_IO, true);
-	}
-}
-
 int close_journal()
 {
 	if (journal_fh) {

@@ -239,7 +239,12 @@ static int format_quote(const struct options *opt)
 		strncpy(quote_buffer.data, quote_file_data.array[i], length);
 	}
 
-	journal("Sending quotation:%s<end>\n", quote_buffer.data);
+	if (opt->pad_quotes) {
+		journal("Sending quotation:%s<end>\n", quote_buffer.data);
+	} else {
+		journal("Sending quotation:\n%s<end>\n", quote_buffer.data);
+	}
+
 	quote_buffer.str_length = length;
 
 	return 0;
@@ -343,7 +348,7 @@ static int readquotes_line()
 		if (ch == '\0') {
 			ch = ' ';
 		} else if (ch == '\n') {
-			quote_file_data.buffer[i] = '\0';
+			ch = '\0';
 			quotes++;
 		}
 
@@ -351,6 +356,11 @@ static int readquotes_line()
 	}
 	quote_file_data.buffer[size] = '\0';
 
+	/*
+	 * Account for the fact that the last line doesn't
+	 * have a newline at the end.
+	 */
+	quotes++;
 
 	/* Allocate the array of strings */
 	if (quotes > quote_file_data.capacity) {

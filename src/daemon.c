@@ -203,7 +203,6 @@ void load_config(bool first_time)
 		return;
 	}
 
-	/* not finished yet */
 	if (opt.quotesfile != old_opt.quotesfile &&
 		strcmp(opt.quotesfile, old_opt.quotesfile)) {
 

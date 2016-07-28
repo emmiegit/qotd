@@ -2,8 +2,11 @@
 Keep quotes file open
 
 [Version 0.10]
-Rebind connection when reloading config
+Reload configuration with SIGHUP
 
 [Version 0.11]
+Add mutexs to prevent signal races
+
+[Version 0.12]
 UDP support
 

@@ -165,7 +165,7 @@ void parse_config(const char *conf_file, struct options *opt)
 			close_journal();
 
 			if (!strcmp(val.data, "-")) {
-				open_journal_as_fd(STDOUT_FILENO);
+				open_journal("/dev/stdin");
 			} else if (strcmp(val.data, "none") != 0) {
 				open_journal(val.data);
 			}
