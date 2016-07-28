@@ -22,7 +22,7 @@
 # Constant declarations
 V            := 0
 PROGRAM_NAME := qotd
-VERSION      := 0.7
+VERSION      := 0.8
 
 # Directories
 SRC_DIR      := src
@@ -36,7 +36,7 @@ all:
 
 release: update-versions
 	@echo '[RELEASE]'
-	@make -C $(SRC_DIR) release
+	@make -BC $(SRC_DIR) release
 
 debug:
 	@echo '[DEBUG]'

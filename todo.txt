@@ -1,12 +1,12 @@
-[Version 0.9]
+[Version 0.8]
 Keep quotes file open
 
-[Version 0.10]
+[Version 0.9]
 Reload configuration with SIGHUP
 
-[Version 0.11]
+[Version 0.10]
 Add mutexs to prevent signal races
 
-[Version 0.12]
+[Version 0.11]
 UDP support
 
