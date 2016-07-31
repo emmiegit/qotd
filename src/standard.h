@@ -48,5 +48,6 @@
 #  define likely(x)	(x)
 #  define unlikely(x)	(x)
 # endif /* __GNUC__ || __clang__ */
+
 #endif /* __STANDARD_H */
 

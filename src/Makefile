@@ -37,7 +37,7 @@ CC      := gcc
 FLAGS   := -ansi -pipe
 WARN    := -Wall -Wextra -Wpedantic
 COMPILE := -I. -D_XOPEN_SOURCE=500 -DGITHASH='"$(shell git rev-parse --short HEAD)"'
-LINKING :=
+LINKING := -pthread
 
 # Program sources
 SOURCES := $(wildcard *.c)

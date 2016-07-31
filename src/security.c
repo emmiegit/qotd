@@ -19,8 +19,10 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
+#include <libgen.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -30,11 +32,9 @@
 #include "security.h"
 #include "standard.h"
 
-void drop_privileges(struct options *opt)
+void drop_privileges(void)
 {
 	int ret;
-
-	UNUSED(opt);
 
 	if (geteuid() != ROOT_USER_ID) {
 		journal("Not running as root, no privileges to drop.\n");
@@ -60,7 +60,44 @@ void drop_privileges(struct options *opt)
 	}
 }
 
-void file_check(const char *path, const char *file_type)
+void security_options_check(const struct options *opt)
+{
+	char *pidpath, *piddir;
+	struct stat statbuf;
+	int ret;
+
+	if (!opt->pidfile) {
+		return;
+	}
+
+	pidpath = strdup(opt->pidfile);
+	piddir = dirname(pidpath);
+	free(pidpath);
+
+	ret = stat(piddir, &statbuf);
+	if (ret) {
+		fprintf(stderr, "Unable to stat \"%s\" (the directory that will contain the pidfile): %s.\n",
+			piddir, strerror(errno));
+		cleanup(EXIT_IO, true);
+	}
+
+	if (!S_ISDIR(statbuf.st_mode)) {
+		fprintf(stderr, "\"%s\" is meant to hold the pidfile, but it's not a directory.\n",
+			piddir);
+		cleanup(EXIT_IO, true);
+	}
+
+	if ((statbuf.st_mode & S_IWOTH) && !(statbuf.st_mode & S_ISVTX)) {
+		fprintf(stderr,
+			"\"%s\" (the directory that will contain the pidfile) potentially allows others\n"
+			"to delete our pidfile. The daemon will not start.\n"
+			"(To disable this behavior, use the --lax flag when running).\n",
+			piddir);
+		cleanup(EXIT_SECURITY, true);
+	}
+}
+
+void security_file_check(const char *path, const char *file_type)
 {
 	struct stat statbuf;
 	int ret;

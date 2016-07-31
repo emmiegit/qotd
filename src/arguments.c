@@ -39,7 +39,7 @@
 #define BOOLEAN_UNSET		2
 
 #if DEBUG
-# define DEBUG_BUFFER_SIZE	50
+# define DEBUG_BUFFER_SIZE	48
 # define BOOLSTR(x)		((x) ? "true" : "false")
 # define BOOLSTR2(x)		(((x) == BOOLEAN_UNSET) ? "(unset)" : ((x) ? "true" : "false"))
 #endif /* DEBUG */
@@ -149,7 +149,7 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
 	if (flags.journal_file) {
 		close_journal();
 		if (strcmp(flags.journal_file, "-") == 0) {
-			open_journal("/dev/sdout");
+			open_journal("/dev/stdout");
 		} else if (strcmp(flags.journal_file, "none") != 0) {
 			open_journal(flags.journal_file);
 		}
@@ -177,8 +177,8 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
 	journal("	Port: %u\n",			opt->port);
 	journal("	QuoteDivider: %s\n",		name_option_quote_divider(opt->linediv));
 	journal("	Protocol: %s\n",		name_option_protocol(opt->tproto, opt->iproto));
-	journal("	QuotesMalloc: %s\n",		BOOLSTR(opt->quotesalloc));
-	journal("	PidMalloc: %s\n",		BOOLSTR(opt->quotesalloc));
+	journal("	QuotesAlloc: %s\n",		BOOLSTR(opt->quotesalloc));
+	journal("	PidAlloc: %s\n",		BOOLSTR(opt->quotesalloc));
 	journal("	Daemonize: %s\n",		BOOLSTR(opt->daemonize));
 	journal("	RequirePidfile: %s\n",	  	BOOLSTR(opt->require_pidfile));
 	journal("	DropPrivileges: %s\n",	  	BOOLSTR(opt->drop_privileges));
@@ -316,6 +316,7 @@ static void parse_long_option(
 	} else if (!strcmp(argv[*i], "--noconfig")) {
 		flags->conf_file = NULL;
 	} else if (!strcmp(argv[*i], "--lax")) {
+		fprintf(stderr, "Note: --lax has been enabled. Security checks will *not* be performed.\n");
 		flags->strict = false;
 	} else if (!strcmp(argv[*i], "--pidfile")) {
 		if (++(*i) == argc) {
@@ -432,15 +433,15 @@ static const char *name_option_protocol(enum transport_protocol tproto, enum int
 static const char *name_option_quote_divider(enum quote_divider value)
 {
 	switch (value) {
-		case DIV_EVERYLINE:
-			return "DIV_EVERYLINE";
-		case DIV_PERCENT:
-			return "DIV_PERCENT";
-		case DIV_WHOLEFILE:
-			return "DIV_WHOLEFILE";
-		default:
-			printf("(%u) ", value);
-			return "UNKNOWN";
+	case DIV_EVERYLINE:
+		return "DIV_EVERYLINE";
+	case DIV_PERCENT:
+		return "DIV_PERCENT";
+	case DIV_WHOLEFILE:
+		return "DIV_WHOLEFILE";
+	default:
+		printf("(%u) ", value);
+		return "UNKNOWN";
 	}
 }
 #endif /* DEBUG */

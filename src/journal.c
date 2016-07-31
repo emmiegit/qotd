@@ -49,7 +49,7 @@ void open_journal(const char *path)
 	}
 }
 
-int close_journal()
+int close_journal(void)
 {
 	if (journal_fh) {
 		int ret = fclose(journal_fh);
@@ -64,7 +64,7 @@ int close_journal()
 	return 0;
 }
 
-bool journal_is_open()
+bool journal_is_open(void)
 {
 	return journal_fh != NULL;
 }

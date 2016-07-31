@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <libgen.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -39,13 +41,15 @@
 #include "standard.h"
 
 /* Static function declarations */
-static int daemonize();
-static int main_loop();
+static int daemonize(void);
+static int main_loop(void);
 static void save_args(const int argc, const char *argv[]);
-static void check_config();
-static void write_pidfile();
+static void write_pidfile(void);
+static void load_config(void);
+static void check_config(void);
 
 /* Static member declarations */
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static struct options opt;
 static bool wrote_pidfile;
 
@@ -57,6 +61,9 @@ static struct {
 /* Function implementations */
 int main(int argc, const char *argv[])
 {
+	/* Prevent race conditions with early SIGHUPs */
+	acquire_lock();
+
 	/* Set up signal handlers */
 	set_up_handlers();
 
@@ -71,17 +78,46 @@ int main(int argc, const char *argv[])
 	save_args(argc, argv);
 
 	/* Load configuration and open journal */
-	load_config(true);
+	load_config();
+
+	/* Check security settings */
+	if (opt.strict) {
+		security_options_check(&opt);
+	}
+
+	/* All set up */
+	relinquish_lock();
 
 	return opt.daemonize ? daemonize() : main_loop();
 }
 
-static int daemonize()
+void acquire_lock(void)
+{
+	int ret = pthread_mutex_lock(&lock);
+	if (ret) {
+		ERR_TRACE();
+		journal("Unable to lock mutex: %s.\n", strerror(errno));
+		cleanup(EXIT_FAILURE, true);
+	}
+}
+
+void relinquish_lock(void)
+{
+	int ret = pthread_mutex_unlock(&lock);
+	if (ret) {
+		ERR_TRACE();
+		journal("Unable to unlock mutex: %s.\n", strerror(errno));
+		cleanup(EXIT_FAILURE, true);
+	}
+}
+
+static int daemonize(void)
 {
 	pid_t pid;
 
 	/* Fork to background */
-	if ((pid = fork()) < 0) {
+	pid = fork();
+	if (pid < 0) {
 		journal("Unable to fork: %s.\n", strerror(errno));
 		cleanup(EXIT_FAILURE, true);
 	} else if (pid != 0) {
@@ -109,44 +145,45 @@ static int daemonize()
 	return main_loop();
 }
 
-static int main_loop()
+static int main_loop(void)
 {
-	void (*accept_connection)(const struct options *opt);
+	void (*accept_connection)(void);
 
 	write_pidfile();
 
 	switch (opt.iproto) {
-		case PROTOCOL_BOTH:
-		case PROTOCOL_IPv6:
-			set_up_ipv6_socket(&opt);
-			break;
-		case PROTOCOL_IPv4:
-			set_up_ipv4_socket(&opt);
-			break;
-		default:
-			journal("Internal error: invalid enum value for \"iproto\": %d.\n", opt.iproto);
-			cleanup(EXIT_INTERNAL, true);
+	case PROTOCOL_BOTH:
+	case PROTOCOL_IPv6:
+		set_up_ipv6_socket(&opt);
+		break;
+	case PROTOCOL_IPv4:
+		set_up_ipv4_socket(&opt);
+		break;
+	default:
+		journal("Internal error: invalid enum value for \"iproto\": %d.\n", opt.iproto);
+		cleanup(EXIT_INTERNAL, true);
 	}
 
 	if (opt.drop_privileges) {
-		drop_privileges(&opt);
+		drop_privileges();
 	}
 
 	switch (opt.tproto) {
-		case PROTOCOL_TCP:
-			accept_connection = &tcp_accept_connection;
-			break;
-		case PROTOCOL_UDP:
-			accept_connection = &udp_accept_connection;
-			break;
-		default:
-			journal("Internal error: invalid enum value for \"tproto\": %d.\n", opt.tproto);
-			cleanup(EXIT_INTERNAL, true);
-			return -1;
+	case PROTOCOL_TCP:
+		accept_connection = &tcp_accept_connection;
+		break;
+	case PROTOCOL_UDP:
+		accept_connection = &udp_accept_connection;
+		break;
+	default:
+		ERR_TRACE();
+		journal("Internal error: invalid enum value for \"tproto\": %d.\n", opt.tproto);
+		cleanup(EXIT_INTERNAL, true);
+		return -1;
 	}
 
-	for (;;) {
-		accept_connection(&opt);
+	while (true) {
+		accept_connection();
 	}
 
 	return EXIT_SUCCESS;
@@ -179,32 +216,47 @@ void cleanup(int retcode, bool quiet)
 	destroy_quote_buffers();
 	close_socket();
 	close_journal();
+
+	relinquish_lock();
+
+	ret = pthread_mutex_destroy(&lock);
+	if (ret) {
+		journal("Unable to destroy mutex: %s.\n", strerror(errno));
+	}
+
 	exit(retcode);
 }
 
-void load_config(bool first_time)
+static void load_config(void)
+{
+	int ret;
+
+	journal("Loading configuration settings...\n");
+	parse_args(&opt, arguments.argc, arguments.argv);
+	check_config();
+
+	ret = open_quotes_file(&opt);
+	if (ret) {
+		journal("Unable to open quotes file: %s.\n", strerror(errno));
+		cleanup(EXIT_IO, true);
+	}
+}
+
+void reload_config(void)
 {
 	struct options old_opt = opt;
 	int ret;
 
-	if (!first_time) {
-		journal("Reloading configuration settings...\n");
-	}
+	acquire_lock();
+	journal("Reloading configuration settings...\n");
+	set_up_handlers();
 
 	parse_args(&opt, arguments.argc, arguments.argv);
 	check_config();
 
-	if (first_time) {
-		ret = open_quotes_file(opt.quotesfile);
-		if (ret) {
-			journal("Unable to open quotes file: %s.\n", strerror(errno));
-			cleanup(EXIT_IO, true);
-		}
-		return;
-	}
-
+	if (false)
 	if (opt.quotesfile != old_opt.quotesfile &&
-		strcmp(opt.quotesfile, old_opt.quotesfile)) {
+	    strcmp(opt.quotesfile, old_opt.quotesfile)) {
 
 		journal("Quotes file changed, opening new file handle...\n");
 
@@ -216,15 +268,16 @@ void load_config(bool first_time)
 		}
 
 		/* Reopen quotes file */
-		ret = open_quotes_file(opt.quotesfile);
+		ret = open_quotes_file(&opt);
 		if (ret) {
 			journal("Unable to reopen quotes file: %s.\n", strerror(errno));
 			cleanup(EXIT_IO, true);
 		}
 	}
 
+	if (false)
 	if (!opt.pidfile || !old_opt.pidfile ||
-		(opt.pidfile != old_opt.pidfile && strcmp(opt.pidfile, old_opt.pidfile))) {
+	    (opt.pidfile != old_opt.pidfile && strcmp(opt.pidfile, old_opt.pidfile))) {
 
 		journal("Pid file changed, switching them out...\n");
 
@@ -243,9 +296,11 @@ void load_config(bool first_time)
 		write_pidfile();
 	}
 
+	if (false)
 	if (opt.port != old_opt.port ||
-		opt.tproto != old_opt.tproto ||
-		opt.iproto != old_opt.iproto) {
+	    opt.tproto != old_opt.tproto ||
+	    opt.iproto != old_opt.iproto) {
+		void (*accept_connection)(void);
 
 		journal("Connection settings changed, remaking socket...\n");
 
@@ -260,8 +315,36 @@ void load_config(bool first_time)
 		close_socket();
 
 		/* Create new socket */
-		/* TODO */
+		switch (opt.iproto) {
+		case PROTOCOL_BOTH:
+		case PROTOCOL_IPv6:
+			set_up_ipv6_socket(&opt);
+			break;
+		case PROTOCOL_IPv4:
+			set_up_ipv4_socket(&opt);
+			break;
+		default:
+			ERR_TRACE();
+			journal("Internal error: invalid enum value for \"iproto\": %d.\n", opt.iproto);
+			cleanup(EXIT_INTERNAL, true);
+		}
+
+		switch (opt.tproto) {
+		case PROTOCOL_TCP:
+			accept_connection = &tcp_accept_connection;
+			break;
+		case PROTOCOL_UDP:
+			accept_connection = &udp_accept_connection;
+			break;
+		default:
+			journal("Internal error: invalid enum value for \"tproto\": %d.\n", opt.tproto);
+			cleanup(EXIT_INTERNAL, true);
+		}
+
+		UNUSED(accept_connection);
 	}
+
+	relinquish_lock();
 }
 
 static void save_args(int argc, const char *argv[])
@@ -308,7 +391,8 @@ static void write_pidfile()
 
 	ret = fprintf(fh, "%d\n", getpid());
 	if (ret < 0) {
-		perror("Unable to write pid to pid file");
+		ERR_TRACE();
+		perror("Unable to write process id to pid file");
 
 		if (opt.require_pidfile) {
 			fclose(fh);
@@ -320,6 +404,7 @@ static void write_pidfile()
 
 	ret = fclose(fh);
 	if (ret) {
+		ERR_TRACE();
 		journal("Unable to close pid file handle: %s.\n", strerror(errno));
 
 		if (opt.require_pidfile) {
@@ -333,21 +418,47 @@ static void check_config()
 	struct stat statbuf;
 	int ret;
 
-	if (opt.port < 1024 && geteuid() != ROOT_USER_ID) {
-		journal("Only root can bind to ports below 1024.\n");
+	if (opt.port < MIN_NORMAL_PORT && geteuid() != ROOT_USER_ID) {
+		journal("Only root can bind to ports below %d.\n", MIN_NORMAL_PORT);
 		cleanup(EXIT_ARGUMENTS, true);
 	}
 
-	if (opt.pidfile[0] != '/') {
+	if (opt.pidfile && opt.pidfile[0] != '/') {
 		journal("Specified pid file is not an absolute path.\n");
 		cleanup(EXIT_ARGUMENTS, true);
 	}
 
 	ret = stat(opt.quotesfile, &statbuf);
 
-	if (ret < 0) {
+	if (ret) {
+		ERR_TRACE();
 		journal("Unable to stat quotes file \"%s\": %s.\n", opt.quotesfile, strerror(errno));
 		cleanup(EXIT_IO, true);
+	}
+
+	if (geteuid() == ROOT_USER_ID && opt.drop_privileges && opt.pidfile) {
+		char *pidfile = strdup(opt.pidfile);
+		ret = stat(dirname(pidfile), &statbuf);
+		free(pidfile);
+		if (ret) {
+			journal("Unable to stat pid file directory \"%s\": %s.\n",
+					dirname(pidfile), strerror(errno));
+			cleanup(EXIT_IO, true);
+		}
+
+		do {
+			if (statbuf.st_uid == DAEMON_USER_ID && (statbuf.st_mode & S_IRWXU)) {
+				break;
+			}
+
+			if (statbuf.st_gid == DAEMON_GROUP_ID && (statbuf.st_mode & S_IRWXG)) {
+				break;
+			}
+
+			if (statbuf.st_mode & S_IRWXO) {
+				break;
+			}
+		} while(0);
 	}
 }
 

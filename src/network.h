@@ -29,10 +29,10 @@ extern "C" {
 
 void set_up_ipv4_socket(const struct options *opt);
 void set_up_ipv6_socket(const struct options *opt);
-void close_socket();
+void close_socket(void);
 
-void tcp_accept_connection(const struct options *opt);
-void udp_accept_connection(const struct options *opt);
+void tcp_accept_connection(void);
+void udp_accept_connection(void);
 
 # ifdef __cplusplus
 }

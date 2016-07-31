@@ -28,8 +28,8 @@ extern "C" {
 # endif /* __cplusplus */
 
 void open_journal(const char *path);
-int close_journal();
-bool journal_is_open();
+int close_journal(void);
+bool journal_is_open(void);
 
 int journal(const char *message, ...);
 

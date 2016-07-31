@@ -26,18 +26,20 @@ extern "C" {
 
 # include "options.h"
 
-# define ROOT_USER_ID			0
-# define ROOT_GROUP_ID			0
-# define DAEMON_USER_ID			2
-# define DAEMON_GROUP_ID		2
+# define ROOT_USER_ID				0
+# define ROOT_GROUP_ID				0
+# define DAEMON_USER_ID				2
+# define DAEMON_GROUP_ID			2
 
-# define MIN_NORMAL_PORT		1024
+/* Any port lower than this requires root permissions */
+# define MIN_NORMAL_PORT			1024
 
-void drop_privileges(struct options *opt);
-void file_check(const char *path, const char *file_type);
+void drop_privileges(void);
+void security_options_check(const struct options *opt);
+void security_file_check(const char *path, const char *file_type);
 
-# define conf_file_check(path)		file_check((path), "configuration")
-# define quotes_file_check(path)	file_check((path), "quotes")
+# define security_conf_file_check(path)		security_file_check((path), "configuration")
+# define security_quotes_file_check(path)	security_file_check((path), "quotes")
 
 # ifdef __cplusplus
 }

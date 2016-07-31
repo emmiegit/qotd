@@ -35,7 +35,9 @@ extern "C" {
 # define EXIT_SIGNAL			22
 # define EXIT_INTERNAL			23
 
-void load_config(bool first_time);
+void acquire_lock(void);
+void relinquish_lock(void);
+void reload_config(void);
 void cleanup(int ret, bool quiet);
 
 # ifdef __cplusplus

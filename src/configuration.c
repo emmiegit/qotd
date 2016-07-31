@@ -35,7 +35,7 @@
 #include "standard.h"
 
 #define PORT_MAX		65535    /* Not in limits.h */
-#define BUFFER_SIZE		PATH_MAX
+#define BUFFER_SIZE		PATH_MAX /* A (very safe) magic number */
 
 struct buffer {
 	char data[BUFFER_SIZE];
@@ -45,10 +45,8 @@ struct buffer {
 static bool read_key_and_value(
 	const char *conf_file, unsigned int lineno, const struct buffer *line,
 	struct buffer *key, struct buffer *val);
-
 static bool file_read_line(
 	FILE *fh, const char *filename, unsigned int *lineno, struct buffer *line);
-
 static bool str_to_bool(
 	const char *string, const char *filename, unsigned int lineno, bool *success);
 
@@ -60,14 +58,14 @@ void parse_config(const char *conf_file, struct options *opt)
 	int errors = 0;
 
 	if (opt->strict) {
-		conf_file_check(conf_file);
+		security_conf_file_check(conf_file);
 	}
 
 	fh = fopen(conf_file, "r");
-
 	if (fh == NULL) {
 		/* Can't write to the journal, it hasn't been opened yet */
-		fprintf(stderr, "Unable to open configuration file \"%s\": %s.\n", conf_file, strerror(errno));
+		fprintf(stderr, "Unable to open configuration file \"%s\": %s.\n",
+			conf_file, strerror(errno));
 		cleanup(EXIT_IO, true);
 	}
 
@@ -103,7 +101,8 @@ void parse_config(const char *conf_file, struct options *opt)
 			} else if (!strcasecmp(val.data, "udp")) {
 				opt->tproto = PROTOCOL_UDP;
 			} else {
-				fprintf(stderr, "%s:%d: invalid transport protocol: \"%s\"\n", conf_file, lineno, val.data);
+				fprintf(stderr, "%s:%d: invalid transport protocol: \"%s\"\n",
+					conf_file, lineno, val.data);
 				errors++;
 			}
 		} else if (!strcasecmp(key.data, "internetprotocol")) {
@@ -114,14 +113,16 @@ void parse_config(const char *conf_file, struct options *opt)
 			} else if (!strcasecmp(val.data, "ipv6")) {
 				opt->iproto = PROTOCOL_IPv6;
 			} else {
-				fprintf(stderr, "%s:%d: invalid internet protocol: \"%s\"\n", conf_file, lineno, val.data);
+				fprintf(stderr, "%s:%d: invalid internet protocol: \"%s\"\n",
+					conf_file, lineno, val.data);
 				errors++;
 			}
 		} else if (!strcasecmp(key.data, "port")) {
 			/* atoi is ok because it returns 0 in case of failure, and 0 isn't a valid port */
 			int port = atoi(val.data);
 			if (0 >= port || port > PORT_MAX) {
-				fprintf(stderr, "%s:%d: invalid port number: \"%s\"\n", conf_file, lineno, val.data);
+				fprintf(stderr, "%s:%d: invalid port number: \"%s\"\n",
+					conf_file, lineno, val.data);
 				errors++;
 			} else {
 				opt->port = port;
@@ -190,7 +191,9 @@ void parse_config(const char *conf_file, struct options *opt)
 			} else if (!strcasecmp(val.data, "file")) {
 				opt->linediv = DIV_WHOLEFILE;
 			} else {
-				fprintf(stderr, "%s:%d: unsupported division type: \"%s\"\n", conf_file, lineno, val.data);
+				fprintf(stderr,
+					"%s:%d: unsupported division type: \"%s\"\n",
+					conf_file, lineno, val.data);
 				errors++;
 			}
 		} else if (!strcasecmp(key.data, "padquotes")) {
@@ -218,7 +221,8 @@ void parse_config(const char *conf_file, struct options *opt)
 				errors++;
 			}
 		} else {
-			fprintf(stderr, "%s:%d: unknown conf option: \"%s\"\n", conf_file, lineno, key.data);
+			fprintf(stderr, "%s:%d: unknown conf option: \"%s\"\n",
+				conf_file, lineno, key.data);
 			errors++;
 		}
 
@@ -229,14 +233,16 @@ void parse_config(const char *conf_file, struct options *opt)
 
 	if (opt->strict && errors) {
 		fprintf(stderr,
-				"Your configuration file has %d issue%s. The daemon will not start.\n"
-				"(To disable this behavior, use the --lax flag when running).\n",
-				errors, PLURAL(errors));
+			"Your configuration file has %d issue%s. The daemon will not start.\n"
+			"(To disable this behavior, use the --lax flag when running).\n",
+			errors, PLURAL(errors));
 		cleanup(EXIT_SECURITY, true);
 	}
 }
 
-static bool read_key_and_value(const char *conf_file, unsigned int lineno, const struct buffer *line, struct buffer *key, struct buffer *val)
+static bool read_key_and_value(
+	const char *conf_file, unsigned int lineno, const struct buffer *line,
+	struct buffer *key, struct buffer *val)
 {
 	size_t l_index; /* position in the line */
 	size_t b_index; /* position in the buffer */
@@ -309,7 +315,8 @@ static bool read_key_and_value(const char *conf_file, unsigned int lineno, const
 	return true;
 }
 
-static bool file_read_line(FILE *fh, const char *filename, unsigned int *lineno, struct buffer *line)
+static bool file_read_line(
+	FILE *fh, const char *filename, unsigned int *lineno, struct buffer *line)
 {
 	int i;
 	int ch;
@@ -350,14 +357,14 @@ static bool file_read_line(FILE *fh, const char *filename, unsigned int *lineno,
 
 static bool str_to_bool(const char *string, const char *filename, unsigned int lineno, bool *success)
 {
-	if (!strcasecmp(string, "yes")
-	|| !strcasecmp(string, "true")
-	|| !strcmp(string, "1")) {
+	if (!strcasecmp(string, "yes") ||
+	    !strcasecmp(string, "true") ||
+	    !strcmp(string, "1")) {
 		*success = true;
 		return true;
-	} else if (!strcasecmp(string, "no")
-	|| !strcasecmp(string, "false")
-	|| !strcmp(string, "0")) {
+	} else if (!strcasecmp(string, "no") ||
+	           !strcasecmp(string, "false") ||
+	           !strcmp(string, "0")) {
 		*success = true;
 		return false;
 	} else {
