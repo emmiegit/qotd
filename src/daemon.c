@@ -458,6 +458,11 @@ static void check_config()
 			if (statbuf.st_mode & S_IRWXO) {
 				break;
 			}
+
+			journal("Given the current selection of pidfile, the daemon would be unable\n"
+				"to delete it because of the permissions on the holding directory.\n"
+				"Either change the pidfile or run without dropping privileges.\n");
+			cleanup(EXIT_ARGUMENTS, true);
 		} while(0);
 	}
 }
