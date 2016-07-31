@@ -30,21 +30,23 @@
 
 #include "daemon.h"
 #include "journal.h"
+#include "security.h"
 #include "standard.h"
 #include "quotes.h"
 
-#define QUOTE_SIZE		512  /* Set by RFC 865 */
+#define QUOTE_SIZE				512  /* Set by RFC 865 */
 
 /* Static functions */
-static int get_quote_of_the_day(const struct options *opt);
-static int format_quote(const struct options *opt);
-static long get_file_size();
-static int readquotes_file();
-static int readquotes_line();
-static int readquotes_percent();
+static int get_quote_of_the_day(void);
+static int format_quote(void);
+static long get_file_size(void);
+static int readquotes_file(void);
+static int readquotes_line(void);
+static int readquotes_percent(void);
 
 /* Static variables */
 static FILE *quotes_fh;
+static const struct options *opt;
 
 static struct {
 	char **array;
@@ -60,14 +62,20 @@ static struct {
 	size_t str_length;
 } quote_buffer;
 
-int open_quotes_file(const char *path)
+int open_quotes_file(const struct options *local_opt)
 {
+	opt = local_opt;
+
 	if (quotes_fh) {
 		journal("Internal error: quotes file handle is already open\n");
 		cleanup(EXIT_INTERNAL, true);
 	}
 
-	quotes_fh = fopen(path, "r");
+	if (opt->strict) {
+		security_quotes_file_check(opt->quotesfile);
+	}
+
+	quotes_fh = fopen(opt->quotesfile, "r");
 	if (!quotes_fh) {
 		return -1;
 	}
@@ -75,7 +83,7 @@ int open_quotes_file(const char *path)
 	return 0;
 }
 
-int close_quotes_file()
+int close_quotes_file(void)
 {
 	int ret;
 
@@ -89,18 +97,18 @@ int close_quotes_file()
 	return ret;
 }
 
-void destroy_quote_buffers()
+void destroy_quote_buffers(void)
 {
 	FINAL_FREE(quote_file_data.array);
 	FINAL_FREE(quote_file_data.buffer);
 	FINAL_FREE(quote_buffer.data);
 }
 
-int tcp_send_quote(const int fd, const struct options *opt)
+int tcp_send_quote(const int fd)
 {
 	int ret;
 
-	ret = get_quote_of_the_day(opt);
+	ret = get_quote_of_the_day();
 	if (unlikely(ret)) {
 		return -1;
 	}
@@ -114,11 +122,11 @@ int tcp_send_quote(const int fd, const struct options *opt)
 	return 0;
 }
 
-int udp_send_quote(int fd, const struct sockaddr *cli_addr, socklen_t clilen, const struct options *opt)
+int udp_send_quote(int fd, const struct sockaddr *cli_addr, socklen_t clilen)
 {
 	int ret;
 
-	ret = get_quote_of_the_day(opt);
+	ret = get_quote_of_the_day();
 	if (unlikely(ret)) {
 		return -1;
 	}
@@ -126,12 +134,13 @@ int udp_send_quote(int fd, const struct sockaddr *cli_addr, socklen_t clilen, co
 	ret = sendto(fd, quote_buffer.data, quote_buffer.str_length, 0, cli_addr, clilen);
 	if (unlikely(ret < 0)) {
 		journal("Unable to write to UDP socket: %s.\n", strerror(errno));
+		return -1;
 	}
 
 	return 0;
 }
 
-static int get_quote_of_the_day(const struct options *opt)
+static int get_quote_of_the_day(void)
 {
 #if DEBUG
 	unsigned int _i;
@@ -152,20 +161,20 @@ static int get_quote_of_the_day(const struct options *opt)
 	}
 
 	switch (opt->linediv) {
-		case DIV_EVERYLINE:
-			readquotes = readquotes_line;
-			break;
-		case DIV_PERCENT:
-			readquotes = readquotes_percent;
-			break;
-		case DIV_WHOLEFILE:
-			readquotes = readquotes_file;
-			break;
-		default:
-			ERR_TRACE();
-			journal("Internal error: invalid enum value for quote_divider: %d.\n", opt->linediv);
-			cleanup(EXIT_INTERNAL, true);
-			return -1;
+	case DIV_EVERYLINE:
+		readquotes = readquotes_line;
+		break;
+	case DIV_PERCENT:
+		readquotes = readquotes_percent;
+		break;
+	case DIV_WHOLEFILE:
+		readquotes = readquotes_file;
+		break;
+	default:
+		ERR_TRACE();
+		journal("Internal error: invalid enum value for quote_divider: %d.\n", opt->linediv);
+		cleanup(EXIT_INTERNAL, true);
+		return -1;
 	}
 
 	ret = readquotes();
@@ -186,10 +195,10 @@ static int get_quote_of_the_day(const struct options *opt)
 	}
 #endif /* DEBUG */
 
-	return format_quote(opt);
+	return format_quote();
 }
 
-static int format_quote(const struct options *opt)
+static int format_quote(void)
 {
 	const size_t quoteno = rand() % quote_file_data.length;
 	size_t length, i = quoteno;
@@ -250,7 +259,7 @@ static int format_quote(const struct options *opt)
 	return 0;
 }
 
-static long get_file_size()
+static long get_file_size(void)
 {
 	long size;
 	int ret;
@@ -272,7 +281,7 @@ static long get_file_size()
 	return size;
 }
 
-static int readquotes_file()
+static int readquotes_file(void)
 {
 	int ch, i;
 	const long size = get_file_size();
@@ -320,7 +329,7 @@ static int readquotes_file()
 	return 0;
 }
 
-static int readquotes_line()
+static int readquotes_line(void)
 {
 	unsigned int i, j;
 	size_t quotes;
@@ -386,7 +395,7 @@ static int readquotes_line()
 	return 0;
 }
 
-static int readquotes_percent()
+static int readquotes_percent(void)
 {
 	unsigned int i, j;
 	int ch, watch = 0;
@@ -432,9 +441,10 @@ static int readquotes_percent()
 	quote_file_data.buffer[size] = '\0';
 
 	if (!has_percent) {
-		journal("No percent signs (%%) were found in the quotes file. This means that the whole file\n"
-			"will be treated as one quote, which is probably not what you want. If this is what\n"
-			"you want, use the `file' option for `QuoteDivider' in the config file.\n");
+		journal("No percent signs (%%) were found in the quotes file. This means that\n"
+			"the whole file will be treated as one quote, which is probably not\n"
+			"what you want. If this is what you want, use the `file' option for\n"
+			"`QuoteDivider' in the config file.\n");
 		return -1;
 	}
 

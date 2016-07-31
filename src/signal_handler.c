@@ -56,8 +56,8 @@ static void handle_signal(const int signum)
 		cleanup(EXIT_SIGNAL, true);
 		break;
 	case SIGHUP:
-		journal("Hangup signal recieved. Reloading configuration...\n");
-		load_config(false);
+		journal("Hangup signal recieved.\n");
+		reload_config();
 	}
 }
 

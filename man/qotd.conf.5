@@ -1,4 +1,4 @@
-.TH QOTD.CONF 5 2016-01-29 "qotd 0.8" "System Manager's Manual"
+.TH QOTD.CONF 5 2016-01-29 "qotd 0.9" "System Manager's Manual"
 .\" %%%LICENSE_START(GPLv2+_DOC_FULL)
 .\" This is free documentation; you can redistribute it and/or
 .\" modify it under the terms of the GNU General Public License as
@@ -38,7 +38,8 @@ Which IP protocol to use. This setting is either `ipv4', `ipv6', or `both'. The 
 Specifies an alternate port to listen on. The default value is `17', which is the port specified by RFC 865.
 .TP
 .BR DropPrivileges
-Takes a boolean. If this option is set, then once a connection is established, the program will drop privileges and run itself as the \fIdaemon\fP user. The default behavior is to relinquish root privileges when running as the superuser.
+Takes a boolean. If this option is set, then once a connection is established, the program will drop privileges and run itself as the \fIdaemon\fP user. However, if \fBPidFile\fP is set, the daemon will check the permissions on the directory of the containing directory. If the program will lack the permissions to delete the pid file, the daemon will quit.
+The default behavior is `yes'.
 .TP
 .BR PidFile
 Specifies what pid file is to be used by the daemon. If this value is `none' or `/dev/null', then no pid file is written. The default is \fI/run/qotd.pid\fP, but if there is no \fI/run\fP directory, then \fI/var/run/qotd.pid\fP will be used instead.

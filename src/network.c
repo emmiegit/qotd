@@ -143,7 +143,7 @@ void set_up_ipv6_socket(const struct options *opt)
 	}
 }
 
-void close_socket()
+void close_socket(void)
 {
 	int ret;
 
@@ -158,7 +158,7 @@ void close_socket()
 	}
 }
 
-void tcp_accept_connection(const struct options *opt)
+void tcp_accept_connection(void)
 {
 	struct sockaddr_in cli_addr;
 	socklen_t cli_len;
@@ -176,7 +176,9 @@ void tcp_accept_connection(const struct options *opt)
 		return;
 	}
 
-	ret = tcp_send_quote(consockfd, opt);
+	acquire_lock();
+	ret = tcp_send_quote(consockfd);
+	relinquish_lock();
 	if (ret) {
 		/* Error message is printed by tcp_send_quote */
 		return;
@@ -189,7 +191,7 @@ void tcp_accept_connection(const struct options *opt)
 	}
 }
 
-void udp_accept_connection(const struct options *opt)
+void udp_accept_connection(void)
 {
 	struct sockaddr_in cli_addr;
 	socklen_t cli_len;
@@ -204,7 +206,9 @@ void udp_accept_connection(const struct options *opt)
 	}
 
 	cli_len = sizeof(cli_addr);
-	ret = udp_send_quote(sockfd, (struct sockaddr *)(&cli_addr), cli_len, opt);
+	acquire_lock();
+	ret = udp_send_quote(sockfd, (struct sockaddr *)(&cli_addr), cli_len);
+	relinquish_lock();
 	if (ret) {
 		/* Error message is printed by udp_send_quote */
 	}
