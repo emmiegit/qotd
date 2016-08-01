@@ -37,7 +37,6 @@
 #define QUOTE_SIZE				512  /* Set by RFC 865 */
 
 /* Static functions */
-static int get_quote_of_the_day(void);
 static int format_quote(void);
 static long get_file_size(void);
 static int readquotes_file(void);
@@ -62,7 +61,7 @@ static struct {
 	size_t str_length;
 } quote_buffer;
 
-int open_quotes_file(const struct options *local_opt)
+int open_quotes_file(const struct options *const local_opt)
 {
 	opt = local_opt;
 
@@ -104,43 +103,7 @@ void destroy_quote_buffers(void)
 	FINAL_FREE(quote_buffer.data);
 }
 
-int tcp_send_quote(const int fd)
-{
-	int ret;
-
-	ret = get_quote_of_the_day();
-	if (unlikely(ret)) {
-		return -1;
-	}
-
-	ret = write(fd, quote_buffer.data, quote_buffer.str_length);
-	if (unlikely(ret < 0)) {
-		journal("Unable to write to TCP connection socket: %s.\n", strerror(errno));
-		return -1;
-	}
-
-	return 0;
-}
-
-int udp_send_quote(int fd, const struct sockaddr *cli_addr, socklen_t clilen)
-{
-	int ret;
-
-	ret = get_quote_of_the_day();
-	if (unlikely(ret)) {
-		return -1;
-	}
-
-	ret = sendto(fd, quote_buffer.data, quote_buffer.str_length, 0, cli_addr, clilen);
-	if (unlikely(ret < 0)) {
-		journal("Unable to write to UDP socket: %s.\n", strerror(errno));
-		return -1;
-	}
-
-	return 0;
-}
-
-static int get_quote_of_the_day(void)
+int get_quote_of_the_day(char **const buffer, size_t *const length)
 {
 #if DEBUG
 	unsigned int _i;
@@ -195,7 +158,15 @@ static int get_quote_of_the_day(void)
 	}
 #endif /* DEBUG */
 
-	return format_quote();
+	ret = format_quote();
+	if (ret) {
+		return -1;
+	}
+
+	*buffer = quote_buffer.data;
+	*length = quote_buffer.str_length;
+
+	return 0;
 }
 
 static int format_quote(void)

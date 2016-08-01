@@ -355,14 +355,14 @@ static void parse_long_option(
 		flags->iproto = PROTOCOL_IPv6;
 	} else if (!strcmp(argv[*i], "--tcp")) {
 		if (flags->tproto == PROTOCOL_UDP) {
-			fprintf(stderr, "Conflicting options passed: -T and -U.\n");
+			fprintf(stderr, "Conflicting options passed: -t and -u.\n");
 			cleanup(EXIT_ARGUMENTS, true);
 		}
 
 		flags->tproto = PROTOCOL_TCP;
 	} else if (!strcmp(argv[*i], "--udp")) {
 		if (flags->tproto == PROTOCOL_TCP) {
-			fprintf(stderr, "Conflicting options passed: -T and -U.\n");
+			fprintf(stderr, "Conflicting options passed: -t and -u.\n");
 			cleanup(EXIT_ARGUMENTS, true);
 		}
 

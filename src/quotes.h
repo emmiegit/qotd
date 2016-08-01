@@ -32,8 +32,7 @@ extern "C" {
 int open_quotes_file(const struct options *opt);
 int close_quotes_file(void);
 void destroy_quote_buffers(void);
-int tcp_send_quote(int fd);
-int udp_send_quote(int fd, const struct sockaddr *cli_addr, socklen_t cli_len);
+int get_quote_of_the_day(char **buffer, size_t *length);
 
 # ifdef __cplusplus
 }

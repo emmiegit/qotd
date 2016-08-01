@@ -22,7 +22,7 @@
 # Constant declarations
 V            := 0
 PROGRAM_NAME := qotd
-VERSION      := 0.9
+VERSION      := 0.9.1
 
 # Directories
 SRC_DIR      := src
