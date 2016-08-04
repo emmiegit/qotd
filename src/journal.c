@@ -23,16 +23,22 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <unistd.h>
+
 #include "daemon.h"
 #include "journal.h"
 #include "standard.h"
 
+/* Static variables */
 static FILE *journal_fh = NULL;
+
+/* Static function declarations */
+static void open_journal_fd(int fd);
 
 void open_journal(const char *path)
 {
-	if (path == NULL) {
-		journal_fh = NULL;
+	if (!path) {
+		open_journal_fd(STDOUT_FILENO);
 		return;
 	}
 
@@ -41,10 +47,23 @@ void open_journal(const char *path)
 #endif /* DEBUG */
 
 	journal_fh = fopen(path, "w");
-	if (journal_fh == NULL) {
+	if (!journal_fh) {
 		fprintf(stderr, "Unable to open journal handle for \"%s\": %s.\n",
-				path, strerror(errno));
-		perror("Unable to open journal handle");
+			path, strerror(errno));
+		cleanup(EXIT_IO, true);
+	}
+}
+
+static void open_journal_fd(const int fd)
+{
+#if DEBUG
+	printf("Setting journal to use file descriptor %d.\n", fd);
+#endif /* DEBUG */
+
+	journal_fh = fdopen(fd, "w");
+	if (!journal_fh) {
+		fprintf(stderr, "Unable to open journal handle for file descriptor %d: %s.\n",
+			fd, strerror(errno));
 		cleanup(EXIT_IO, true);
 	}
 }
@@ -69,7 +88,7 @@ bool journal_is_open(void)
 	return journal_fh != NULL;
 }
 
-int journal(const char *format, ...)
+int journal(const char *const format, ...)
 {
 	va_list args;
 	int ret;

@@ -149,12 +149,12 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
 	if (flags.journal_file) {
 		close_journal();
 		if (strcmp(flags.journal_file, "-") == 0) {
-			open_journal("/dev/stdout");
+			open_journal(NULL);
 		} else if (strcmp(flags.journal_file, "none") != 0) {
 			open_journal(flags.journal_file);
 		}
 	} else if (!journal_is_open()) {
-		open_journal("/dev/stdout");
+		open_journal(NULL);
 	}
 
 	if (flags.iproto != PROTOCOL_INONE) {
