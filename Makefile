@@ -23,12 +23,13 @@
 V            := 0
 PROGRAM_NAME := qotd
 VERSION      := 0.9
+EXE          := qotdd
 
 # Directories
 SRC_DIR      := src
 MAN_DIR      := man
 
-export		 V PROGRAM_NAME VERSION
+export		 V PROGRAM_NAME VERSION EXE
 
 # Goal Targets
 all:
