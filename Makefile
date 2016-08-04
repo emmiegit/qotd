@@ -65,7 +65,7 @@ update-versions:
 
 install:
 	@echo '[INSTALL] $(ROOT)/usr/bin/qotdd'
-	@install -D -m755 $(EXE) '$(ROOT)/usr/bin/qotdd'
+	@install -D -m755 src/$(EXE) '$(ROOT)/usr/bin/qotdd'
 
 	@echo '[INSTALL] $(ROOT)/etc/qotd.conf'
 	@install -D -m644 misc/qotd.conf '$(ROOT)/etc/qotd.conf'
