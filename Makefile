@@ -22,13 +22,14 @@
 # Constant declarations
 V            := 0
 PROGRAM_NAME := qotd
-VERSION      := 0.9.1
+VERSION      := 0.9.2
+EXE          := qotdd
 
 # Directories
 SRC_DIR      := src
 MAN_DIR      := man
 
-export		 V PROGRAM_NAME VERSION
+export		 V PROGRAM_NAME VERSION EXE
 
 # Goal Targets
 all:
@@ -64,7 +65,7 @@ update-versions:
 
 install:
 	@echo '[INSTALL] $(ROOT)/usr/bin/qotdd'
-	@install -D -m755 $(EXE) '$(ROOT)/usr/bin/qotdd'
+	@install -D -m755 src/$(EXE) '$(ROOT)/usr/bin/qotdd'
 
 	@echo '[INSTALL] $(ROOT)/etc/qotd.conf'
 	@install -D -m644 misc/qotd.conf '$(ROOT)/etc/qotd.conf'

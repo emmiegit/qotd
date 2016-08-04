@@ -43,7 +43,6 @@ LINKING := -pthread
 SOURCES := $(wildcard *.c)
 OBJECTS := $(SOURCES:.c=.o)
 DEPENDS := $(SOURCES:.c=.d)
-EXE     := qotdd
 
 # Goal targets
 all: CFLAGS += -O3
