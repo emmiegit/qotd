@@ -31,6 +31,7 @@
 #include "journal.h"
 #include "network.h"
 #include "quotes.h"
+#include "standard.h"
 
 /*
  * If the returned error is one of these, then you
@@ -63,16 +64,20 @@
 /* Static member declarations */
 static int sockfd = -1;
 
+/* Static function declarations */
+static int tcp_send_quote(int fd);
+static int udp_send_quote(const struct sockaddr *cli_addr, socklen_t clilen);
+
 void set_up_ipv4_socket(const struct options *opt)
 {
 	struct sockaddr_in serv_addr;
 	int ret, one = 1;
 
 	if (opt->tproto == PROTOCOL_TCP) {
-		journal("Setting up IPv4 socket connection over TCP...\n");
+		journal("Setting up IPv4 socket over TCP...\n");
 		sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	} else {
-		journal("Setting up IPv4 socket connection over UDP...\n");
+		journal("Setting up IPv4 socket over UDP...\n");
 		sockfd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	}
 
@@ -103,11 +108,11 @@ void set_up_ipv6_socket(const struct options *opt)
 	int ret, one = 1;
 
 	if (opt->tproto == PROTOCOL_TCP) {
-		journal("Setting up IPv%s6 socket connection over TCP...\n",
+		journal("Setting up IPv%s6 socket over TCP...\n",
 				((opt->iproto == PROTOCOL_BOTH) ? "4/" : ""));
 		sockfd = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP);
 	} else {
-		journal("Setting up IPv%s6 socket connection over UDP...\n",
+		journal("Setting up IPv%s6 socket over UDP...\n",
 				((opt->iproto == PROTOCOL_BOTH) ? "4/" : ""));
 		sockfd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 	}
@@ -191,6 +196,26 @@ void tcp_accept_connection(void)
 	}
 }
 
+static int tcp_send_quote(const int fd)
+{
+	char *buffer;
+	size_t length;
+	int ret;
+
+	ret = get_quote_of_the_day(&buffer, &length);
+	if (unlikely(ret)) {
+		return -1;
+	}
+
+	ret = write(fd, buffer, length);
+	if (unlikely(ret < 0)) {
+		journal("Unable to write to TCP connection socket: %s.\n", strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
 void udp_accept_connection(void)
 {
 	struct sockaddr_in cli_addr;
@@ -199,18 +224,40 @@ void udp_accept_connection(void)
 
 	journal("Listening for connection...\n");
 	ret = recvfrom(sockfd, NULL, 0, 0, (struct sockaddr *)(&cli_addr), &cli_len);
-	if (ret) {
+	if (unlikely(ret)) {
 		int errsave = errno;
-		journal("Unable to write to socket: %s.\n", strerror(errsave));
+		ERR_TRACE();
+		journal("Unable to read from socket: %s.\n", strerror(errsave));
 		CHECK_SOCKET_ERROR(errsave);
 	}
 
 	cli_len = sizeof(cli_addr);
 	acquire_lock();
-	ret = udp_send_quote(sockfd, (struct sockaddr *)(&cli_addr), cli_len);
+	ret = udp_send_quote((struct sockaddr *)(&cli_addr), cli_len);
 	relinquish_lock();
 	if (ret) {
 		/* Error message is printed by udp_send_quote */
 	}
+}
+
+static int udp_send_quote(const struct sockaddr *const cli_addr, const socklen_t cli_len)
+{
+	char *buffer;
+	size_t length;
+	int ret;
+
+	ret = get_quote_of_the_day(&buffer, &length);
+	if (unlikely(ret)) {
+		return -1;
+	}
+
+	ret = sendto(sockfd, buffer, length, 0, cli_addr, cli_len);
+	if (unlikely(ret < 0)) {
+		ERR_TRACE();
+		journal("Unable to write to UDP socket: %s.\n", strerror(errno));
+		return -1;
+	}
+
+	return 0;
 }
 

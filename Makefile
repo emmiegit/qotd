@@ -38,6 +38,7 @@ all:
 release: update-versions
 	@echo '[RELEASE]'
 	@make -BC $(SRC_DIR) release
+	@make -BC $(MAN_DIR) release
 
 debug:
 	@echo '[DEBUG]'
@@ -85,4 +86,7 @@ endif
 			install -D -m644 "$${filename}" "$(ROOT)/usr/share/man/man$${section}/$${filename}"; \
 		done \
 	done
+
+	@echo '[INSTALL] $(ROOT)/usr/share/doc/qotd/qotd.pdf'
+	@install -D -m644 man/qotd.pdf '$(ROOT)/usr/share/doc/qotd/qotd.pdf'
 

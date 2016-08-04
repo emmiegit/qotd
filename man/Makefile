@@ -17,7 +17,7 @@
 # along with qotd.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-.PHONY: all pdf clean
+.PHONY: all release pdf clean
 
 # Print options
 GZ_0  = @echo '[GZ] $@'; $(GZIP)
@@ -43,10 +43,11 @@ PDF_FLAGS   := -q -sPAPERSIZE=letter -dNOPAUSE -dBATCH -sDEVICE=pdfwrite
 SOURCES     := $(wildcard *.5 *.8)
 GZ_FILES    := $(addsuffix .gz,$(SOURCES))
 PS_FILES    := $(addsuffix .ps,$(SOURCES))
-PDF_TARGET  := qotd.pdf
+PDF_TARGET  := $(PROGRAM_NAME).pdf
 
 # Goal targets
 all: $(GZ_FILES) $(PDF_TARGET)
+release: $(GZ_FILES) $(PDF_TARGET)
 pdf: $(PDF_TARGET)
 
 # Primary targets
