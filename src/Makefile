@@ -45,16 +45,16 @@ OBJECTS := $(SOURCES:.c=.o)
 DEPENDS := $(SOURCES:.c=.d)
 
 # Goal targets
-all: CFLAGS += -O3
+all: CFLAGS += -Os
 all: $(EXE)
 
-release: CFLAGS += -fstack-protector-all -DRELEASE
+release: CFLAGS += -Os -fstack-protector-all -DRELEASE
 release: $(EXE)
 
-debug: CFLAGS += -g -DDEBUG=1
+debug: CFLAGS += -g -Og -DDEBUG=1
 debug: $(EXE)
 
-profile: CFLAGS += -g -fprofile-arcs -ftest-coverage
+profile: CFLAGS += -g -Og -fprofile-arcs -ftest-coverage
 profile: $(EXE)
 
 # Primary targets
