@@ -60,59 +60,60 @@ void drop_privileges(void)
 	}
 }
 
-void security_options_check(const struct options *opt)
+void security_options_check(const struct options *const opt)
 {
 	char *pidpath, *piddir;
 	struct stat statbuf;
 	int ret;
 
-	if (!opt->pidfile) {
+	if (!opt->pid_file) {
 		return;
 	}
 
-	pidpath = strdup(opt->pidfile);
+	journal("Checking options...\n");
+	pidpath = strdup(opt->pid_file);
 	piddir = dirname(pidpath);
-	free(pidpath);
 
 	ret = stat(piddir, &statbuf);
 	if (ret) {
-		fprintf(stderr, "Unable to stat \"%s\" (the directory that will contain the pidfile): %s.\n",
+		journal("Unable to stat \"%s\" (the directory that will contain the pidfile): %s.\n",
 			piddir, strerror(errno));
 		cleanup(EXIT_IO, true);
 	}
 
 	if (!S_ISDIR(statbuf.st_mode)) {
-		fprintf(stderr, "\"%s\" is meant to hold the pidfile, but it's not a directory.\n",
+		journal("\"%s\" is meant to hold the pidfile, but it's not a directory.\n",
 			piddir);
 		cleanup(EXIT_IO, true);
 	}
 
 	if ((statbuf.st_mode & S_IWOTH) && !(statbuf.st_mode & S_ISVTX)) {
-		fprintf(stderr,
-			"\"%s\" (the directory that will contain the pidfile) potentially allows others\n"
+		journal("\"%s\" (the directory that will contain the pidfile) potentially allows others\n"
 			"to delete our pidfile. The daemon will not start.\n"
 			"(To disable this behavior, use the --lax flag when running).\n",
 			piddir);
 		cleanup(EXIT_SECURITY, true);
 	}
+
+	free(pidpath);
 }
 
-void security_file_check(const char *path, const char *file_type)
+void security_file_check(const char *const path, const char *const file_type)
 {
 	struct stat statbuf;
 	int ret;
 
+	journal("Checking %s file \"%s\"...\n", file_type, path);
 	ret = stat(path, &statbuf);
 	if (ret < 0) {
-		fprintf(stderr, "Unable to open %s file \"%s\": %s.\n",
+		journal("Unable to open %s file \"%s\": %s.\n",
 			file_type, path, strerror(errno));
 		cleanup(EXIT_IO, true);
 	}
 
 	/* Check ownership of the file */
 	if (statbuf.st_uid != geteuid() && statbuf.st_uid != ROOT_USER_ID) {
-		fprintf(stderr,
-			"Your %s file is not owned by the calling user or root. The daemon will not start.\n"
+		journal("Your %s file is not owned by the calling user or root. The daemon will not start.\n"
 			"(To disable this behavior, use the --lax flag when running).\n",
 			file_type);
 		cleanup(EXIT_SECURITY, true);
@@ -120,8 +121,7 @@ void security_file_check(const char *path, const char *file_type)
 
 	/* Check file write permissions */
 	if ((statbuf.st_mode & S_IWGRP) || (statbuf.st_mode & S_IWOTH)) {
-		fprintf(stderr,
-			"Your %s file is writable by those who are not the owner or root.\n"
+		journal("Your %s file is writable by those who are not the owner or root.\n"
 			"The daemon will not start.\n"
 			"(To disable this behavior, use the --lax flag when running).\n",
 			file_type);

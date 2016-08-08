@@ -77,7 +77,7 @@ void parse_args(struct options *const opt, const int argc, const char *const arg
 
 	/* Set override flags */
 	flags.program_name = basename((char *)argv[0]);
-	flags.conf_file = NULL;
+	flags.conf_file = DEFAULT_CONFIG_FILE;
 	flags.quotes_file = NULL;
 	flags.pid_file = NULL;
 	flags.journal_file = NULL;
@@ -90,11 +90,10 @@ void parse_args(struct options *const opt, const int argc, const char *const arg
 	opt->port = DEFAULT_PORT;
 	opt->tproto = DEFAULT_TRANSPORT_PROTOCOL;
 	opt->iproto = DEFAULT_INTERNET_PROTOCOL;
-	opt->quotesfile = DEFAULT_QUOTES_FILE;
+	opt->quotes_file = DEFAULT_QUOTES_FILE;
 	opt->linediv = DEFAULT_LINE_DIVIDER;
-	opt->pidfile = default_pidfile();
-	opt->quotesalloc = false;
-	opt->pidalloc = false;
+	opt->pid_file = default_pidfile();
+	opt->require_pidfile = DEFAULT_REQUIRE_PIDFILE;
 	opt->daemonize = DEFAULT_DAEMONIZE;
 	opt->drop_privileges = DEFAULT_DROP_PRIVILEGES;
 	opt->is_daily = DEFAULT_IS_DAILY;
@@ -129,31 +128,16 @@ void parse_args(struct options *const opt, const int argc, const char *const arg
 	}
 
 	if (flags.pid_file) {
-		if (opt->pidalloc) {
-			free((char *)opt->pidfile);
-		}
-
-		opt->pidfile = flags.pid_file;
-		opt->pidalloc = false;
+		opt->pid_file = strcmp(flags.pid_file, "none") ? flags.pid_file : NULL;
 	}
 
 	if (flags.quotes_file) {
-		if (opt->quotesalloc) {
-			free((char *)opt->quotesfile);
-		}
-
-		opt->quotesfile = flags.quotes_file;
-		opt->quotesalloc = false;
+		opt->quotes_file = flags.quotes_file;
 	}
 
-	if (flags.journal_file) {
-		close_journal();
-		if (!strcmp(flags.journal_file, "-")) {
-			open_journal(NULL);
-		} else if (strcmp(flags.journal_file, "none")) {
-			open_journal(flags.journal_file);
-		}
-	} else if (!journal_is_open()) {
+	if (flags.journal_file && !strcmp(flags.journal_file, "-")) {
+		open_journal(flags.journal_file);
+	} else {
 		open_journal(NULL);
 	}
 
@@ -172,13 +156,11 @@ void parse_args(struct options *const opt, const int argc, const char *const arg
 #if DEBUG
 	journal("\nContents of struct 'opt':\n");
 	journal("opt = {\n");
-	journal("	QuotesFile: %s\n",		BOOLSTR(opt->quotesfile));
-	journal("	PidFile: %s\n",			opt->pidfile);
+	journal("	QuotesFile: %s\n",		BOOLSTR(opt->quotes_file));
+	journal("	PidFile: %s\n",			opt->pid_file);
 	journal("	Port: %u\n",			opt->port);
 	journal("	QuoteDivider: %s\n",		name_option_quote_divider(opt->linediv));
 	journal("	Protocol: %s\n",		name_option_protocol(opt->tproto, opt->iproto));
-	journal("	QuotesAlloc: %s\n",		BOOLSTR(opt->quotesalloc));
-	journal("	PidAlloc: %s\n",		BOOLSTR(opt->quotesalloc));
 	journal("	Daemonize: %s\n",		BOOLSTR(opt->daemonize));
 	journal("	RequirePidfile: %s\n",	  	BOOLSTR(opt->require_pidfile));
 	journal("	DropPrivileges: %s\n",	  	BOOLSTR(opt->drop_privileges));
@@ -218,7 +200,7 @@ static void parse_short_options(
 			flags->daemonize = false;
 			break;
 		case 'c':
-			if (next_arg == NULL) {
+			if (!next_arg) {
 				fprintf(stderr, "You must specify a configuration file.\n");
 				cleanup(EXIT_ARGUMENTS, true);
 			}
@@ -229,7 +211,7 @@ static void parse_short_options(
 		case 'N':
 			flags->conf_file = NULL;
 		case 'P':
-			if (next_arg == NULL) {
+			if (!next_arg) {
 				fprintf(stderr, "You must specify a pid file.\n");
 				cleanup(EXIT_ARGUMENTS, true);
 			}
@@ -238,7 +220,7 @@ static void parse_short_options(
 			flags->pid_file = next_arg;
 			break;
 		case 's':
-			if (next_arg == NULL) {
+			if (!next_arg) {
 				fprintf(stderr, "You must specify a quotes file.\n");
 				cleanup(EXIT_ARGUMENTS, true);
 			}
@@ -247,7 +229,7 @@ static void parse_short_options(
 			flags->quotes_file = next_arg;
 			break;
 		case 'j':
-			if (next_arg == NULL) {
+			if (!next_arg) {
 				fprintf(stderr, "You must specify a journal file.\n");
 				cleanup(EXIT_ARGUMENTS, true);
 			}

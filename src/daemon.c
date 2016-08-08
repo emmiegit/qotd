@@ -161,19 +161,11 @@ void cleanup(int retcode, bool quiet)
 	}
 
 	if (wrote_pidfile) {
-		ret = unlink(opt.pidfile);
+		ret = unlink(opt.pid_file);
 		if (ret) {
 			journal("Unable to remove pid file (%s): %s.\n",
-				opt.pidfile, strerror(errno));
+				opt.pid_file, strerror(errno));
 		}
-	}
-
-	if (opt.pidalloc) {
-		FINAL_FREE((char *)opt.pidfile);
-	}
-
-	if (opt.quotesalloc) {
-		FINAL_FREE((char *)opt.quotesfile);
 	}
 
 	destroy_quote_buffers();
@@ -188,7 +180,6 @@ static void load_config(const int argc, const char *const argv[])
 {
 	int ret;
 
-	journal("Loading configuration settings...\n");
 	parse_args(&opt, argc, argv);
 	check_config();
 
@@ -205,16 +196,16 @@ static void write_pidfile()
 	int ret;
 	FILE *fh;
 
-	if (opt.pidfile == NULL) {
-		journal("No pidfile was written at the request of the user.\n");
+	if (!opt.pid_file) {
+		journal("No pidfile was written.\n");
 		return;
 	}
 
 	/* Check if the pidfile already exists */
-	ret = stat(opt.pidfile, &statbuf);
+	ret = stat(opt.pid_file, &statbuf);
 	if (ret) {
 		if (errno != ENOENT) {
-			journal("Unable to stat pid file \"%s\": %s.\n", opt.pidfile, strerror(errno));
+			journal("Unable to stat pid file \"%s\": %s.\n", opt.pid_file, strerror(errno));
 			cleanup(EXIT_IO, true);
 		}
 	} else {
@@ -223,7 +214,7 @@ static void write_pidfile()
 	}
 
 	/* Write the pidfile */
-	fh = fopen(opt.pidfile, "w+");
+	fh = fopen(opt.pid_file, "w+");
 
 	if (!fh) {
 		journal("Unable to open pid file: %s.\n", strerror(errno));
@@ -269,16 +260,16 @@ static void check_config()
 		cleanup(EXIT_ARGUMENTS, true);
 	}
 
-	if (opt.pidfile && opt.pidfile[0] != '/') {
+	if (opt.pid_file && opt.pid_file[0] != '/') {
 		journal("Specified pid file is not an absolute path.\n");
 		cleanup(EXIT_ARGUMENTS, true);
 	}
 
-	ret = stat(opt.quotesfile, &statbuf);
+	ret = stat(opt.quotes_file, &statbuf);
 
 	if (ret) {
 		ERR_TRACE();
-		journal("Unable to stat quotes file \"%s\": %s.\n", opt.quotesfile, strerror(errno));
+		journal("Unable to stat quotes file \"%s\": %s.\n", opt.quotes_file, strerror(errno));
 		cleanup(EXIT_IO, true);
 	}
 }

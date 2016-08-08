@@ -93,7 +93,7 @@ int journal(const char *const format, ...)
 	va_list args;
 	int ret;
 
-	if (journal_fh == NULL) {
+	if (!journal_fh) {
 		return 0;
 	}
 

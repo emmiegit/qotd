@@ -57,13 +57,15 @@ void parse_config(const char *conf_file, struct options *opt)
 	unsigned int lineno = 1;
 	int errors = 0;
 
+	/* Journal hasn't been opened yet */
+	printf("Reading configuration file at \"%s\"...\n", conf_file);
+
 	if (opt->strict) {
 		security_conf_file_check(conf_file);
 	}
 
 	fh = fopen(conf_file, "r");
 	if (fh == NULL) {
-		/* Can't write to the journal, it hasn't been opened yet */
 		fprintf(stderr, "Unable to open configuration file \"%s\": %s.\n",
 			conf_file, strerror(errno));
 		cleanup(EXIT_IO, true);
@@ -139,8 +141,7 @@ void parse_config(const char *conf_file, struct options *opt)
 			char *ptr;
 
 			if (!strcmp(val.data, "none") || !strcmp(val.data, "/dev/null")) {
-				opt->pidfile = NULL;
-				opt->pidalloc = false;
+				opt->pid_file = NULL;
 				continue;
 			}
 
@@ -152,8 +153,7 @@ void parse_config(const char *conf_file, struct options *opt)
 			}
 
 			strcpy(ptr, val.data);
-			opt->pidfile = ptr;
-			opt->pidalloc = true;
+			opt->pid_file = ptr;
 		} else if (!strcasecmp(key.data, "requirepidfile")) {
 			ch = str_to_bool(val.data, conf_file, lineno, &success);
 
@@ -181,8 +181,7 @@ void parse_config(const char *conf_file, struct options *opt)
 			}
 
 			strcpy(ptr, val.data);
-			opt->quotesfile = ptr;
-			opt->quotesalloc = true;
+			opt->quotes_file = ptr;
 		} else if (!strcasecmp(key.data, "quotedivider")) {
 			if (!strcasecmp(val.data, "line")) {
 				opt->linediv = DIV_EVERYLINE;

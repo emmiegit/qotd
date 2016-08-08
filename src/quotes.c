@@ -71,10 +71,10 @@ int open_quotes_file(const struct options *const local_opt)
 	}
 
 	if (opt->strict) {
-		security_quotes_file_check(opt->quotesfile);
+		security_quotes_file_check(opt->quotes_file);
 	}
 
-	quotes_fh = fopen(opt->quotesfile, "r");
+	quotes_fh = fopen(opt->quotes_file, "r");
 	if (!quotes_fh) {
 		return -1;
 	}
@@ -87,8 +87,7 @@ int close_quotes_file(void)
 	int ret;
 
 	if (!quotes_fh) {
-		journal("Internal error: no quotes file handle to close.\n");
-		cleanup(EXIT_INTERNAL, true);
+		return 0;
 	}
 
 	ret = fclose(quotes_fh);

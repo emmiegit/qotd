@@ -46,28 +46,27 @@ enum internet_protocol {
 	PROTOCOL_INONE
 };
 
-# define DEFAULT_PORT			17
+# define DEFAULT_CONFIG_FILE		"/etc/qotd.conf"
+# define DEFAULT_DAEMONIZE		true
 # define DEFAULT_TRANSPORT_PROTOCOL	PROTOCOL_TCP
 # define DEFAULT_INTERNET_PROTOCOL	PROTOCOL_BOTH
-# define DEFAULT_QUOTES_FILE		"/usr/share/qotd/quotes.txt"
-# define DEFAULT_LINE_DIVIDER		DIV_EVERYLINE
-# define DEFAULT_DAEMONIZE		true
+# define DEFAULT_PORT			17
 # define DEFAULT_DROP_PRIVILEGES	true
-# define DEFAULT_IS_DAILY		true
+# define DEFAULT_REQUIRE_PIDFILE	true
+# define DEFAULT_QUOTES_FILE		"/usr/share/qotd/quotes.txt"
+# define DEFAULT_LINE_DIVIDER		DIV_PERCENT
 # define DEFAULT_PAD_QUOTES		true
+# define DEFAULT_IS_DAILY		true
 # define DEFAULT_ALLOW_BIG		false
 # define DEFAULT_CHDIR_ROOT		true
 
 struct options {
-	const char *quotesfile;			/* string containing path to quotes file */
-	const char *pidfile;			/* string containing path to pid file */
+	const char *quotes_file;		/* string containing path to quotes file */
+	const char *pid_file;			/* string containing path to pid file */
 	unsigned int port;			/* what port to listen on */
 	enum quote_divider linediv;	 	/* how to read the quotes file */
 	enum transport_protocol tproto; 	/* which transport protocol to use */
 	enum internet_protocol iproto;  	/* which internet protocol to use */
-
-	bool quotesalloc;			/* if quotesfile needs to be free'd */
-	bool pidalloc;				/* if pidfile needs to be free'd */
 
 	bool daemonize;				/* whether to fork to the background or not */
 	bool require_pidfile;			/* whether to quit if the pidfile cannot be made */
