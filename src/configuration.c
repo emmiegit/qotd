@@ -89,7 +89,7 @@ void parse_config(const char *conf_file, struct options *opt)
 		}
 
 		/* Check each possible option */
-		if (!strcasecmp(key.data, "daemonize")) {
+		if (!strcasecmp(key.data, "Daemonize")) {
 			ch = str_to_bool(val.data, conf_file, lineno, &success);
 
 			if (likely(success)) {
@@ -97,7 +97,7 @@ void parse_config(const char *conf_file, struct options *opt)
 			} else {
 				errors++;
 			}
-		} else if (!strcasecmp(key.data, "transportprotocol")) {
+		} else if (!strcasecmp(key.data, "TransportProtocol")) {
 			if (!strcasecmp(val.data, "tcp")) {
 				opt->tproto = PROTOCOL_TCP;
 			} else if (!strcasecmp(val.data, "udp")) {
@@ -107,7 +107,7 @@ void parse_config(const char *conf_file, struct options *opt)
 					conf_file, lineno, val.data);
 				errors++;
 			}
-		} else if (!strcasecmp(key.data, "internetprotocol")) {
+		} else if (!strcasecmp(key.data, "InternetProtocol")) {
 			if (!strcasecmp(val.data, "both")) {
 				opt->iproto = PROTOCOL_BOTH;
 			} else if (!strcasecmp(val.data, "ipv4")) {
@@ -119,7 +119,7 @@ void parse_config(const char *conf_file, struct options *opt)
 					conf_file, lineno, val.data);
 				errors++;
 			}
-		} else if (!strcasecmp(key.data, "port")) {
+		} else if (!strcasecmp(key.data, "Port")) {
 			/* atoi is ok because it returns 0 in case of failure, and 0 isn't a valid port */
 			int port = atoi(val.data);
 			if (0 >= port || port > PORT_MAX) {
@@ -129,7 +129,15 @@ void parse_config(const char *conf_file, struct options *opt)
 			} else {
 				opt->port = port;
 			}
-		} else if (!strcasecmp(key.data, "dropprivileges")) {
+		} else if (!strcasecmp(key.data, "StrictChecking")) {
+			ch = str_to_bool(val.data, conf_file, lineno, &success);
+
+			if (likely(success)) {
+				opt->strict = ch;
+			} else {
+				errors++;
+			}
+		} else if (!strcasecmp(key.data, "DropPrivileges")) {
 			ch = str_to_bool(val.data, conf_file, lineno, &success);
 
 			if (likely(success)) {
@@ -137,24 +145,19 @@ void parse_config(const char *conf_file, struct options *opt)
 			} else {
 				errors++;
 			}
-		} else if (!strcasecmp(key.data, "pidfile")) {
-			char *ptr;
-
-			if (!strcmp(val.data, "none") || !strcmp(val.data, "/dev/null")) {
+		} else if (!strcasecmp(key.data, "PidFile")) {
+			if (!strcmp(val.data, "none")) {
 				opt->pid_file = NULL;
 				continue;
 			}
 
-			ptr = malloc(val.length + 1);
-			if (ptr == NULL) {
+			opt->pid_file = strdup(val.data);
+			if (unlikely(!opt->pid_file)) {
 				perror("Unable to allocate memory for config value");
 				fclose(fh);
 				cleanup(EXIT_MEMORY, true);
 			}
-
-			strcpy(ptr, val.data);
-			opt->pid_file = ptr;
-		} else if (!strcasecmp(key.data, "requirepidfile")) {
+		} else if (!strcasecmp(key.data, "RequirePidFile")) {
 			ch = str_to_bool(val.data, conf_file, lineno, &success);
 
 			if (likely(success)) {
@@ -162,27 +165,25 @@ void parse_config(const char *conf_file, struct options *opt)
 			} else {
 				errors++;
 			}
-		} else if (!strcasecmp(key.data, "journalfile")) {
-			close_journal();
-
+		} else if (!strcasecmp(key.data, "JournalFile")) {
 			if (!strcmp(val.data, "-")) {
-				open_journal("/dev/stdin");
+				opt->journal_file = NULL;
 			} else if (strcmp(val.data, "none") != 0) {
-				open_journal(val.data);
+				opt->journal_file = strdup(val.data);
+				if (unlikely(!opt->journal_file)) {
+					perror("Unable to allocate memory for config value");
+					fclose(fh);
+					cleanup(EXIT_MEMORY, true);
+				}
 			}
-		} else if (!strcasecmp(key.data, "quotesfile")) {
-			char *ptr;
-
-			ptr = malloc(val.length + 1);
-			if (ptr == NULL) {
+		} else if (!strcasecmp(key.data, "QuotesFile")) {
+			opt->quotes_file = strdup(val.data);
+			if (unlikely(!opt->quotes_file)) {
 				perror("Unable to allocate memory for config value");
 				fclose(fh);
 				cleanup(EXIT_MEMORY, true);
 			}
-
-			strcpy(ptr, val.data);
-			opt->quotes_file = ptr;
-		} else if (!strcasecmp(key.data, "quotedivider")) {
+		} else if (!strcasecmp(key.data, "QuoteDivider")) {
 			if (!strcasecmp(val.data, "line")) {
 				opt->linediv = DIV_EVERYLINE;
 			} else if (!strcasecmp(val.data, "percent")) {
@@ -195,7 +196,7 @@ void parse_config(const char *conf_file, struct options *opt)
 					conf_file, lineno, val.data);
 				errors++;
 			}
-		} else if (!strcasecmp(key.data, "padquotes")) {
+		} else if (!strcasecmp(key.data, "PadQuotes")) {
 			ch = str_to_bool(val.data, conf_file, lineno, &success);
 
 			if (likely(success)) {
@@ -203,7 +204,7 @@ void parse_config(const char *conf_file, struct options *opt)
 			} else {
 				errors++;
 			}
-		} else if (!strcasecmp(key.data, "dailyquotes")) {
+		} else if (!strcasecmp(key.data, "DailyQuotes")) {
 			ch = str_to_bool(val.data, conf_file, lineno, &success);
 
 			if (likely(success)) {
@@ -211,7 +212,7 @@ void parse_config(const char *conf_file, struct options *opt)
 			} else {
 				errors++;
 			}
-		} else if (!strcasecmp(key.data, "allowbigquotes")) {
+		} else if (!strcasecmp(key.data, "AllowBigQuotes")) {
 			ch = str_to_bool(val.data, conf_file, lineno, &success);
 
 			if (likely(success)) {

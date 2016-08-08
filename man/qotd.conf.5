@@ -37,9 +37,13 @@ Which IP protocol to use. This setting is either `ipv4', `ipv6', or `both'. The 
 .BR Port
 Specifies an alternate port to listen on. The default value is `17', which is the port specified by RFC 865.
 .TP
+.BR StrictChecking
+When this option is enabled, the daemon will perform checks on the permissions of files, and will refuse to start if the files are writeable by those other than the calling user. This argument is almost equivlent to the \fB--lax\fP argument, but obviously does not apply to configuration file, since it must be read before this option can be extracted.
+The default option is `yes'.
+.TP
 .BR DropPrivileges
 Takes a boolean. If this option is set, then once a connection is established, the program will drop privileges and run itself as the \fIdaemon\fP user. However, if \fBPidFile\fP is set, the daemon will check the permissions on the directory of the containing directory. If the program will lack the permissions to delete the pid file, the daemon will quit.
-The default behavior is `yes'.
+The default option is `yes'.
 .TP
 .BR PidFile
 Specifies what pid file is to be used by the daemon. If this value is `none' or `/dev/null', then no pid file is written. The default is \fI/run/qotd.pid\fP, but if there is no \fI/run\fP directory, then \fI/var/run/qotd.pid\fP will be used instead.

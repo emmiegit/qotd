@@ -53,6 +53,7 @@ enum internet_protocol {
 # define DEFAULT_PORT			17
 # define DEFAULT_DROP_PRIVILEGES	true
 # define DEFAULT_REQUIRE_PIDFILE	true
+# define DEFAULT_JOURNAL_FILE		NULL /* means "use stdout" */
 # define DEFAULT_QUOTES_FILE		"/usr/share/qotd/quotes.txt"
 # define DEFAULT_LINE_DIVIDER		DIV_PERCENT
 # define DEFAULT_PAD_QUOTES		true
@@ -63,6 +64,7 @@ enum internet_protocol {
 struct options {
 	const char *quotes_file;		/* string containing path to quotes file */
 	const char *pid_file;			/* string containing path to pid file */
+	const char *journal_file;		/* string containing path to journal file */
 	unsigned int port;			/* what port to listen on */
 	enum quote_divider linediv;	 	/* how to read the quotes file */
 	enum transport_protocol tproto; 	/* which transport protocol to use */

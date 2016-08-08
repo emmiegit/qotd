@@ -63,8 +63,11 @@ int main(const int argc, const char *const argv[])
 	/* Set default values for static variables */
 	wrote_pidfile = false;
 
-	/* Load configuration and open journal */
+	/* Load configuration */
 	load_config(argc, argv);
+
+	/* Open journal */
+	open_journal(opt.journal_file);
 
 	/* Check security settings */
 	if (opt.strict) {

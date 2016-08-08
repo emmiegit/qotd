@@ -136,9 +136,9 @@ void parse_args(struct options *const opt, const int argc, const char *const arg
 	}
 
 	if (flags.journal_file && !strcmp(flags.journal_file, "-")) {
-		open_journal(flags.journal_file);
+		opt->journal_file = flags.journal_file;
 	} else {
-		open_journal(NULL);
+		opt->journal_file = NULL;
 	}
 
 	if (flags.iproto != PROTOCOL_INONE) {
