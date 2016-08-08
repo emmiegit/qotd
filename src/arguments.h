@@ -27,7 +27,7 @@
 extern "C" {
 # endif /* __cplusplus */
 
-void parse_args(struct options *opt, const int argc, const char *argv[]);
+void parse_args(struct options *opt, const int argc, const char *const argv[]);
 
 # ifdef __cplusplus
 extern "C" {

@@ -42,38 +42,29 @@
 /* Static function declarations */
 static int daemonize(void);
 static int main_loop(void);
-static void save_args(const int argc, const char *argv[]);
 static void write_pidfile(void);
-static void load_config(void);
+static void load_config(const int argc, const char *const argv[]);
 static void check_config(void);
 
 /* Static member declarations */
 static struct options opt;
 static bool wrote_pidfile;
 
-static struct {
-	int argc;
-	const char **argv;
-} arguments;
-
 /* Function implementations */
-int main(int argc, const char *argv[])
+int main(const int argc, const char *const argv[])
 {
-	/* Set up signal handlers */
-	set_up_handlers();
-
 #if DEBUG
 	printf("(Running in debug mode)\n");
 #endif /* DEBUG */
 
+	/* Set up signal handlers */
+	set_up_handlers();
+
 	/* Set default values for static variables */
 	wrote_pidfile = false;
 
-	/* Make a copy of the arguments */
-	save_args(argc, argv);
-
 	/* Load configuration and open journal */
-	load_config();
+	load_config(argc, argv);
 
 	/* Check security settings */
 	if (opt.strict) {
@@ -187,17 +178,18 @@ void cleanup(int retcode, bool quiet)
 
 	destroy_quote_buffers();
 	close_socket();
+	close_quotes_file();
 	close_journal();
 
 	exit(retcode);
 }
 
-static void load_config(void)
+static void load_config(const int argc, const char *const argv[])
 {
 	int ret;
 
 	journal("Loading configuration settings...\n");
-	parse_args(&opt, arguments.argc, arguments.argv);
+	parse_args(&opt, argc, argv);
 	check_config();
 
 	ret = open_quotes_file(&opt);
@@ -205,12 +197,6 @@ static void load_config(void)
 		journal("Unable to open quotes file: %s.\n", strerror(errno));
 		cleanup(EXIT_IO, true);
 	}
-}
-
-static void save_args(int argc, const char *argv[])
-{
-	arguments.argc = argc;
-	arguments.argv = argv;
 }
 
 static void write_pidfile()
@@ -294,36 +280,6 @@ static void check_config()
 		ERR_TRACE();
 		journal("Unable to stat quotes file \"%s\": %s.\n", opt.quotesfile, strerror(errno));
 		cleanup(EXIT_IO, true);
-	}
-
-	if (geteuid() == ROOT_USER_ID && opt.drop_privileges && opt.pidfile) {
-		char *pidfile = strdup(opt.pidfile);
-		ret = stat(dirname(pidfile), &statbuf);
-		free(pidfile);
-		if (ret) {
-			journal("Unable to stat pid file directory \"%s\": %s.\n",
-					dirname(pidfile), strerror(errno));
-			cleanup(EXIT_IO, true);
-		}
-
-		do {
-			if (statbuf.st_uid == DAEMON_USER_ID && (statbuf.st_mode & S_IRWXU)) {
-				break;
-			}
-
-			if (statbuf.st_gid == DAEMON_GROUP_ID && (statbuf.st_mode & S_IRWXG)) {
-				break;
-			}
-
-			if (statbuf.st_mode & S_IRWXO) {
-				break;
-			}
-
-			journal("Given the current selection of pidfile, the daemon would be unable\n"
-				"to delete it because of the permissions on the holding directory.\n"
-				"Either change the pidfile or run without dropping privileges.\n");
-			cleanup(EXIT_ARGUMENTS, true);
-		} while(0);
 	}
 }
 

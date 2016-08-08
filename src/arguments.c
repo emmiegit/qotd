@@ -59,7 +59,7 @@ struct argument_flags {
 static void parse_short_options(
 	const char *argument, const char *next_arg, int *index, struct argument_flags *flags);
 static void parse_long_option(
-	const int argc, const char *argv[], int *i, struct argument_flags *flags);
+	const int argc, const char *const argv[], int *i, struct argument_flags *flags);
 static char *default_pidfile();
 static void help_and_exit(const char *program_name);
 static void usage_and_exit(const char *program_name);
@@ -70,7 +70,7 @@ static const char *name_option_protocol(enum transport_protocol tproto, enum int
 static const char *name_option_quote_divider(enum quote_divider value);
 #endif /* DEBUG */
 
-void parse_args(struct options *opt, const int argc, const char *argv[])
+void parse_args(struct options *const opt, const int argc, const char *const argv[])
 {
 	struct argument_flags flags;
 	int i;
@@ -148,9 +148,9 @@ void parse_args(struct options *opt, const int argc, const char *argv[])
 
 	if (flags.journal_file) {
 		close_journal();
-		if (strcmp(flags.journal_file, "-") == 0) {
+		if (!strcmp(flags.journal_file, "-")) {
 			open_journal(NULL);
-		} else if (strcmp(flags.journal_file, "none") != 0) {
+		} else if (strcmp(flags.journal_file, "none")) {
 			open_journal(flags.journal_file);
 		}
 	} else if (!journal_is_open()) {
@@ -298,7 +298,7 @@ static void parse_short_options(
 }
 
 static void parse_long_option(
-	const int argc, const char *argv[], int *i, struct argument_flags *flags)
+	const int argc, const char *const argv[], int *i, struct argument_flags *flags)
 {
 	if (!strcmp(argv[*i], "--help")) {
 		help_and_exit(flags->program_name);

@@ -35,7 +35,6 @@ extern "C" {
 # define EXIT_SIGNAL			22
 # define EXIT_INTERNAL			23
 
-void reload_config(void);
 void cleanup(int ret, bool quiet);
 
 # ifdef __cplusplus
