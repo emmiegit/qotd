@@ -33,11 +33,12 @@ DEP_1 = $(CC)
 DEP   = $(DEP_$(V))
 
 # Compile options
-CC      := gcc
+V       ?= 0
+CC      ?= gcc
 FLAGS   := -ansi -pipe
 WARN    := -Wall -Wextra -Wpedantic
 COMPILE := -I. -D_XOPEN_SOURCE=500 -DGITHASH='"$(shell git rev-parse --short HEAD)"'
-LINKING := -pthread
+LINKING :=
 
 # Program sources
 SOURCES := $(wildcard *.c)

@@ -8,7 +8,7 @@ Type=forking
 ExecStart=/usr/bin/qotdd
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=control-group
-#PIDFile=/run/qotd.pid
+PIDFile=/run/qotd.pid
 Restart=always
 RestartSec=60
 

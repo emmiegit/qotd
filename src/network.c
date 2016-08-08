@@ -64,10 +64,6 @@
 /* Static member declarations */
 static int sockfd = -1;
 
-/* Static function declarations */
-static int tcp_send_quote(int fd);
-static int udp_send_quote(const struct sockaddr *cli_addr, socklen_t clilen);
-
 void set_up_ipv4_socket(const struct options *opt)
 {
 	struct sockaddr_in serv_addr;
@@ -167,7 +163,10 @@ void tcp_accept_connection(void)
 {
 	struct sockaddr_in cli_addr;
 	socklen_t cli_len;
-	int consockfd, ret;
+	int consockfd;
+	char *buffer;
+	size_t length;
+	int ret;
 
 	journal("Listening for connection...\n");
 	listen(sockfd, TCP_CONNECTION_BACKLOG);
@@ -181,11 +180,15 @@ void tcp_accept_connection(void)
 		return;
 	}
 
-	acquire_lock();
-	ret = tcp_send_quote(consockfd);
-	relinquish_lock();
-	if (ret) {
-		/* Error message is printed by tcp_send_quote */
+	ret = get_quote_of_the_day(&buffer, &length);
+	if (unlikely(ret)) {
+		return;
+	}
+
+	ret = write(consockfd, buffer, length);
+	if (unlikely(ret < 0)) {
+		ERR_TRACE();
+		journal("Unable to wrtie to TCP connection socket: %s.\n", strerror(errno));
 		return;
 	}
 
@@ -196,30 +199,12 @@ void tcp_accept_connection(void)
 	}
 }
 
-static int tcp_send_quote(const int fd)
-{
-	char *buffer;
-	size_t length;
-	int ret;
-
-	ret = get_quote_of_the_day(&buffer, &length);
-	if (unlikely(ret)) {
-		return -1;
-	}
-
-	ret = write(fd, buffer, length);
-	if (unlikely(ret < 0)) {
-		journal("Unable to write to TCP connection socket: %s.\n", strerror(errno));
-		return -1;
-	}
-
-	return 0;
-}
-
 void udp_accept_connection(void)
 {
 	struct sockaddr_in cli_addr;
 	socklen_t cli_len;
+	char *buffer;
+	size_t length;
 	int ret;
 
 	journal("Listening for connection...\n");
@@ -232,32 +217,17 @@ void udp_accept_connection(void)
 	}
 
 	cli_len = sizeof(cli_addr);
-	acquire_lock();
-	ret = udp_send_quote((struct sockaddr *)(&cli_addr), cli_len);
-	relinquish_lock();
-	if (ret) {
-		/* Error message is printed by udp_send_quote */
-	}
-}
-
-static int udp_send_quote(const struct sockaddr *const cli_addr, const socklen_t cli_len)
-{
-	char *buffer;
-	size_t length;
-	int ret;
 
 	ret = get_quote_of_the_day(&buffer, &length);
 	if (unlikely(ret)) {
-		return -1;
+		return;
 	}
 
-	ret = sendto(sockfd, buffer, length, 0, cli_addr, cli_len);
+	ret = sendto(sockfd, buffer, length, 0, (struct sockaddr *)(&cli_addr), cli_len);
 	if (unlikely(ret < 0)) {
 		ERR_TRACE();
 		journal("Unable to write to UDP socket: %s.\n", strerror(errno));
-		return -1;
+		return;
 	}
-
-	return 0;
 }
 

@@ -1,6 +1,3 @@
 [Version 0.10]
-Reload configuration with SIGHUP
-
-[Version 0.11]
 UDP support
 

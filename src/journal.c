@@ -35,7 +35,7 @@ static FILE *journal_fh = NULL;
 /* Static function declarations */
 static void open_journal_fd(int fd);
 
-void open_journal(const char *path)
+void open_journal(const char *const path)
 {
 	if (!path) {
 		open_journal_fd(STDOUT_FILENO);

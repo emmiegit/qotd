@@ -25,7 +25,6 @@
 #include <string.h>
 
 #include <libgen.h>
-#include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -49,7 +48,6 @@ static void load_config(void);
 static void check_config(void);
 
 /* Static member declarations */
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static struct options opt;
 static bool wrote_pidfile;
 
@@ -61,9 +59,6 @@ static struct {
 /* Function implementations */
 int main(int argc, const char *argv[])
 {
-	/* Prevent race conditions with early SIGHUPs */
-	acquire_lock();
-
 	/* Set up signal handlers */
 	set_up_handlers();
 
@@ -85,30 +80,7 @@ int main(int argc, const char *argv[])
 		security_options_check(&opt);
 	}
 
-	/* All set up */
-	relinquish_lock();
-
 	return opt.daemonize ? daemonize() : main_loop();
-}
-
-void acquire_lock(void)
-{
-	int ret = pthread_mutex_lock(&lock);
-	if (ret) {
-		ERR_TRACE();
-		journal("Unable to lock mutex: %s.\n", strerror(errno));
-		cleanup(EXIT_FAILURE, true);
-	}
-}
-
-void relinquish_lock(void)
-{
-	int ret = pthread_mutex_unlock(&lock);
-	if (ret) {
-		ERR_TRACE();
-		journal("Unable to unlock mutex: %s.\n", strerror(errno));
-		cleanup(EXIT_FAILURE, true);
-	}
 }
 
 static int daemonize(void)
@@ -217,13 +189,6 @@ void cleanup(int retcode, bool quiet)
 	close_socket();
 	close_journal();
 
-	relinquish_lock();
-
-	ret = pthread_mutex_destroy(&lock);
-	if (ret) {
-		journal("Unable to destroy mutex: %s.\n", strerror(errno));
-	}
-
 	exit(retcode);
 }
 
@@ -240,111 +205,6 @@ static void load_config(void)
 		journal("Unable to open quotes file: %s.\n", strerror(errno));
 		cleanup(EXIT_IO, true);
 	}
-}
-
-void reload_config(void)
-{
-	struct options old_opt = opt;
-	int ret;
-
-	acquire_lock();
-	journal("Reloading configuration settings...\n");
-	set_up_handlers();
-
-	parse_args(&opt, arguments.argc, arguments.argv);
-	check_config();
-
-	if (false)
-	if (opt.quotesfile != old_opt.quotesfile &&
-	    strcmp(opt.quotesfile, old_opt.quotesfile)) {
-
-		journal("Quotes file changed, opening new file handle...\n");
-
-		/* Close old quotes file */
-		ret = close_quotes_file();
-		if (ret) {
-			journal("Unable to close quotes file: %s.\n", strerror(errno));
-			cleanup(EXIT_IO, true);
-		}
-
-		/* Reopen quotes file */
-		ret = open_quotes_file(&opt);
-		if (ret) {
-			journal("Unable to reopen quotes file: %s.\n", strerror(errno));
-			cleanup(EXIT_IO, true);
-		}
-	}
-
-	if (false)
-	if (!opt.pidfile || !old_opt.pidfile ||
-	    (opt.pidfile != old_opt.pidfile && strcmp(opt.pidfile, old_opt.pidfile))) {
-
-		journal("Pid file changed, switching them out...\n");
-
-		if (opt.drop_privileges) {
-			journal("We can't change the pid file, we don't have root privileges anymore.\n");
-			cleanup(EXIT_ARGUMENTS, true);
-		}
-
-		ret = unlink(old_opt.pidfile);
-		if (ret) {
-			ERR_TRACE();
-			journal("Unable to remove old pidfile: %s.\n", strerror(errno));
-			cleanup(EXIT_IO, true);
-		}
-
-		write_pidfile();
-	}
-
-	if (false)
-	if (opt.port != old_opt.port ||
-	    opt.tproto != old_opt.tproto ||
-	    opt.iproto != old_opt.iproto) {
-		void (*accept_connection)(void);
-
-		journal("Connection settings changed, remaking socket...\n");
-
-		if (opt.drop_privileges && opt.port < MIN_NORMAL_PORT) {
-			journal("Configuration file specifies port %d (which is below %d),\n",
-				opt.port, MIN_NORMAL_PORT);
-			journal("but we don't have root privileges anymore.\n");
-			cleanup(EXIT_ARGUMENTS, true);
-		}
-
-		/* Close old socket */
-		close_socket();
-
-		/* Create new socket */
-		switch (opt.iproto) {
-		case PROTOCOL_BOTH:
-		case PROTOCOL_IPv6:
-			set_up_ipv6_socket(&opt);
-			break;
-		case PROTOCOL_IPv4:
-			set_up_ipv4_socket(&opt);
-			break;
-		default:
-			ERR_TRACE();
-			journal("Internal error: invalid enum value for \"iproto\": %d.\n", opt.iproto);
-			cleanup(EXIT_INTERNAL, true);
-		}
-
-		switch (opt.tproto) {
-		case PROTOCOL_TCP:
-			accept_connection = &tcp_accept_connection;
-			break;
-		case PROTOCOL_UDP:
-			accept_connection = &udp_accept_connection;
-			break;
-		default:
-			journal("Internal error: invalid enum value for \"tproto\": %d.\n", opt.tproto);
-			cleanup(EXIT_INTERNAL, true);
-		}
-
-		UNUSED(accept_connection);
-	}
-
-	relinquish_lock();
 }
 
 static void save_args(int argc, const char *argv[])
