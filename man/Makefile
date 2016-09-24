@@ -46,7 +46,7 @@ PS_FILES    := $(addsuffix .ps,$(SOURCES))
 PDF_TARGET  := $(PROGRAM_NAME).pdf
 
 # Goal targets
-ifeq ($(uname),Darwin)
+ifeq ($(shell uname),Darwin)
 all: $(GZ_FILES)
 release: $(GZ_FILES)
 else
