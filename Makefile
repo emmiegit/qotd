@@ -61,8 +61,8 @@ clean:
 
 # Primary targets
 update-versions:
-	sed -i '1 s/"$(PROGRAM_NAME) [^"]*"/"$(PROGRAM_NAME) $(VERSION)"/' $(wildcard $(MAN_DIR)/*.5 $(MAN_DIR)/*.8)
-	sed -i 's/VERSION_STRING .*/VERSION_STRING "$(VERSION)"/' $(SRC_DIR)/info.h
+	sed -i '1 s/"$(PROGRAM_NAME) [^"]*"/"$(PROGRAM_NAME) $(VERSION)"/' -- $(wildcard $(MAN_DIR)/*.5 $(MAN_DIR)/*.8)
+	sed -i 's/VERSION_STRING .*/VERSION_STRING "$(VERSION)"/' -- $(SRC_DIR)/info.h
 
 install:
 	@echo '[INSTALL] $(ROOT)/usr/bin/qotdd'
