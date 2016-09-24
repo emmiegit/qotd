@@ -37,6 +37,23 @@
 #define PORT_MAX		65535    /* Not in limits.h */
 #define BUFFER_SIZE		PATH_MAX /* A (very safe) magic number */
 
+#ifdef __APPLE__
+static char *strdup(const char *str)
+{
+	char *buf;
+	size_t len;
+
+	len = strlen(str);
+	buf = malloc(len);
+	if (!buf) {
+		return NULL;
+	}
+
+	strcpy(buf, str);
+	return buf;
+}
+#endif /* __APPLE__ */
+
 struct buffer {
 	char data[BUFFER_SIZE];
 	size_t length;

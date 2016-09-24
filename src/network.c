@@ -38,7 +38,8 @@
  * should not attempt to remake the socket.
  * Getting one of these errors should be fatal.
  */
-#define CHECK_SOCKET_ERROR(error)   		\
+#ifdef ESOCKTNOSUPPORT
+# define CHECK_SOCKET_ERROR(error)   		\
 	do { 					\
 		switch (error) {		\
 		case EBADF:			\
@@ -58,6 +59,26 @@
 			cleanup(EXIT_IO, true);	\
 		}				\
 	} while(0)
+#else
+# define CHECK_SOCKET_ERROR(error)   		\
+	do { 					\
+		switch (error) {		\
+		case EBADF:			\
+		case EFAULT:			\
+		case EINVAL:			\
+		case EMFILE:			\
+		case ENFILE:			\
+		case ENOBUFS:			\
+		case ENOMEM:			\
+		case ENOTSOCK:			\
+		case EOPNOTSUPP:		\
+		case EPROTO:			\
+		case EPERM:			\
+		case ENOSR:			\
+			cleanup(EXIT_IO, true);	\
+		}				\
+	} while(0)
+#endif /* ESOCKTNOSUPPORT */
 
 #define TCP_CONNECTION_BACKLOG		50
 
