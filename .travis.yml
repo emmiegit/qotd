@@ -1,19 +1,22 @@
 language: c
 
 os:
- - linux
- - osx
+  - linux
+  - osx
 
 env:
   global:
     - secure: "tI+TsDRXMZUC+Ho03i4RC7Tbengcx9Rr1Y1TE23YFI8TF+e0bk2/s/M2LuGAtzldYz30+ttShzuzgJPXF9+9lFJeOlsUC1XEemDCRA5LTb+fb2+O7Eo+N7XZLjOj0tOsz4A/t+CFh5xeoQNL2o8IF3TzBOIoCVE5u2BPYo54l1MJlnRGJ3iiUYgWV9+z7Ue/ZeVsPtmnm6DK37A8JZp649MET1UQlAdKHXD1CKIhE96dEjchugVqUwx4vR09pqI8/z1gg48w9VMtwUjb0DAnQrtjL7753M4WaH7e+zCGaXQBcwJONEToqx2T76ffe1mFFcrn8460xroaQsZ+BkJQCtcdw/ZTbI/x0t/pIfQi7Hpa+9ELi1U7BS8mQd8JjnEym4dNQE3qFxAb1vOWyuFstxn/2ZLXohgH+ooJVgM1xc0sALJJR8uRWbkxiCuDlly5uxak26BQInwo/XR9ZSBxh+YDLnyC87jY4netbzLVJLQRb77leNJjH1T2+t9wPHEZcv9TEw3Gu5RdUu+Qp/2bR+v0r7RXIbxKT/ew+pBxx7YaZi53cR/bdj0Vmx5cELLnQ9H3dTxx1pw57xBK63lTDgjIRS5VV6AtaRFm8MWGoTBa6xHkRWIBdj01/Edspt2jrm8bHUBa/c+d+prfoFGs/MSMAAKvGXkSghjF8TbMmCA="
 
 compiler:
- - clang
- - gcc
+  - clang
+  - gcc
+
+before_install:
+  - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca || true
 
 script:
- - make release
+  - make release
 
 branches:
   except:
