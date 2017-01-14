@@ -22,7 +22,7 @@
 # Constant declarations
 V            := 0
 PROGRAM_NAME := qotd
-VERSION      := 0.9.2
+VERSION      := 0.9.3
 EXE          := qotdd
 
 # Directories

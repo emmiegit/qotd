@@ -37,6 +37,8 @@
 #define QUOTE_SIZE				512  /* Set by RFC 865 */
 
 /* Static functions */
+static unsigned long djb2_hash(const char *str);
+static void seed_randgen(void);
 static int format_quote(void);
 static long get_file_size(void);
 static int readquotes_file(void);
@@ -111,17 +113,7 @@ int get_quote_of_the_day(char **const buffer, size_t *const length)
 	int (*readquotes)();
 	int ret;
 
-	if (opt->is_daily) {
-		/* Create random seed based on the current day */
-		time_t rawtime;
-		struct tm *ltime;
-		rawtime = time(NULL);
-		ltime = localtime(&rawtime);
-		srand(ltime->tm_year << 16 | ltime->tm_yday);
-	} else {
-		srand(time(NULL));
-	}
-
+	seed_randgen();
 	switch (opt->linediv) {
 	case DIV_EVERYLINE:
 		readquotes = readquotes_line;
@@ -166,6 +158,42 @@ int get_quote_of_the_day(char **const buffer, size_t *const length)
 	*length = quote_buffer.str_length;
 
 	return 0;
+}
+
+static unsigned long djb2_hash(const char *str)
+{
+	unsigned long hash;
+	char ch;
+
+	hash = 5381;
+	while ((ch = *str++)) {
+		hash = ((hash << 5) + hash) + ch;
+	}
+	return hash;
+}
+
+static void seed_randgen(void)
+{
+	char hostname[256];
+	time_t rawtime;
+	struct tm *ltime;
+	unsigned int seed;
+
+	rawtime = time(NULL);
+	if (!opt->is_daily) {
+		srand(rawtime);
+		return;
+	}
+
+	/* Create random seed based on current day and hostname */
+
+	ltime = localtime(&rawtime);
+	seed = ltime->tm_year << 16 | ltime->tm_yday;
+	if (!gethostname(hostname, sizeof(hostname))) {
+		hostname[sizeof(hostname) - 1] = '\0';
+		seed ^= djb2_hash(hostname);
+	}
+	srand(seed);
 }
 
 static int format_quote(void)
