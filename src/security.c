@@ -22,9 +22,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libgen.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <grp.h>
+#include <libgen.h>
 #include <unistd.h>
 
 #include "daemon.h"
@@ -32,26 +33,44 @@
 #include "security.h"
 #include "standard.h"
 
+static gid_t get_daemon_group(void)
+{
+	const struct group *grp;
+
+	grp = getgrnam(DAEMON_GROUP_NAME);
+	if (!grp) {
+		journal("Unable to find daemon group id: %s.\n", strerror(errno));
+		return (gid_t)-1;
+	}
+	return grp->gr_gid;
+}
+
 void drop_privileges(void)
 {
+	gid_t group;
 	int ret;
 
 	if (geteuid() != ROOT_USER_ID) {
 		journal("Not running as root, no privileges to drop.\n");
 		return;
 	}
+	group = get_daemon_group();
+	if (unlikely((int)group < 0)) {
+		journal("Unable to drop drop privileges.\n");
+		return;
+	}
 
 	journal("Everything is ready, dropping privileges.\n");
 
 	/* POSIX specifies that the group should be dropped first */
-	ret = setgid(DAEMON_GROUP_ID);
+	ret = setgid(group);
 	if (unlikely(ret)) {
-		journal("Unable to set effective group id to %d: %s.\n", DAEMON_GROUP_ID, strerror(errno));
+		journal("Unable to set effective group id to %d: %s.\n", group, strerror(errno));
 	}
 
-	ret = setuid(DAEMON_USER_ID);
+	ret = setuid(group);
 	if (unlikely(ret)) {
-		journal("Unable to set effective user id to %d: %s.\n", DAEMON_USER_ID, strerror(errno));
+		journal("Unable to set effective user id to %d: %s.\n", group, strerror(errno));
 	}
 
 	if (unlikely(!setuid(ROOT_USER_ID))) {

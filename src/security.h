@@ -28,8 +28,7 @@ extern "C" {
 
 # define ROOT_USER_ID				0
 # define ROOT_GROUP_ID				0
-# define DAEMON_USER_ID				2
-# define DAEMON_GROUP_ID			2
+# define DAEMON_GROUP_NAME			"daemon"
 
 /* Any port lower than this requires root permissions */
 # define MIN_NORMAL_PORT			1024
