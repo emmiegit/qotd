@@ -38,10 +38,6 @@
 
 #define NOT_BOOL(x)		((x) != (!!(x)))
 
-#ifdef __APPLE__
-extern char *strdup(const char *str);
-#endif /* __APPLE__ */
-
 struct buffer {
 	char data[BUFFER_SIZE];
 	size_t length;
@@ -51,6 +47,50 @@ struct string {
 	const char *ptr;
 	size_t length;
 };
+
+/* Utilities */
+
+static int caseless_eq(const struct string *x,
+		       const char *y,
+		       size_t y_len)
+{
+	size_t i;
+	char c1, c2;
+
+	if (x->length != y_len)
+		return 0;
+	for (i = 0; i < y_len; i++) {
+		c1 = tolower(x->ptr[i]);
+		c2 = tolower(y[i]);
+		if (c1 != c2)
+			return 0;
+	}
+	return 1;
+}
+
+static void print_str(FILE *out, const struct string *s)
+{
+	size_t i;
+
+	for (i = 0; i < s->length; i++)
+		putc(s->ptr[i], out);
+	putc('\n', out);
+}
+
+static char *dup_str(const struct string *s)
+{
+	char *buf;
+
+	buf = malloc(s->length + 1);
+	if (unlikely(!buf))
+		return NULL;
+
+	memcpy(buf, s->ptr, s->length);
+	buf[s->length] = '\0';
+	return buf;
+}
+
+/* I/O */
 
 static int read_line(FILE *fh,
 		     const char *filename,
@@ -147,33 +187,6 @@ invalid:
 	return -1;
 }
 
-static int caseless_eq(const struct string *x,
-		       const char *y,
-		       size_t y_len)
-{
-	size_t i;
-	char c1, c2;
-
-	if (x->length != y_len)
-		return 0;
-	for (i = 0; i < y_len; i++) {
-		c1 = tolower(x->ptr[i]);
-		c2 = tolower(y[i]);
-		if (c1 != c2)
-			return 0;
-	}
-	return 1;
-}
-
-static void print_str(FILE *out, const struct string *s)
-{
-	size_t i;
-
-	for (i = 0; i < s->length; i++)
-		putc(s->ptr[i], out);
-	putc('\n', out);
-}
-
 static int str_to_bool(const struct string *s,
 		       const char *filename,
 		       unsigned int lineno)
@@ -219,18 +232,17 @@ static int process_line(struct options *opt,
 			const struct buffer *line)
 {
 	struct string key, val;
-	int ch;
+	int n;
 
 	if (read_kv(conf_file, lineno, line, &key, &val))
 		return key.ptr == NULL;
 
 	/* Check each possible option */
 	if (caseless_eq(&key, "Daemonize", 9)) {
-		ch = str_to_bool(&val, conf_file, lineno);
-		if (unlikely(NOT_BOOL(ch)))
+		n = str_to_bool(&val, conf_file, lineno);
+		if (unlikely(NOT_BOOL(n)))
 			return -1;
-
-		opt->daemonize = ch;
+		opt->daemonize = n;
 	} else if (caseless_eq(&key, "TransportProtocol", 17)) {
 		if (caseless_eq(&val, "tcp", 3)) {
 			opt->tproto = PROTOCOL_TCP;
@@ -256,113 +268,87 @@ static int process_line(struct options *opt,
 			return -1;
 		}
 	} else if (caseless_eq(&key, "Port", 4)) {
-		int port;
-
-		port = get_port(&val, conf_file, lineno);
-		if (unlikely(port < 0))
+		n = get_port(&val, conf_file, lineno);
+		if (unlikely(n < 0))
 			return -1;
-
-		opt->port = port;
-	}
-
-#if 0
-	} else if (!strcasecmp(key.data, "StrictChecking")) {
-		ch = str_to_bool(val.data, conf_file, lineno, &success);
-
-		if (likely(success)) {
-			opt->strict = ch;
-		} else {
-			errors++;
-		}
-	} else if (!strcasecmp(key.data, "DropPrivileges")) {
-		ch = str_to_bool(val.data, conf_file, lineno, &success);
-
-		if (likely(success)) {
-			opt->drop_privileges = ch;
-		} else {
-			errors++;
-		}
-	} else if (!strcasecmp(key.data, "PidFile")) {
-		if (!strcmp(val.data, "none")) {
+		opt->port = n;
+	} else if (caseless_eq(&key, "StrictChecking", 14)) {
+		n = str_to_bool(&val, conf_file, lineno);
+		if (unlikely(NOT_BOOL(n)))
+			return -1;
+		opt->strict = n;
+	} else if (caseless_eq(&key, "DropPrivileges", 14)) {
+		n = str_to_bool(&val, conf_file, lineno);
+		if (unlikely(NOT_BOOL(n)))
+			return -1;
+		opt->drop_privileges = n;
+	} else if (caseless_eq(&key, "PidFile", 7)) {
+		if (caseless_eq(&val, "none", 4)) {
 			opt->pid_file = NULL;
-			continue;
+			return 0;
 		}
 
-		opt->pid_file = strdup(val.data);
+		opt->pid_file = dup_str(&val);
 		if (unlikely(!opt->pid_file)) {
 			perror("Unable to allocate memory for config value");
-			fclose(fh);
-			cleanup(EXIT_MEMORY, true);
+			cleanup(EXIT_MEMORY, 1);
 		}
-	} else if (!strcasecmp(key.data, "RequirePidFile")) {
-		ch = str_to_bool(val.data, conf_file, lineno, &success);
-
-		if (likely(success)) {
-			opt->require_pidfile = ch;
-		} else {
-			errors++;
-		}
-	} else if (!strcasecmp(key.data, "JournalFile")) {
-		if (!strcmp(val.data, "-")) {
+	} else if (caseless_eq(&key, "RequirePidFile", 14)) {
+		n = str_to_bool(&val, conf_file, lineno);
+		if (unlikely(NOT_BOOL(n)))
+			return -1;
+		opt->require_pidfile = n;
+	} else if (caseless_eq(&key, "JournalFile", 11)) {
+		if (caseless_eq(&val, "-", 1)) {
 			opt->journal_file = NULL;
-		} else if (strcmp(val.data, "none") != 0) {
-			opt->journal_file = strdup(val.data);
+		} else if (!caseless_eq(&val, "none", 4)) {
+			opt->journal_file = dup_str(&val);
 			if (unlikely(!opt->journal_file)) {
 				perror("Unable to allocate memory for config value");
-				fclose(fh);
-				cleanup(EXIT_MEMORY, true);
+				cleanup(EXIT_MEMORY, 1);
 			}
 		}
-	} else if (!strcasecmp(key.data, "QuotesFile")) {
-		opt->quotes_file = strdup(val.data);
+	} else if (caseless_eq(&key, "QuotesFile", 10)) {
+		opt->quotes_file = dup_str(&val);
 		if (unlikely(!opt->quotes_file)) {
 			perror("Unable to allocate memory for config value");
-			fclose(fh);
 			cleanup(EXIT_MEMORY, true);
 		}
-	} else if (!strcasecmp(key.data, "QuoteDivider")) {
-		if (!strcasecmp(val.data, "line")) {
+	} else if (caseless_eq(&key, "QuoteDivider", 12)) {
+		if (caseless_eq(&val, "line", 4)) {
 			opt->linediv = DIV_EVERYLINE;
-		} else if (!strcasecmp(val.data, "percent")) {
+		} else if (caseless_eq(&val, "percent", 7)) {
 			opt->linediv = DIV_PERCENT;
-		} else if (!strcasecmp(val.data, "file")) {
+		} else if (caseless_eq(&val, "file", 4)) {
 			opt->linediv = DIV_WHOLEFILE;
 		} else {
-			fprintf(stderr,
-				"%s:%d: unsupported division type: \"%s\"\n",
-				conf_file, lineno, val.data);
-			errors++;
+			fprintf(stderr, "%s:%u: unsupported division type: ",
+				conf_file, lineno);
+			print_str(stderr, &val);
+			return -1;
 		}
-	} else if (!strcasecmp(key.data, "PadQuotes")) {
-		ch = str_to_bool(val.data, conf_file, lineno, &success);
-
-		if (likely(success)) {
-			opt->pad_quotes = ch;
-		} else {
-			errors++;
-		}
-	} else if (!strcasecmp(key.data, "DailyQuotes")) {
-		ch = str_to_bool(val.data, conf_file, lineno, &success);
-
-		if (likely(success)) {
-			opt->is_daily = ch;
-		} else {
-			errors++;
-		}
-	} else if (!strcasecmp(key.data, "AllowBigQuotes")) {
-		ch = str_to_bool(val.data, conf_file, lineno, &success);
-
-		if (likely(success)) {
-			opt->allow_big = ch;
-		} else {
-			errors++;
-		}
+	} else if (caseless_eq(&key, "PadQuotes", 9)) {
+		n = str_to_bool(&val, conf_file, lineno);
+		if (unlikely(NOT_BOOL(n)))
+			return -1;
+		opt->pad_quotes = n;
+	} else if (caseless_eq(&key, "DailyQuotes", 11)) {
+		n = str_to_bool(&val, conf_file, lineno);
+		if (unlikely(NOT_BOOL(n)))
+			return -1;
+		opt->is_daily = n;
+	} else if (caseless_eq(&key, "AllowBigQuotes", 14)) {
+		n = str_to_bool(&val, conf_file, lineno);
+		if (unlikely(NOT_BOOL(n)))
+			return -1;
+		opt->allow_big = n;
 	} else {
-		fprintf(stderr, "%s:%d: unknown conf option: \"%s\"\n",
-			conf_file, lineno, key.data);
-		errors++;
+		fprintf(stderr, "%s:%u: unknown config option: ",
+			conf_file, lineno);
+		print_str(stderr, &key);
+		return -1;
 	}
-#endif
+	return 0;
 }
 
 void parse_config(struct options *opt, const char *conf_file)
