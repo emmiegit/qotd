@@ -22,8 +22,8 @@
 #include <stdio.h>
 #include <signal.h>
 
-#include "daemon.h"
 #include "journal.h"
+#include "main.h"
 #include "signal_handler.h"
 
 #define JOURNAL(x)		(journal_is_open() ? journal(x) : fprintf(stderr, (x)))
@@ -45,15 +45,15 @@ static void handle_signal(const int signum)
 	switch (signum) {
 	case SIGSEGV:
 		journal("Error: segmentation fault. Dumping core (if enabled).\n");
-		cleanup(EXIT_INTERNAL, true);
+		cleanup(EXIT_INTERNAL, 1);
 		break;
 	case SIGTERM:
 		journal("Termination signal received. Exiting...\n");
-		cleanup(EXIT_SUCCESS, true);
+		cleanup(EXIT_SUCCESS, 1);
 		break;
 	case SIGINT:
 		journal("Interrupt signal received. Exiting...\n");
-		cleanup(EXIT_SIGNAL, true);
+		cleanup(EXIT_SIGNAL, 1);
 		break;
 	case SIGCHLD:
 		journal("My child died. Doing nothing.\n");

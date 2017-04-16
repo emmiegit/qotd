@@ -29,15 +29,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "arguments.h"
-#include "daemon.h"
-#include "info.h"
-#include "journal.h"
-#include "network.h"
-#include "quotes.h"
-#include "security.h"
-#include "signal_handler.h"
-#include "standard.h"
+#include "
 
 /* Static function declarations */
 static int daemonize(void);
@@ -51,33 +43,8 @@ static struct options opt;
 static bool wrote_pidfile;
 
 /* Function implementations */
-int main(const int argc, const char *const argv[])
-{
-#if DEBUG
-	printf("(Running in debug mode)\n");
-#endif /* DEBUG */
 
-	/* Set up signal handlers */
-	set_up_handlers();
-
-	/* Set default values for static variables */
-	wrote_pidfile = false;
-
-	/* Load configuration */
-	load_config(argc, argv);
-
-	/* Open journal */
-	open_journal(opt.journal_file);
-
-	/* Check security settings */
-	if (opt.strict) {
-		security_options_check(&opt);
-	}
-
-	return opt.daemonize ? daemonize() : main_loop();
-}
-
-static int daemonize(void)
+int daemonize(void)
 {
 	pid_t pid;
 
@@ -111,73 +78,6 @@ static int daemonize(void)
 	return main_loop();
 }
 
-static int main_loop(void)
-{
-	void (*accept_connection)(void);
-
-	write_pidfile();
-
-	switch (opt.iproto) {
-	case PROTOCOL_BOTH:
-	case PROTOCOL_IPv6:
-		set_up_ipv6_socket(&opt);
-		break;
-	case PROTOCOL_IPv4:
-		set_up_ipv4_socket(&opt);
-		break;
-	default:
-		journal("Internal error: invalid enum value for \"iproto\": %d.\n", opt.iproto);
-		cleanup(EXIT_INTERNAL, true);
-	}
-
-	if (opt.drop_privileges) {
-		drop_privileges();
-	}
-
-	switch (opt.tproto) {
-	case PROTOCOL_TCP:
-		accept_connection = &tcp_accept_connection;
-		break;
-	case PROTOCOL_UDP:
-		accept_connection = &udp_accept_connection;
-		break;
-	default:
-		ERR_TRACE();
-		journal("Internal error: invalid enum value for \"tproto\": %d.\n", opt.tproto);
-		cleanup(EXIT_INTERNAL, true);
-		return -1;
-	}
-
-	while (true) {
-		accept_connection();
-	}
-
-	return EXIT_SUCCESS;
-}
-
-void cleanup(int retcode, bool quiet)
-{
-	int ret;
-
-	if (!quiet) {
-		journal("Quitting with exit code %d.\n", retcode);
-	}
-
-	if (wrote_pidfile) {
-		ret = unlink(opt.pid_file);
-		if (ret) {
-			journal("Unable to remove pid file (%s): %s.\n",
-				opt.pid_file, strerror(errno));
-		}
-	}
-
-	destroy_quote_buffers();
-	close_socket();
-	close_quotes_file();
-	close_journal();
-
-	exit(retcode);
-}
 
 static void load_config(const int argc, const char *const argv[])
 {
@@ -193,87 +93,4 @@ static void load_config(const int argc, const char *const argv[])
 	}
 }
 
-static void write_pidfile()
-{
-	struct stat statbuf;
-	int ret;
-	FILE *fh;
-
-	if (!opt.pid_file) {
-		journal("No pidfile was written.\n");
-		return;
-	}
-
-	/* Check if the pidfile already exists */
-	ret = stat(opt.pid_file, &statbuf);
-	if (ret) {
-		if (errno != ENOENT) {
-			journal("Unable to stat pid file \"%s\": %s.\n", opt.pid_file, strerror(errno));
-			cleanup(EXIT_IO, true);
-		}
-	} else {
-		journal("The pid file already exists. Quitting.\n");
-		cleanup(EXIT_FAILURE, true);
-	}
-
-	/* Write the pidfile */
-	fh = fopen(opt.pid_file, "w+");
-
-	if (!fh) {
-		journal("Unable to open pid file: %s.\n", strerror(errno));
-
-		if (opt.require_pidfile) {
-			cleanup(EXIT_IO, true);
-		} else {
-			return;
-		}
-	}
-
-	ret = fprintf(fh, "%d\n", getpid());
-	if (ret < 0) {
-		ERR_TRACE();
-		perror("Unable to write process id to pid file");
-
-		if (opt.require_pidfile) {
-			fclose(fh);
-			cleanup(EXIT_IO, true);
-		}
-	}
-
-	wrote_pidfile = true;
-
-	ret = fclose(fh);
-	if (ret) {
-		ERR_TRACE();
-		journal("Unable to close pid file handle: %s.\n", strerror(errno));
-
-		if (opt.require_pidfile) {
-			cleanup(EXIT_IO, true);
-		}
-	}
-}
-
-static void check_config()
-{
-	struct stat statbuf;
-	int ret;
-
-	if (opt.port < MIN_NORMAL_PORT && geteuid() != ROOT_USER_ID) {
-		journal("Only root can bind to ports below %d.\n", MIN_NORMAL_PORT);
-		cleanup(EXIT_ARGUMENTS, true);
-	}
-
-	if (opt.pid_file && opt.pid_file[0] != '/') {
-		journal("Specified pid file is not an absolute path.\n");
-		cleanup(EXIT_ARGUMENTS, true);
-	}
-
-	ret = stat(opt.quotes_file, &statbuf);
-
-	if (ret) {
-		ERR_TRACE();
-		journal("Unable to stat quotes file \"%s\": %s.\n", opt.quotes_file, strerror(errno));
-		cleanup(EXIT_IO, true);
-	}
-}
 

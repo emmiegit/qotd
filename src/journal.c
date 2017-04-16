@@ -25,9 +25,8 @@
 
 #include <unistd.h>
 
-#include "daemon.h"
 #include "journal.h"
-#include "standard.h"
+#include "main.h"
 
 /* Static variables */
 static FILE *journal_fh = NULL;

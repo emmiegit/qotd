@@ -17,18 +17,14 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __SECURITY_H
-# define __SECURITY_H
+#ifndef _SECURITY_H_
+#define _SECURITY_H_
 
-# ifdef __cplusplus
-extern "C" {
-# endif /* __cplusplus */
+#include "config.h"
 
-# include "options.h"
-
-# define ROOT_USER_ID				0
-# define ROOT_GROUP_ID				0
-# define DAEMON_GROUP_NAME			"daemon"
+#define ROOT_USER_ID				0
+#define ROOT_GROUP_ID				0
+#define DAEMON_GROUP_NAME			"daemon"
 
 /* Any port lower than this requires root permissions */
 # define MIN_NORMAL_PORT			1024
@@ -40,8 +36,5 @@ void security_file_check(const char *path, const char *file_type);
 # define security_conf_file_check(path)		security_file_check((path), "configuration")
 # define security_quotes_file_check(path)	security_file_check((path), "quotes")
 
-# ifdef __cplusplus
-}
-# endif /* __cplusplus */
-#endif /* __SECURITY_H */
+#endif /* _SECURITY_H_ */
 

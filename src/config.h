@@ -1,5 +1,5 @@
 /*
- * options.h
+ * config.h
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -18,14 +18,8 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __OPTIONS_H
-# define __OPTIONS_H
-
-# include <stdbool.h>
-
-# ifdef __cplusplus
-extern "C" {
-# endif /* __cplusplus */
+#ifndef _CONFIG_H_
+#define _CONFIG_H_
 
 enum quote_divider {
 	DIV_EVERYLINE,
@@ -47,19 +41,19 @@ enum internet_protocol {
 };
 
 # define DEFAULT_CONFIG_FILE		"/etc/qotd.conf"
-# define DEFAULT_DAEMONIZE		true
+# define DEFAULT_DAEMONIZE		1
 # define DEFAULT_TRANSPORT_PROTOCOL	PROTOCOL_TCP
 # define DEFAULT_INTERNET_PROTOCOL	PROTOCOL_BOTH
 # define DEFAULT_PORT			17
-# define DEFAULT_DROP_PRIVILEGES	true
-# define DEFAULT_REQUIRE_PIDFILE	true
+# define DEFAULT_DROP_PRIVILEGES	1
+# define DEFAULT_REQUIRE_PIDFILE	1
 # define DEFAULT_JOURNAL_FILE		NULL /* means "use stdout" */
 # define DEFAULT_QUOTES_FILE		"/usr/share/qotd/quotes.txt"
 # define DEFAULT_LINE_DIVIDER		DIV_PERCENT
-# define DEFAULT_PAD_QUOTES		true
-# define DEFAULT_IS_DAILY		true
-# define DEFAULT_ALLOW_BIG		false
-# define DEFAULT_CHDIR_ROOT		true
+# define DEFAULT_PAD_QUOTES		1
+# define DEFAULT_IS_DAILY		1
+# define DEFAULT_ALLOW_BIG		0
+# define DEFAULT_CHDIR_ROOT		1
 
 struct options {
 	const char *quotes_file;		/* string containing path to quotes file */
@@ -70,18 +64,18 @@ struct options {
 	enum transport_protocol tproto; 	/* which transport protocol to use */
 	enum internet_protocol iproto;  	/* which internet protocol to use */
 
-	bool daemonize;				/* whether to fork to the background or not */
-	bool require_pidfile;			/* whether to quit if the pidfile cannot be made */
-	bool strict;				/* enables extra checks to ensure security */
-	bool drop_privileges;			/* whether to setuid() after opening the connection */
-	bool is_daily;				/* whether quotes are random every day or every visit */
-	bool pad_quotes;			/* whether to pad the quote with newlines */
-	bool allow_big;				/* ignore 512-byte limit */
-	bool chdir_root;			/* whether to chdir to / when running */
+	unsigned daemonize		: 1;	/* whether to fork to the background or not */
+	unsigned require_pidfile	: 1;	/* whether to quit if the pidfile cannot be made */
+	unsigned strict			: 1;	/* enables extra checks to ensure security */
+	unsigned drop_privileges	: 1;	/* whether to setuid() after opening the connection */
+	unsigned is_daily		: 1;	/* whether quotes are random every day or every visit */
+	unsigned pad_quotes		: 1;	/* whether to pad the quote with newlines */
+	unsigned allow_big		: 1;	/* ignore 512-byte limit */
+	unsigned chdir_root		: 1;	/* whether to chdir to / when running */
 };
 
-# ifdef __cplusplus
-}
-# endif /* __cplusplus */
-#endif /* __OPTIONS_H */
+void parse_config(struct options *opt, const char *conf_file);
+void check_config(const struct options *opt);
+
+#endif /* _CONFIG_H_ */
 

@@ -1,5 +1,5 @@
 /*
- * daemon.h
+ * main.h
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -18,9 +18,23 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _DAEMON_H_
-#define _DAEMON_H_
+#ifndef _MAIN_H_
+#define _MAIN_H_
 
+/* For EXIT_SUCCESS and EXIT_FAILURE */
+#include <stdlib.h>
 
-#endif /* _DAEMON_H_ */
+enum {
+	EXIT_ARGUMENTS = 17,
+	EXIT_CONFIGURATION,
+	EXIT_SECURITY,
+	EXIT_MEMORY,
+	EXIT_IO,
+	EXIT_SIGNAL,
+	EXIT_INTERNAL
+};
+
+void cleanup(int ret, int quiet);
+
+#endif /* _MAIN_H_ */
 

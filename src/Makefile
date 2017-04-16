@@ -72,7 +72,7 @@ $(EXE): $(OBJECTS)
 
 # Utility targets
 clean:
-	rm -f *.o *.d *.gcda *.gcno *gcov
+	rm -f $(EXE) *.o *.d *.gcda *.gcno *gcov
 
 -include $(DEPENDS)
 
