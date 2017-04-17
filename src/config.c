@@ -236,6 +236,14 @@ static int process_line(struct options *opt,
 	if (read_kv(conf_file, lineno, line, &key, &val))
 		return key.ptr != NULL;
 
+	if (DEBUG) {
+		fputs("Key: ", stdout);
+		print_str(stdout, &key);
+		fputs("Value: ", stdout);
+		print_str(stdout, &val);
+		putchar('\n');
+	}
+
 	/* Check each possible option */
 	if (caseless_eq(&key, "Daemonize", 9)) {
 		n = str_to_bool(&val, conf_file, lineno);
