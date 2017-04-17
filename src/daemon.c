@@ -33,6 +33,7 @@
 #include "pidfile.h"
 #include "quotes.h"
 #include "security.h"
+#include "signal_hndl.h"
 
 static struct options opt;
 
@@ -123,7 +124,7 @@ int main(const int argc, const char *const argv[])
 	printf("(Running in debug mode)\n");
 #endif /* DEBUG */
 
-	set_up_handlers();
+	signal_hndl_init();
 	load_config(argc, argv);
 	open_journal(opt.journal_file);
 

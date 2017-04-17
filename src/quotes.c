@@ -28,10 +28,10 @@
 #include <string.h>
 #include <time.h>
 
+#include "core.h"
 #include "daemon.h"
 #include "journal.h"
 #include "security.h"
-#include "standard.h"
 #include "quotes.h"
 
 #define QUOTE_SIZE		512  /* Set by RFC 865 */
@@ -398,7 +398,7 @@ static int readquotes_percent(void)
 	unsigned int i, j;
 	int ch, watch = 0;
 	size_t quotes = 0;
-	bool has_percent = false;
+	int has_percent = 0;
 	const long size = get_file_size();
 	if (unlikely(size < 0)) {
 		return -1;

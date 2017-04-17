@@ -28,10 +28,10 @@
 #include <libgen.h>
 #include <unistd.h>
 
+#include "core.h"
 #include "daemon.h"
 #include "journal.h"
 #include "security.h"
-#include "standard.h"
 
 static gid_t get_daemon_group(void)
 {
@@ -75,7 +75,7 @@ void drop_privileges(void)
 
 	if (unlikely(!setuid(ROOT_USER_ID))) {
 		journal("Managed to regain root privileges. Bailing out.\n");
-		cleanup(EXIT_SECURITY, true);
+		cleanup(EXIT_SECURITY, 1);
 	}
 }
 
@@ -97,13 +97,13 @@ void security_options_check(const struct options *const opt)
 	if (ret) {
 		journal("Unable to stat \"%s\" (the directory that will contain the pidfile): %s.\n",
 			piddir, strerror(errno));
-		cleanup(EXIT_IO, true);
+		cleanup(EXIT_IO, 1);
 	}
 
 	if (!S_ISDIR(statbuf.st_mode)) {
 		journal("\"%s\" is meant to hold the pidfile, but it's not a directory.\n",
 			piddir);
-		cleanup(EXIT_IO, true);
+		cleanup(EXIT_IO, 1);
 	}
 
 	if ((statbuf.st_mode & S_IWOTH) && !(statbuf.st_mode & S_ISVTX)) {
@@ -111,7 +111,7 @@ void security_options_check(const struct options *const opt)
 			"to delete our pidfile. The daemon will not start.\n"
 			"(To disable this behavior, use the --lax flag when running).\n",
 			piddir);
-		cleanup(EXIT_SECURITY, true);
+		cleanup(EXIT_SECURITY, 1);
 	}
 
 	free(pidpath);
@@ -127,7 +127,7 @@ void security_file_check(const char *const path, const char *const file_type)
 	if (ret < 0) {
 		journal("Unable to open %s file \"%s\": %s.\n",
 			file_type, path, strerror(errno));
-		cleanup(EXIT_IO, true);
+		cleanup(EXIT_IO, 1);
 	}
 
 	/* Check ownership of the file */
@@ -135,7 +135,7 @@ void security_file_check(const char *const path, const char *const file_type)
 		journal("Your %s file is not owned by the calling user or root. The daemon will not start.\n"
 			"(To disable this behavior, use the --lax flag when running).\n",
 			file_type);
-		cleanup(EXIT_SECURITY, true);
+		cleanup(EXIT_SECURITY, 1);
 	}
 
 	/* Check file write permissions */
@@ -144,7 +144,6 @@ void security_file_check(const char *const path, const char *const file_type)
 			"The daemon will not start.\n"
 			"(To disable this behavior, use the --lax flag when running).\n",
 			file_type);
-		cleanup(EXIT_SECURITY, true);
+		cleanup(EXIT_SECURITY, 1);
 	}
 }
-

@@ -135,14 +135,14 @@ void set_up_ipv6_socket(const struct options *opt)
 
 	if (sockfd < 0) {
 		journal("Unable to create IPv6 socket: %s.\n", strerror(errno));
-		cleanup(EXIT_IO, true);
+		cleanup(EXIT_IO, 1);
 	}
 
 	if (opt->iproto == PROTOCOL_IPv6) {
 		ret = setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)(&one), sizeof(one));
 		if (ret < 0) {
 			journal("Unable to set IPv4 compatibility option: %s.\n", strerror(errno));
-			cleanup(EXIT_IO, true);
+			cleanup(EXIT_IO, 1);
 		}
 	}
 
@@ -160,7 +160,7 @@ void set_up_ipv6_socket(const struct options *opt)
 	ret = bind(sockfd, (const struct sockaddr *)(&serv_addr), sizeof(struct sockaddr_in6));
 	if (ret < 0) {
 		journal("Unable to bind to socket: %s.\n", strerror(errno));
-		cleanup(EXIT_IO, true);
+		cleanup(EXIT_IO, 1);
 	}
 }
 

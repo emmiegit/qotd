@@ -58,7 +58,7 @@ static void handle_signal(const int signum)
 	}
 }
 
-void set_up_handlers(void)
+void signal_hndl_init(void)
 {
 	signal(SIGSEGV, handle_signal);
 	signal(SIGTERM, handle_signal);

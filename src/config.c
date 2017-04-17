@@ -29,7 +29,6 @@
 
 #include "core.h"
 #include "daemon.h"
-#include "main.h"
 #include "journal.h"
 #include "security.h"
 
@@ -312,7 +311,7 @@ static int process_line(struct options *opt,
 		opt->quotes_file = dup_str(&val);
 		if (unlikely(!opt->quotes_file)) {
 			perror("Unable to allocate memory for config value");
-			cleanup(EXIT_MEMORY, true);
+			cleanup(EXIT_MEMORY, 1);
 		}
 	} else if (caseless_eq(&key, "QuoteDivider", 12)) {
 		if (caseless_eq(&val, "line", 4)) {
@@ -367,7 +366,7 @@ void parse_config(struct options *opt, const char *conf_file)
 	if (!fh) {
 		fprintf(stderr, "Unable to open configuration file \"%s\": %s.\n",
 			conf_file, strerror(errno));
-		cleanup(EXIT_IO, true);
+		cleanup(EXIT_IO, 1);
 	}
 
 #if DEBUG
@@ -388,7 +387,7 @@ void parse_config(struct options *opt, const char *conf_file)
 			"Your configuration file has %d issue%s. The daemon will not start.\n"
 			"(To disable this behavior, use the --lax flag when running).\n",
 			errors, PLURAL(errors));
-		cleanup(EXIT_SECURITY, true);
+		cleanup(EXIT_SECURITY, 1);
 	}
 }
 

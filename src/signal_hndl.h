@@ -21,7 +21,7 @@
 #ifndef _SIGNAL_HNDL_H_
 #define _SIGNAL_HNDL_H_
 
-void set_up_handlers(void);
+void signal_hndl_init(void);
 
 #endif /* _SIGNAL_HNDL_H_ */
 
