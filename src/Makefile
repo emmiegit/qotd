@@ -17,6 +17,7 @@
 # along with qotd.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+.SUFFIXES:
 .PHONY: all clean
 
 # Print options
@@ -31,6 +32,10 @@ LD    = $(LD_$(V))
 DEP_0 = @echo '[DEP] $@'; $(CC)
 DEP_1 = $(CC)
 DEP   = $(DEP_$(V))
+
+STP_0 = @echo '[STP] $(EXE)'; strip
+STP_1 = strip
+STP   = $(STP_$(V))
 
 # Compile options
 V       ?= 0
@@ -53,6 +58,7 @@ all: $(EXE)
 
 release: CFLAGS += -Os -fstack-protector-all -DRELEASE
 release: $(EXE)
+	$(STP) $<
 
 debug: CFLAGS += -g -Og -DDEBUG=1
 debug: $(EXE)

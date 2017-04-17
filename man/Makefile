@@ -17,7 +17,14 @@
 # along with qotd.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+.SUFFIXES:
 .PHONY: all release pdf clean
+
+# Programs
+V           ?= 0
+GZIP        ?= gzip
+TROFF       ?= groff
+GHOSTSCRIPT ?= gs
 
 # Print options
 GZ_0  = @echo '[GZ] $@'; $(GZIP)
@@ -32,10 +39,7 @@ PDF_0 = @echo '[PDF] $@'; $(GHOSTSCRIPT)
 PDF_1 = $(GHOSTSCRIPT)
 PDF   = $(PDF_$(V))
 
-# Compile options
-GZIP        := gzip
-TROFF       := groff
-GHOSTSCRIPT := gs
+# Flags
 PS_FLAGS    := -Tps -mandoc
 PDF_FLAGS   := -q -sPAPERSIZE=letter -dNOPAUSE -dBATCH -sDEVICE=pdfwrite
 
@@ -43,7 +47,7 @@ PDF_FLAGS   := -q -sPAPERSIZE=letter -dNOPAUSE -dBATCH -sDEVICE=pdfwrite
 SOURCES     := $(wildcard *.5 *.8)
 GZ_FILES    := $(addsuffix .gz,$(SOURCES))
 PS_FILES    := $(addsuffix .ps,$(SOURCES))
-PDF_TARGET  := $(PROGRAM_NAME).pdf
+PDF_TARGET  := qotd.pdf
 
 # Goal targets
 ifeq ($(shell uname),Darwin)
@@ -73,5 +77,5 @@ $(PDF_TARGET): $(PS_FILES)
 
 # utility targets
 clean:
-	rm *.gz *.ps *.pdf
+	rm -f *.gz *.ps *.pdf
 

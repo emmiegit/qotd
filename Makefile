@@ -17,12 +17,11 @@
 # along with qotd.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+.SUFFIXES:
 .PHONY: all pdf install clean
 
 # Constant declarations
 V            := 0
-PROGRAM_NAME := qotd
-VERSION      := 0.9.3
 EXE          := qotdd
 
 # Directories
@@ -35,7 +34,7 @@ export		 V PROGRAM_NAME VERSION EXE
 all:
 	@make -C $(SRC_DIR)
 
-release: update-versions
+release:
 	@echo '[RELEASE]'
 	@make -BC $(SRC_DIR) release
 	@make -BC $(MAN_DIR) release
@@ -60,10 +59,6 @@ clean:
 	@make -C $(MAN_DIR) clean
 
 # Primary targets
-update-versions:
-	@sed -i.bak '1 s/"$(PROGRAM_NAME) [^"]*"/"$(PROGRAM_NAME) $(VERSION)"/' $(wildcard $(MAN_DIR)/*.5 $(MAN_DIR)/*.8)
-	@sed -i.bak 's/VERSION_STRING .*/VERSION_STRING "$(VERSION)"/' $(SRC_DIR)/info.h
-
 install:
 	@echo '[INSTALL] $(ROOT)/usr/bin/qotdd'
 	@install -D -m755 src/$(EXE) '$(ROOT)/usr/bin/qotdd'
