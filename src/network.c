@@ -43,7 +43,7 @@ static int sockfd = -1;
  * If the returned error is one of these, then you
  * should not attempt to remake the socket.
  */
-static void check_socket_error(int error)
+static void check_socket_error(const int error)
 {
 	switch (error) {
 	case EBADF:
@@ -82,7 +82,7 @@ static void check_socket_error(int error)
 	}
 }
 
-void set_up_ipv4_socket(const struct options *opt)
+void set_up_ipv4_socket(const struct options *const opt)
 {
 	struct sockaddr_in serv_addr;
 	const int one = 1;
@@ -128,7 +128,7 @@ void set_up_ipv4_socket(const struct options *opt)
 	}
 }
 
-void set_up_ipv6_socket(const struct options *opt)
+void set_up_ipv6_socket(const struct options *const opt)
 {
 	struct sockaddr_in6 serv_addr;
 	const int one = 1;
@@ -187,10 +187,9 @@ void set_up_ipv6_socket(const struct options *opt)
 
 void close_socket(void)
 {
-	if (sockfd < 0) {
+	if (sockfd < 0)
 		return;
-	}
-	if (close(sockfd)) {
+	if (unlikely(close(sockfd))) {
 		journal("Unable to close socket file descriptor %d: %s.\n",
 			sockfd, strerror(errno));
 	}
@@ -223,13 +222,12 @@ void tcp_accept_connection(void)
 	}
 	if (unlikely(get_quote_of_the_day(&buffer, &length)))
 		return;
-
-	if (unlikely(write(consockfd, buffer, length) < 0)) {
+	if (write(consockfd, buffer, length) < 0) {
 		JTRACE();
-		journal("Unable to wrtie to TCP connection socket: %s.\n", strerror(errno));
+		journal("Unable to write to TCP connection socket: %s.\n", strerror(errno));
 		return;
 	}
-	if (close(consockfd)) {
+	if (unlikely(close(consockfd))) {
 		JTRACE();
 		journal("Unable to close connection: %s.\n", strerror(errno));
 		return;
@@ -248,7 +246,7 @@ void udp_accept_connection(void)
 	if (unlikely(recvfrom(sockfd,
 			      NULL, 0, 0,
 			      (struct sockaddr *)(&cli_addr),
-			      &cli_len) <= 0)) {
+			      &cli_len) < 0)) {
 		const int errsave = errno;
 		JTRACE();
 		journal("Unable to read from socket: %s.\n", strerror(errsave));
