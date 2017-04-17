@@ -19,6 +19,7 @@
  */
 
 #include <sys/stat.h>
+#include <limits.h>
 #include <unistd.h>
 
 #include <assert.h>
@@ -39,8 +40,9 @@
 #if defined(__APPLE__)
 # define FSEEK			fseek
 # define FTELL			ftell
+int gethostname(char *name,
+		size_t namelen);
 #else
-# define _FILE_OFFSET_BITS	64
 # define FSEEK			fseeko
 # define FTELL			ftello
 #endif /* __APPLE__ */
@@ -95,7 +97,7 @@ static unsigned long djb2_hash(const char *str)
 
 static void seed_randgen(void)
 {
-	char hostname[256];
+	char hostname[HOST_NAME_MAX + 1];
 	time_t rawtime;
 	const struct tm *ltime;
 	unsigned int seed;
