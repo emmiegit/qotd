@@ -251,6 +251,7 @@ void udp_accept_connection(void)
 		JTRACE();
 		journal("Unable to read from socket: %s.\n", strerror(errsave));
 		check_socket_error(errsave);
+		return;
 	}
 
 	if (unlikely(get_quote_of_the_day(&buffer, &length)))
