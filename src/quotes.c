@@ -57,6 +57,21 @@ static struct {
 
 /* Utilites */
 
+#if DEBUG
+static void print_quotes(void)
+{
+	unsigned int i;
+
+	journal("Printing %lu quote%s:\n",
+		quote_file_data.length,
+		PLURAL(quote_file_data.length));
+
+	for (i = 0; i < quote_file_data.length; i++)
+		journal("#%lu: %s<end>\n",
+			i, quote_file_data.array[i]);
+}
+#endif /* DEBUG */
+
 static unsigned long djb2_hash(const char *str)
 {
 	unsigned long hash;
@@ -193,6 +208,7 @@ static int readquotes_file(void)
 		quote_file_data.buf_length = fsize;
 	}
 
+	/* Read file data */
 	rewind(quotes_fh);
 	if (fread(quote_file_data.buffer, fsize, 1, quotes_fh) != 1) {
 		journal("Unable to read from quotes file.\n");
@@ -249,7 +265,7 @@ static int readquotes_line(void)
 		quote_file_data.buf_length = fsize;
 	}
 
-	/* Count number of newlines in the file */
+	/* Read file data */
 	rewind(quotes_fh);
 	if (fread(quote_file_data.buffer, fsize, 1, quotes_fh) != 1) {
 		journal("Unable to read from quotes file.\n");
@@ -326,7 +342,12 @@ static int readquotes_percent(void)
 		quote_file_data.buf_length = fsize;
 	}
 
+	/* Read file data */
 	rewind(quotes_fh);
+	if (fread(quote_file_data.buffer, fsize, 1, quotes_fh) != 1) {
+		journal("Unable to read from quotes file.\n");
+		return -1;
+	}
 	for (i = 0; i < fsize; i++) {
 		char *c;
 
@@ -372,10 +393,10 @@ static int readquotes_percent(void)
 		quote_file_data.length = quotes;
 	}
 	quote_file_data.array[0] = &quote_file_data.buffer[0];
-	for (i = 0, j = 1; i < fsize; i++) {
+	for (i = 0, j = 0; i < fsize; i++) {
 		if (quote_file_data.buffer[i] == '\0') {
 			assert(j < quotes);
-			quote_file_data.array[j++] = &quote_file_data.buffer[i + 3];
+			quote_file_data.array[++j] = &quote_file_data.buffer[i + 3];
 		}
 	}
 	return 0;
@@ -400,15 +421,10 @@ int open_quotes_file(const struct options *const local_opt)
 	return 0;
 }
 
-int close_quotes_file(void)
+void close_quotes_file(void)
 {
-	int ret;
-
-	if (!quotes_fh)
-		return 0;
-	ret = fclose(quotes_fh);
-	quotes_fh = NULL;
-	return ret;
+	if (quotes_fh)
+		fclose(quotes_fh);
 }
 
 void destroy_quote_buffers(void)
@@ -418,13 +434,9 @@ void destroy_quote_buffers(void)
 	FINAL_FREE(quote_buffer.data);
 }
 
-int get_quote_of_the_day(char **const buffer, size_t *const length)
+int get_quote_of_the_day(const char **const buffer, size_t *const length)
 {
-#if DEBUG
-	unsigned int _i;
-#endif /* DEBUG */
-
-	int (*readquotes)();
+	int (*readquotes)(void);
 
 	seed_randgen();
 	switch (opt->linediv) {
@@ -453,11 +465,7 @@ int get_quote_of_the_day(char **const buffer, size_t *const length)
 	}
 
 #if DEBUG
-	journal("Printing %lu quote%s:\n", quote_file_data.length, PLURAL(quote_file_data.length));
-
-	for (_i = 0; _i < quote_file_data.length; _i++) {
-		journal("#%lu: %s<end>\n", _i, quote_file_data.array[_i]);
-	}
+	print_quotes();
 #endif /* DEBUG */
 
 	if (format_quote())

@@ -83,7 +83,7 @@ static void check_socket_error(int error)
 void set_up_ipv4_socket(const struct options *opt)
 {
 	struct sockaddr_in serv_addr;
-	const unsigned char one = 1;
+	const int one = 1;
 
 	if (opt->tproto == PROTOCOL_TCP) {
 		journal("Setting up IPv4 socket over TCP...\n");
@@ -129,7 +129,7 @@ void set_up_ipv4_socket(const struct options *opt)
 void set_up_ipv6_socket(const struct options *opt)
 {
 	struct sockaddr_in6 serv_addr;
-	const unsigned char one = 1;
+	const int one = 1;
 
 	if (opt->tproto == PROTOCOL_TCP) {
 		journal("Setting up IPv%s6 socket over TCP...\n",
@@ -199,7 +199,7 @@ void tcp_accept_connection(void)
 	struct sockaddr_in cli_addr;
 	socklen_t cli_len;
 	int consockfd;
-	char *buffer;
+	const char *buffer;
 	size_t length;
 
 	journal("Listening for connection...\n");
@@ -238,7 +238,7 @@ void udp_accept_connection(void)
 {
 	struct sockaddr_in cli_addr;
 	socklen_t cli_len;
-	char *buffer;
+	const char *buffer;
 	size_t length;
 
 	journal("Listening for connection...\n");

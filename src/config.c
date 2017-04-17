@@ -213,8 +213,10 @@ static int get_port(const struct string *s,
 	int port;
 
 	port = 0;
-	for (i = 0; i < s->length; i++)
+	for (i = 0; i < s->length; i++) {
+		port *= 10;
 		port += (s->ptr[i]) - '0';
+	}
 
 	if (unlikely(0 >= port || port >= PORT_MAX)) {
 		fprintf(stderr, "%s:%d: invalid port number: ",
@@ -401,16 +403,16 @@ void parse_config(struct options *opt, const char *conf_file)
 void check_config(const struct options *opt)
 {
 	if (opt->port < MIN_NORMAL_PORT && geteuid() != ROOT_USER_ID) {
-		journal("Only root can bind to ports below %d.\n", MIN_NORMAL_PORT);
+		fprintf(stderr, "Only root can bind to ports below %d.\n",
+			MIN_NORMAL_PORT);
 		cleanup(EXIT_ARGUMENTS, 1);
 	}
 	if (opt->pid_file && opt->pid_file[0] != '/') {
-		journal("Specified pid file is not an absolute path.\n");
+		fprintf(stderr, "Specified pid file is not an absolute path.\n");
 		cleanup(EXIT_ARGUMENTS, 1);
 	}
 	if (access(opt->quotes_file, R_OK)) {
-		JTRACE();
-		journal("Unable to access quotes file '%s': %s.\n",
+		fprintf(stderr, "Unable to access quotes file '%s': %s.\n",
 			opt->quotes_file, strerror(errno));
 		cleanup(EXIT_IO, 1);
 	}

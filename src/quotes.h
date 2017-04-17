@@ -26,10 +26,10 @@
 #include "config.h"
 
 int open_quotes_file(const struct options *opt);
-int close_quotes_file(void);
+void close_quotes_file(void);
 
 void destroy_quote_buffers(void);
-int get_quote_of_the_day(char **buffer, size_t *length);
+int get_quote_of_the_day(const char **buffer, size_t *length);
 
 #endif /* _QUOTES_H_ */
 
