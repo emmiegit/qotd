@@ -36,16 +36,8 @@
 
 #define QUOTE_SIZE		512  /* Set by RFC 865 */
 
-/* Static functions */
-static unsigned long djb2_hash(const char *str);
-static void seed_randgen(void);
-static int format_quote(void);
-static long get_file_size(void);
-static int readquotes_file(void);
-static int readquotes_line(void);
-static int readquotes_percent(void);
+/* Static data */
 
-/* Static variables */
 static FILE *quotes_fh;
 static const struct options *opt;
 
@@ -62,6 +54,323 @@ static struct {
 	size_t length;
 	size_t str_length;
 } quote_buffer;
+
+/* Utilites */
+
+static unsigned long djb2_hash(const char *str)
+{
+	unsigned long hash;
+	char ch;
+
+	hash = 5381;
+	while ((ch = *str++)) {
+		hash = ((hash << 5) + hash) + ch;
+	}
+	return hash;
+}
+
+static void seed_randgen(void)
+{
+	char hostname[256];
+	time_t rawtime;
+	const struct tm *ltime;
+	unsigned int seed;
+
+	rawtime = time(NULL);
+	if (!opt->is_daily) {
+		srand(rawtime);
+		return;
+	}
+
+	/* Create random seed based on current day and hostname */
+
+	ltime = localtime(&rawtime);
+	seed = ltime->tm_year << 16 | ltime->tm_yday;
+	if (!gethostname(hostname, sizeof(hostname))) {
+		hostname[sizeof(hostname) - 1] = '\0';
+		seed ^= djb2_hash(hostname);
+	}
+	srand(seed);
+}
+
+static int format_quote(void)
+{
+	size_t quoteno, length, i;
+
+	i = quoteno = rand() % quote_file_data.length;
+	while (unlikely(EMPTYSTR(quote_file_data.array[i]))) {
+		i = (i + 1) % quote_file_data.length;
+
+		if (i == quoteno) {
+			/* All the lines are blank, this will cause an infinite loop. */
+			journal("Quotes file has only empty entries.\n");
+			return -1;
+		}
+	}
+
+	if (opt->pad_quotes) {
+		/*
+		 * The pattern is "\n%s\n\n", so the total length is strlen + 3,
+		 * with one byte for the null byte.
+		 */
+		length = strlen(quote_file_data.array[i]) + 4;
+	} else {
+		length = strlen(quote_file_data.array[i]) + 1;
+	}
+
+	if (!opt->allow_big && length > QUOTE_SIZE) {
+		journal("Quote is %u bytes, which is %u bytes too long. Truncating to %u bytes.\n",
+			length,
+			length - QUOTE_SIZE,
+			QUOTE_SIZE);
+		length = QUOTE_SIZE;
+	}
+
+	if (length > quote_buffer.length) {
+		void *ptr;
+
+		ptr = realloc(quote_buffer.data, length);
+		if (unlikely(!ptr)) {
+			journal("Unable to allocate formatted quote buffer: %s.\n", strerror(errno));
+			return -1;
+		}
+		quote_buffer.data = ptr;
+		quote_buffer.length = length;
+	}
+
+	if (opt->pad_quotes)
+		snprintf(quote_buffer.data, length, "\n%s\n\n", quote_file_data.array[i]);
+	else
+		strncpy(quote_buffer.data, quote_file_data.array[i], length);
+
+	if (opt->pad_quotes)
+		journal("Sending quotation:%s<end>\n", quote_buffer.data);
+	else
+		journal("Sending quotation:\n%s<end>\n", quote_buffer.data);
+
+	quote_buffer.str_length = length;
+	return 0;
+}
+
+static size_t get_file_size(void)
+{
+	long size;
+
+	if (fseeko(quotes_fh, 0, SEEK_END)) {
+		const int errsave = errno;
+		JTRACE();
+		journal("Unable to seek to the end within the quotes file: %s.\n", strerror(errsave));
+		return -1;
+	}
+	if ((size = ftello(quotes_fh)) < 0) {
+		const int errsave = errno;
+		JTRACE();
+		journal("Unable to determine file size: %s.\n", strerror(errsave));
+		return -1;
+	}
+	return size;
+}
+
+static int readquotes_file(void)
+{
+	size_t i, fsize;
+
+	fsize = get_file_size();
+	if (unlikely(fsize == (size_t)-1))
+		return -1;
+
+	/* Allocate file buffer */
+	if (fsize > quote_file_data.buf_length) {
+		void *ptr;
+
+		ptr = realloc(quote_file_data.buffer, fsize + 1);
+		if (unlikely(!ptr)) {
+			journal("Unable to allocate memory for file buffer: %s.\n",
+				strerror(errno));
+			return -1;
+		}
+		quote_file_data.buffer = ptr;
+		quote_file_data.buf_length = fsize;
+	}
+
+	rewind(quotes_fh);
+	for (i = 0; i < fsize; i++) {
+		int ch = getc(quotes_fh);
+		if (ch == EOF)
+			break;
+		if (!ch)
+			ch = ' ';
+		quote_file_data.buffer[i] = (char)ch;
+	}
+	quote_file_data.buffer[i + 1] = '\0';
+	quote_file_data.length = i;
+
+	/* Allocate the array of strings */
+	if (quote_file_data.capacity < 1) {
+		void *ptr;
+
+		ptr = realloc(quote_file_data.array, sizeof(char *));
+		if (unlikely(!quote_file_data.array)) {
+			journal("Unable to allocate quotes array: %s.\n",
+				strerror(errno));
+			return -1;
+		}
+		quote_file_data.array = ptr;
+		quote_file_data.capacity = 1;
+	}
+	quote_file_data.array[0] = &quote_file_data.buffer[0];
+	return 0;
+}
+
+static int readquotes_line(void)
+{
+	unsigned int i, j;
+	size_t fsize, quotes;
+	int ch;
+
+	fsize = get_file_size();
+	if (unlikely(fsize == (size_t)-1))
+		return -1;
+
+	/* Allocate file buffer */
+	if (fsize > quote_file_data.buf_length) {
+		void *ptr;
+
+		ptr = realloc(quote_file_data.buffer, fsize + 1);
+		if (unlikely(!ptr)) {
+			journal("Unable to allocate memory for file buffer: %s.\n",
+				strerror(errno));
+			quote_file_data.buf_length = 0;
+			return -1;
+		}
+		quote_file_data.buffer = ptr;
+		quote_file_data.buf_length = fsize;
+	}
+
+	/* Count number of newlines in the file */
+	rewind(quotes_fh);
+	for (i = 0, quotes = 0; (ch = getc(quotes_fh)) != EOF; i++) {
+		if (ch == '\0') {
+			ch = ' ';
+		} else if (ch == '\n') {
+			ch = '\0';
+			quotes++;
+		}
+		quote_file_data.buffer[i] = (char)ch;
+	}
+	quote_file_data.buffer[fsize] = '\0';
+
+	/*
+	 * Account for the fact that the last line doesn't
+	 * have a newline at the end.
+	 */
+	quotes++;
+
+	/* Allocate the array of strings */
+	if (quotes > quote_file_data.capacity) {
+		free(quote_file_data.array);
+		quote_file_data.array = malloc(quotes * sizeof(char *));
+		if (!quote_file_data.array) {
+			journal("Unable to allocate quotes array: %s.\n", strerror(errno));
+			quote_file_data.capacity = 0;
+			return -1;
+		}
+		quote_file_data.length = quotes;
+		quote_file_data.capacity = quotes;
+	}
+	quote_file_data.array[0] = &quote_file_data.buffer[0];
+
+	for (i = 0, j = 1; i < fsize; i++) {
+		if (quote_file_data.buffer[i] == '\0') {
+			assert(j < quotes);
+			quote_file_data.array[j++] = &quote_file_data.buffer[i + 1];
+		}
+	}
+	return 0;
+}
+
+static int readquotes_percent(void)
+{
+	unsigned int i, j;
+	size_t fsize, quotes;
+	int ch, watch, has_percent;
+
+	watch = 0;
+	quotes = 0;
+	has_percent = 0;
+	fsize = get_file_size();
+	if (unlikely(fsize == (size_t)-1))
+		return -1;
+
+	/* Allocate file buffer */
+	if (fsize > quote_file_data.buf_length) {
+		void *ptr;
+
+		ptr = realloc(quote_file_data.buffer, fsize + 1);
+		if (unlikely(!ptr)) {
+			journal("Unable to allocate memory for file buffer: %s.\n", strerror(errno));
+			quote_file_data.buf_length = 0;
+			return -1;
+		}
+
+		quote_file_data.buffer = ptr;
+		quote_file_data.buf_length = fsize;
+	}
+
+	rewind(quotes_fh);
+	for (i = 0; (ch = fgetc(quotes_fh)) != EOF; i++) {
+		if (ch == '\0') {
+			ch = ' ';
+			watch = 0;
+		} else if (ch == '\n' && watch == 0) {
+			watch++;
+		} else if (ch == '%' && watch == 1) {
+			has_percent = 1;
+			watch++;
+		} else if (ch == '\n' && watch == 2) {
+			watch = 0;
+			quote_file_data.buffer[i - 2] = '\0';
+			quotes++;
+		} else if (watch > 0) {
+			watch = 0;
+		}
+		quote_file_data.buffer[i] = (char)ch;
+	}
+	quote_file_data.buffer[fsize] = '\0';
+
+	if (!has_percent) {
+		journal("No percent signs (%%) were found in the quotes file. This means that\n"
+			"the whole file will be treated as one quote, which is probably not\n"
+			"what you want. If this is what you want, use the `file' option for\n"
+			"`QuoteDivider' in the config file.\n");
+		return -1;
+	}
+
+	/* Allocate the array of strings */
+	if (quotes > quote_file_data.capacity) {
+		free(quote_file_data.array);
+		quote_file_data.array = malloc(quotes * sizeof(char *));
+		if (!quote_file_data.array) {
+			journal("Unable to allocate quotes array: %s.\n", strerror(errno));
+			quote_file_data.capacity = 0;
+			return -1;
+		}
+		quote_file_data.length = quotes;
+		quote_file_data.capacity = quotes;
+	}
+	quote_file_data.array[0] = &quote_file_data.buffer[0];
+
+	for (i = 0, j = 0; i < fsize; i++) {
+		if (quote_file_data.buffer[i] == '\0') {
+			assert(j < quotes);
+			quote_file_data.array[j++] = &quote_file_data.buffer[i + 3];
+		}
+	}
+
+	return 0;
+}
+
+/* Externals */
 
 int open_quotes_file(const struct options *const local_opt)
 {
@@ -152,316 +461,6 @@ int get_quote_of_the_day(char **const buffer, size_t *const length)
 
 	*buffer = quote_buffer.data;
 	*length = quote_buffer.str_length;
-	return 0;
-}
-
-static unsigned long djb2_hash(const char *str)
-{
-	unsigned long hash;
-	char ch;
-
-	hash = 5381;
-	while ((ch = *str++)) {
-		hash = ((hash << 5) + hash) + ch;
-	}
-	return hash;
-}
-
-static void seed_randgen(void)
-{
-	char hostname[256];
-	time_t rawtime;
-	struct tm *ltime;
-	unsigned int seed;
-
-	rawtime = time(NULL);
-	if (!opt->is_daily) {
-		srand(rawtime);
-		return;
-	}
-
-	/* Create random seed based on current day and hostname */
-
-	ltime = localtime(&rawtime);
-	seed = ltime->tm_year << 16 | ltime->tm_yday;
-	if (!gethostname(hostname, sizeof(hostname))) {
-		hostname[sizeof(hostname) - 1] = '\0';
-		seed ^= djb2_hash(hostname);
-	}
-	srand(seed);
-}
-
-static int format_quote(void)
-{
-	const size_t quoteno = rand() % quote_file_data.length;
-	size_t length, i = quoteno;
-
-	while (unlikely(EMPTYSTR(quote_file_data.array[i]))) {
-		i = (i + 1) % quote_file_data.length;
-
-		if (i == quoteno) {
-			/* All the lines are blank, this will cause an infinite loop. */
-			journal("Quotes file has only empty entries.\n");
-			return -1;
-		}
-	}
-
-	if (opt->pad_quotes) {
-		/*
-		 * The pattern is "\n%s\n\n", so the total length is strlen + 3,
-		 * with one byte for the null byte.
-		 */
-		length = strlen(quote_file_data.array[i]) + 4;
-	} else {
-		length = strlen(quote_file_data.array[i]) + 1;
-	}
-
-	if (!opt->allow_big && length > QUOTE_SIZE) {
-		journal("Quote is %u bytes, which is %u bytes too long. Truncating to %u bytes.\n",
-				length, length - QUOTE_SIZE, QUOTE_SIZE);
-		length = QUOTE_SIZE;
-	}
-
-	if (length > quote_buffer.length) {
-		free(quote_buffer.data);
-		quote_buffer.data = malloc(length);
-
-		if (unlikely(!quote_buffer.data)) {
-			journal("Unable to allocate formatted quote buffer: %s.\n", strerror(errno));
-			quote_buffer.length = 0;
-			return -1;
-		}
-
-		quote_buffer.length = length;
-	}
-
-	if (opt->pad_quotes) {
-		snprintf(quote_buffer.data, length, "\n%s\n\n", quote_file_data.array[i]);
-	} else {
-		strncpy(quote_buffer.data, quote_file_data.array[i], length);
-	}
-
-	if (opt->pad_quotes) {
-		journal("Sending quotation:%s<end>\n", quote_buffer.data);
-	} else {
-		journal("Sending quotation:\n%s<end>\n", quote_buffer.data);
-	}
-
-	quote_buffer.str_length = length;
-
-	return 0;
-}
-
-static long get_file_size(void)
-{
-	long size;
-	int ret;
-
-	ret = fseek(quotes_fh, 0, SEEK_END);
-	if (ret) {
-		JTRACE();
-		journal("Unable to seek to the end within the quotes file: %s.\n", strerror(errno));
-		return -1;
-	}
-
-	size = ftell(quotes_fh);
-	if (size < 0) {
-		JTRACE();
-		journal("Unable to determine file size: %s.\n", strerror(errno));
-		return -1;
-	}
-
-	return size;
-}
-
-static int readquotes_file(void)
-{
-	int ch, i;
-	const long size = get_file_size();
-	if (unlikely(size < 0)) {
-		return -1;
-	}
-
-	/* Allocate file buffer */
-	if ((size_t)size > quote_file_data.buf_length) {
-		free(quote_file_data.buffer);
-		quote_file_data.buffer = malloc(size + 1);
-		if (!quote_file_data.buffer) {
-			journal("Unable to allocate memory for file buffer: %s.\n", strerror(errno));
-			quote_file_data.buf_length = 0;
-			return -1;
-		}
-		quote_file_data.buf_length = size;
-	}
-
-	rewind(quotes_fh);
-	for (i = 0; (ch = fgetc(quotes_fh)) != EOF; i++) {
-		if (ch == '\0') {
-			ch = ' ';
-		}
-
-		quote_file_data.buffer[i] = (char)ch;
-	}
-	quote_file_data.buffer[size] = '\0';
-	quote_file_data.length = 1;
-
-	/* Allocate the array of strings */
-	if (1 > quote_file_data.capacity) {
-		free(quote_file_data.array);
-		quote_file_data.array = malloc(sizeof(char *));
-		if (!quote_file_data.array) {
-			journal("Unable to allocate quotes array: %s.\n", strerror(errno));
-			quote_file_data.capacity = 0;
-			return -1;
-		}
-		quote_file_data.length = 1;
-		quote_file_data.capacity = 1;
-	}
-	quote_file_data.array[0] = &quote_file_data.buffer[0];
-
-	return 0;
-}
-
-static int readquotes_line(void)
-{
-	unsigned int i, j;
-	size_t quotes;
-	int ch;
-	const long size = get_file_size();
-	if (unlikely(size < 0)) {
-		return -1;
-	}
-
-	/* Allocate file buffer */
-	if ((size_t)size > quote_file_data.buf_length) {
-		free(quote_file_data.buffer);
-		quote_file_data.buffer = malloc(size + 1);
-		if (!quote_file_data.buffer) {
-			journal("Unable to allocate memory for file buffer: %s.\n", strerror(errno));
-			quote_file_data.buf_length = 0;
-			return -1;
-		}
-		quote_file_data.buf_length = size;
-	}
-
-	/* Count number of newlines in the file */
-	rewind(quotes_fh);
-	for (i = 0, quotes = 0; (ch = fgetc(quotes_fh)) != EOF; i++) {
-		if (ch == '\0') {
-			ch = ' ';
-		} else if (ch == '\n') {
-			ch = '\0';
-			quotes++;
-		}
-
-		quote_file_data.buffer[i] = (char)ch;
-	}
-	quote_file_data.buffer[size] = '\0';
-
-	/*
-	 * Account for the fact that the last line doesn't
-	 * have a newline at the end.
-	 */
-	quotes++;
-
-	/* Allocate the array of strings */
-	if (quotes > quote_file_data.capacity) {
-		free(quote_file_data.array);
-		quote_file_data.array = malloc(quotes * sizeof(char *));
-		if (!quote_file_data.array) {
-			journal("Unable to allocate quotes array: %s.\n", strerror(errno));
-			quote_file_data.capacity = 0;
-			return -1;
-		}
-		quote_file_data.length = quotes;
-		quote_file_data.capacity = quotes;
-	}
-	quote_file_data.array[0] = &quote_file_data.buffer[0];
-
-	for (i = 0, j = 1; i < size; i++) {
-		if (quote_file_data.buffer[i] == '\0') {
-			assert(j < quotes);
-			quote_file_data.array[j++] = &quote_file_data.buffer[i + 1];
-		}
-	}
-
-	return 0;
-}
-
-static int readquotes_percent(void)
-{
-	unsigned int i, j;
-	int ch, watch = 0;
-	size_t quotes = 0;
-	int has_percent = 0;
-	const long size = get_file_size();
-	if (unlikely(size < 0)) {
-		return -1;
-	}
-
-	/* Allocate file buffer */
-	if ((size_t)size > quote_file_data.buf_length) {
-		free(quote_file_data.buffer);
-		quote_file_data.buffer = malloc(size + 1);
-		if (!quote_file_data.buffer) {
-			journal("Unable to allocate memory for file buffer: %s.\n", strerror(errno));
-			quote_file_data.buf_length = 0;
-			return -1;
-		}
-		quote_file_data.buf_length = size;
-	}
-
-	rewind(quotes_fh);
-	for (i = 0; (ch = fgetc(quotes_fh)) != EOF; i++) {
-		if (ch == '\0') {
-			ch = ' ';
-			watch = 0;
-		} else if (ch == '\n' && watch == 0) {
-			watch++;
-		} else if (ch == '%' && watch == 1) {
-			has_percent = 1;
-			watch++;
-		} else if (ch == '\n' && watch == 2) {
-			watch = 0;
-			quote_file_data.buffer[i - 2] = '\0';
-			quotes++;
-		} else if (watch > 0) {
-			watch = 0;
-		}
-
-		quote_file_data.buffer[i] = (char)ch;
-	}
-	quote_file_data.buffer[size] = '\0';
-
-	if (!has_percent) {
-		journal("No percent signs (%%) were found in the quotes file. This means that\n"
-			"the whole file will be treated as one quote, which is probably not\n"
-			"what you want. If this is what you want, use the `file' option for\n"
-			"`QuoteDivider' in the config file.\n");
-		return -1;
-	}
-
-	/* Allocate the array of strings */
-	if (quotes > quote_file_data.capacity) {
-		free(quote_file_data.array);
-		quote_file_data.array = malloc(quotes * sizeof(char *));
-		if (!quote_file_data.array) {
-			journal("Unable to allocate quotes array: %s.\n", strerror(errno));
-			quote_file_data.capacity = 0;
-			return -1;
-		}
-		quote_file_data.length = quotes;
-		quote_file_data.capacity = quotes;
-	}
-	quote_file_data.array[0] = &quote_file_data.buffer[0];
-
-	for (i = 0, j = 0; i < size; i++) {
-		if (quote_file_data.buffer[i] == '\0') {
-			assert(j < quotes);
-			quote_file_data.array[j++] = &quote_file_data.buffer[i + 3];
-		}
-	}
-
 	return 0;
 }
 

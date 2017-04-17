@@ -1,5 +1,5 @@
 /*
- * pidfile.h
+ * pid_file.h
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -18,13 +18,13 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _PIDFILE_H_
-#define _PIDFILE_H_
+#ifndef _PID_FILE_H_
+#define _PID_FILE_H_
 
 #include "config.h"
 
 void pidfile_create(const struct options *opt);
 void pidfile_remove(const struct options *opt);
 
-#endif /* _PIDFILE_H_ */
+#endif /* _PID_FILE_H_ */
 

@@ -31,7 +31,7 @@
 #include "daemon.h"
 #include "journal.h"
 #include "network.h"
-#include "pidfile.h"
+#include "pid_file.h"
 #include "quotes.h"
 #include "security.h"
 #include "signal_hndl.h"

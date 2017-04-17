@@ -1,5 +1,5 @@
 /*
- * pidfile.c
+ * pid_file.c
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -28,7 +28,7 @@
 
 #include "daemon.h"
 #include "journal.h"
-#include "pidfile.h"
+#include "pid_file.h"
 
 static unsigned char wrote_pidfile;
 
