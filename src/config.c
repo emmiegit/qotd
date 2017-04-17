@@ -369,9 +369,8 @@ void parse_config(struct options *opt, const char *conf_file)
 		cleanup(EXIT_IO, 1);
 	}
 
-#if DEBUG
-	printf("Raw key/value pairs from config file:\n");
-#endif /* DEBUG */
+	if (DEBUG)
+		printf("Raw key/value pairs from config file:\n");
 
 	lineno = 1;
 	errors = 0;

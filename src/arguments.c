@@ -42,6 +42,70 @@
 # define DEBUG_BUFFER_SIZE	48
 # define BOOLSTR(x)		((x) ? "true" : "false")
 # define BOOLSTR2(x)		(((x) == BOOLEAN_UNSET) ? "(unset)" : ((x) ? "true" : "false"))
+
+static const char *name_option_protocol(enum transport_protocol tproto, enum internet_protocol iproto)
+{
+	switch (tproto) {
+	case PROTOCOL_TCP:
+		switch (iproto) {
+		case PROTOCOL_IPv4:
+			return "TCP IPv4 only";
+		case PROTOCOL_IPv6:
+			return "TCP IPv6 only";
+		case PROTOCOL_BOTH:
+			return "TCP IPv4 and IPv6";
+		case PROTOCOL_INONE:
+			return "TCP <UNSET>";
+		default:
+			return "TCP ???";
+		}
+	case PROTOCOL_UDP:
+		switch (iproto) {
+		case PROTOCOL_IPv4:
+			return "UDP IPv4 only";
+		case PROTOCOL_IPv6:
+			return "UDP IPv6 only";
+		case PROTOCOL_BOTH:
+			return "UDP IPv4 and IPv6";
+		case PROTOCOL_INONE:
+			return "UDP <UNSET>";
+		default:
+			return "UDP ???";
+		}
+	case PROTOCOL_TNONE:
+		switch (iproto) {
+		case PROTOCOL_IPv4:
+			return "<UNSET> IPv4 only";
+		case PROTOCOL_IPv6:
+			return "<UNSET> IPv6 only";
+		case PROTOCOL_BOTH:
+			return "<UNSET> IPv4 and IPv6";
+		case PROTOCOL_INONE:
+			return "<UNSET> <UNSET>";
+		default:
+			return "<UNSET> ???";
+		}
+	default:
+		return "???";
+	}
+}
+
+static const char *name_option_quote_divider(enum quote_divider value)
+{
+	static char buf[32];
+
+	switch (value) {
+	case DIV_EVERYLINE:
+		return "DIV_EVERYLINE";
+	case DIV_PERCENT:
+		return "DIV_PERCENT";
+	case DIV_WHOLEFILE:
+		return "DIV_WHOLEFILE";
+	default:
+		sprintf(buf, "(%u) UNKNOWN", value);
+		return buf;
+	}
+}
 #endif /* DEBUG */
 
 struct argument_flags {
@@ -123,9 +187,8 @@ static void parse_short_options(const char *argument,
 {
 	size_t i;
 
-#if DEBUG
-	journal("Parsing options in \"-%s\":\n", argument);
-#endif /* DEBUG */
+	if (DEBUG)
+		journal("Parsing options in \"-%s\":\n", argument);
 
 	for (i = 0; argument[i]; i++) {
 #if DEBUG
@@ -140,7 +203,7 @@ static void parse_short_options(const char *argument,
 		journal("		Protocol: %s\n",	\
 				name_option_protocol(flags->tproto, flags->iproto));
 		journal("	}\n\n");
-#endif /* DEBUG */
+#endif
 
 		switch (argument[i]) {
 		case 'f':
@@ -308,72 +371,6 @@ static void parse_long_option(const char *argument,
 		usage_and_exit(flags->program_name);
 	}
 }
-
-#if DEBUG
-static const char *name_option_protocol(enum transport_protocol tproto, enum internet_protocol iproto)
-{
-	switch (tproto) {
-	case PROTOCOL_TCP:
-		switch (iproto) {
-		case PROTOCOL_IPv4:
-			return "TCP IPv4 only";
-		case PROTOCOL_IPv6:
-			return "TCP IPv6 only";
-		case PROTOCOL_BOTH:
-			return "TCP IPv4 and IPv6";
-		case PROTOCOL_INONE:
-			return "TCP <UNSET>";
-		default:
-			return "TCP ???";
-		}
-	case PROTOCOL_UDP:
-		switch (iproto) {
-		case PROTOCOL_IPv4:
-			return "UDP IPv4 only";
-		case PROTOCOL_IPv6:
-			return "UDP IPv6 only";
-		case PROTOCOL_BOTH:
-			return "UDP IPv4 and IPv6";
-		case PROTOCOL_INONE:
-			return "UDP <UNSET>";
-		default:
-			return "UDP ???";
-		}
-	case PROTOCOL_TNONE:
-		switch (iproto) {
-		case PROTOCOL_IPv4:
-			return "<UNSET> IPv4 only";
-		case PROTOCOL_IPv6:
-			return "<UNSET> IPv6 only";
-		case PROTOCOL_BOTH:
-			return "<UNSET> IPv4 and IPv6";
-		case PROTOCOL_INONE:
-			return "<UNSET> <UNSET>";
-		default:
-			return "<UNSET> ???";
-		}
-	default:
-		return "???";
-	}
-}
-
-static const char *name_option_quote_divider(enum quote_divider value)
-{
-	static char buf[32];
-
-	switch (value) {
-	case DIV_EVERYLINE:
-		return "DIV_EVERYLINE";
-	case DIV_PERCENT:
-		return "DIV_PERCENT";
-	case DIV_WHOLEFILE:
-		return "DIV_WHOLEFILE";
-	default:
-		sprintf(buf, "(%u) UNKNOWN", value);
-		return buf;
-	}
-}
-#endif /* DEBUG */
 
 void parse_args(struct options *const opt,
 		const int argc,

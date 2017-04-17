@@ -111,7 +111,6 @@ int get_quote_of_the_day(char **const buffer, size_t *const length)
 #endif /* DEBUG */
 
 	int (*readquotes)();
-	int ret;
 
 	seed_randgen();
 	switch (opt->linediv) {
@@ -131,11 +130,9 @@ int get_quote_of_the_day(char **const buffer, size_t *const length)
 		return -1;
 	}
 
-	ret = readquotes();
-	if (ret) {
+	if (readquotes()) {
 		return -1;
 	}
-
 	if (quote_file_data.length == 0) {
 		journal("Quotes file is empty.\n");
 		return -1;
@@ -149,14 +146,12 @@ int get_quote_of_the_day(char **const buffer, size_t *const length)
 	}
 #endif /* DEBUG */
 
-	ret = format_quote();
-	if (ret) {
+	if (format_quote()) {
 		return -1;
 	}
 
 	*buffer = quote_buffer.data;
 	*length = quote_buffer.str_length;
-
 	return 0;
 }
 

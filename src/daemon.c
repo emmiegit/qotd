@@ -27,6 +27,7 @@
 
 #include "arguments.h"
 #include "config.h"
+#include "core.h"
 #include "daemon.h"
 #include "journal.h"
 #include "network.h"
@@ -120,9 +121,8 @@ static int daemonize(void)
 
 int main(const int argc, const char *const argv[])
 {
-#if DEBUG
-	printf("(Running in debug mode)\n");
-#endif /* DEBUG */
+	if (DEBUG)
+		printf("(Running in debug mode)\n");
 
 	signal_hndl_init();
 	load_config(argc, argv);
