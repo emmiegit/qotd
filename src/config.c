@@ -239,11 +239,10 @@ static int process_line(struct options *opt,
 		return key.ptr != NULL;
 
 	if (DEBUG) {
-		fputs("Key: ", stdout);
+		fputs("\tKey: ", stdout);
 		print_str(stdout, &key);
-		fputs("Value: ", stdout);
+		fputs("\tValue: ", stdout);
 		print_str(stdout, &val);
-		putchar('\n');
 	}
 
 	/* Check each possible option */
