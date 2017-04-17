@@ -408,10 +408,17 @@ static int readquotes_percent(void)
 		quote_file_data.length = quotes;
 	}
 	quote_file_data.array[0] = &quote_file_data.buffer[0];
-	for (i = 0, j = 0; i < fsize; i++) {
-		if (quote_file_data.buffer[i] == '\0') {
+	for (i = 0; i < fsize; i++) {
+		if (!quote_file_data.buffer[i]) {
+			i++;
+			break;
+		}
+	}
+	j = 1;
+	for (; i < fsize; i++) {
+		if (!quote_file_data.buffer[i]) {
 			assert(j < quotes);
-			quote_file_data.array[++j] = &quote_file_data.buffer[i + 3];
+			quote_file_data.array[j++] = &quote_file_data.buffer[i + 3];
 		}
 	}
 	return 0;
