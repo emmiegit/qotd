@@ -26,68 +26,67 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "daemon.h"
 #include "journal.h"
-#include "main.h"
 #include "pidfile.h"
 
-static int wrote_pidfile;
+static unsigned char wrote_pidfile;
 
 void pidfile_create(const struct options *opt)
 {
-	struct stat statbuf;
-	int ret;
 	FILE *fh;
 
-	if (opt->pid_file) {
+	if (!opt->pid_file) {
 		journal("No pidfile was written.\n");
 		return;
 	}
 
 	/* Check if the pidfile already exists */
-	ret = stat(opt->pid_file, &statbuf);
-	if (ret) {
+	if (access(opt->pid_file, F_OK)) {
 		if (errno != ENOENT) {
-			journal("Unable to stat pid file \"%s\": %s.\n",
+			journal("Unable to access pid file \"%s\": %s.\n",
 				opt->pid_file, strerror(errno));
-			cleanup(EXIT_IO, true);
+			cleanup(EXIT_IO, 1);
 		}
 	} else {
 		journal("The pid file already exists. Quitting.\n");
-		cleanup(EXIT_FAILURE, true);
+		cleanup(EXIT_FAILURE, 1);
 	}
 
 	/* Write the pidfile */
 	fh = fopen(opt->pid_file, "w+");
-
 	if (!fh) {
 		journal("Unable to open pid file: %s.\n", strerror(errno));
 
 		if (opt->require_pidfile)
-			cleanup(EXIT_IO, true);
+			cleanup(EXIT_IO, 1);
 		else
 			return;
 	}
-
-	ret = fprintf(fh, "%d\n", getpid());
-	if (ret < 0) {
+	if (fprintf(fh, "%d\n", getpid()) < 0) {
 		ERR_TRACE();
 		perror("Unable to write process id to pid file");
 
 		if (opt->require_pidfile) {
 			fclose(fh);
-			cleanup(EXIT_IO, true);
+			cleanup(EXIT_IO, 1);
 		}
 	}
-
-	wrote_pidfile = true;
-
-	ret = fclose(fh);
-	if (ret) {
-		ERR_TRACE();
-		journal("Unable to close pid file handle: %s.\n", strerror(errno));
-
-		if (opt->require_pidfile)
-			cleanup(EXIT_IO, true);
-	}
+	wrote_pidfile = 1;
+	fclose(fh);
 }
 
+void pidfile_remove(const struct options *opt)
+{
+	if (!opt->pid_file)
+		return;
+
+	if (access(opt->pid_file, F_OK)) {
+		journal("Pid file \"%s\" is inaccessible: %s.\n",
+			opt->pid_file, strerror(errno));
+	}
+	if (unlink(opt->pid_file)) {
+		journal("Unable to unlink \"%s\": %s.\n",
+			opt->pid_file, strerror(errno));
+	}
+}

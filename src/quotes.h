@@ -18,24 +18,17 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __QUOTES_H
-# define __QUOTES_H
+#ifndef _QUOTES_H_
+#define _QUOTES_H_
 
-# include <sys/socket.h>
+#include <stddef.h>
 
-# include "options.h"
-
-# ifdef __cplusplus
-extern "C" {
-# endif /* __cplusplus */
+#include "config.h"
 
 int open_quotes_file(const struct options *opt);
 int close_quotes_file(void);
 void destroy_quote_buffers(void);
 int get_quote_of_the_day(char **buffer, size_t *length);
 
-# ifdef __cplusplus
-}
-# endif /* __cplusplus */
-#endif /* __QUOTES_H */
+#endif /* _QUOTES_H_ */
 

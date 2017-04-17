@@ -25,8 +25,8 @@
 
 #include <unistd.h>
 
+#include "daemon.h"
 #include "journal.h"
-#include "main.h"
 
 /* Static variables */
 static FILE *journal_fh = NULL;
@@ -49,7 +49,7 @@ void open_journal(const char *const path)
 	if (!journal_fh) {
 		fprintf(stderr, "Unable to open journal handle for \"%s\": %s.\n",
 			path, strerror(errno));
-		cleanup(EXIT_IO, true);
+		cleanup(EXIT_IO, 1);
 	}
 }
 
@@ -63,7 +63,7 @@ static void open_journal_fd(const int fd)
 	if (!journal_fh) {
 		fprintf(stderr, "Unable to open journal handle for file descriptor %d: %s.\n",
 			fd, strerror(errno));
-		cleanup(EXIT_IO, true);
+		cleanup(EXIT_IO, 1);
 	}
 }
 
@@ -82,7 +82,7 @@ int close_journal(void)
 	return 0;
 }
 
-bool journal_is_open(void)
+int journal_is_open(void)
 {
 	return journal_fh != NULL;
 }

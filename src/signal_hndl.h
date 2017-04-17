@@ -1,5 +1,5 @@
 /*
- * sighandler.h
+ * signal_hndl.h
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -18,17 +18,10 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __SIGHANDLER_H
-# define __SIGHANDLER_H
+#ifndef _SIGNAL_HNDL_H_
+#define _SIGNAL_HNDL_H_
 
-# ifdef __cplusplus
-extern "C" {
-# endif /* __cplusplus */
+void set_up_handlers(void);
 
-void set_up_handlers();
-
-# ifdef __cplusplus
-}
-# endif /* __cplusplus */
-#endif /* __SIGHANDLER_H */
+#endif /* _SIGNAL_HNDL_H_ */
 

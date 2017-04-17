@@ -21,6 +21,20 @@
 #ifndef _DAEMON_H_
 #define _DAEMON_H_
 
+/* For EXIT_SUCCESS and EXIT_FAILURE */
+#include <stdlib.h>
+
+enum {
+	EXIT_ARGUMENTS = 17,
+	EXIT_CONFIGURATION,
+	EXIT_SECURITY,
+	EXIT_MEMORY,
+	EXIT_IO,
+	EXIT_SIGNAL,
+	EXIT_INTERNAL
+};
+
+void cleanup(int ret, int quiet);
 
 #endif /* _DAEMON_H_ */
 

@@ -18,14 +18,10 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __NETWORK_H
-# define __NETWORK_H
+#ifndef _NETWORK_H_
+#define _NETWORK_H_
 
-# include "options.h"
-
-# ifdef __cplusplus
-extern "C" {
-# endif /* __cplusplus */
+#include "config.h"
 
 void set_up_ipv4_socket(const struct options *opt);
 void set_up_ipv6_socket(const struct options *opt);
@@ -34,8 +30,5 @@ void close_socket(void);
 void tcp_accept_connection(void);
 void udp_accept_connection(void);
 
-# ifdef __cplusplus
-}
-# endif /* __cplusplus */
-#endif /* __NETWORK_H */
+#endif /* _NETWORK_H_ */
 

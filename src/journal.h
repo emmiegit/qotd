@@ -18,25 +18,21 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __JOURNAL_H
-# define __JOURNAL_H
-
-# include <stdbool.h>
-
-# ifdef __cplusplus
-extern "C" {
-# endif /* __cplusplus */
+#ifndef _JOURNAL_H_
+#define _JOURNAL_H_
 
 void open_journal(const char *path);
 int close_journal(void);
-bool journal_is_open(void);
+int journal_is_open(void);
 
 int journal(const char *message, ...);
 
-# define ERR_TRACE()		journal("%s:%d: ", __FILE__, __LINE__)
+#define ERR_TRACE()			\
+	do {				\
+		journal("%s:%d: ",	\
+			__FILE__,	\
+			__LINE__);	\
+	} while (0)
 
-# ifdef __cplusplus
-}
-# endif /* __cplusplus */
-#endif /* __JOURNAL_H */
+#endif /* _JOURNAL_H_ */
 

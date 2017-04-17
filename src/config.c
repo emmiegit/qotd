@@ -27,8 +27,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "config.h"
 #include "core.h"
+#include "daemon.h"
 #include "main.h"
 #include "journal.h"
 #include "security.h"
@@ -376,8 +376,8 @@ void parse_config(struct options *opt, const char *conf_file)
 
 	lineno = 1;
 	errors = 0;
-	while (!read_line(fh, conf_file, &lineno, &line))
-		if (process_line(conf_file, lineno, &line))
+	while (!read_line(fh, conf_file, &lineno, &line)) {
+		if (process_line(opt, conf_file, lineno, &line))
 			errors++;
 		lineno++;
 	}

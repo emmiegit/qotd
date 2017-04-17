@@ -18,19 +18,14 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ARGUMENTS_H
-# define __ARGUMENTS_H
+#ifndef _ARGUMENTS_H_
+#define _ARGUMENTS_H_
 
-# include "options.h"
+#include "config.h"
 
-# ifdef __cplusplus
-extern "C" {
-# endif /* __cplusplus */
+void parse_args(struct options *opt,
+		const int argc,
+		const char *const argv[]);
 
-void parse_args(struct options *opt, const int argc, const char *const argv[]);
-
-# ifdef __cplusplus
-extern "C" {
-# endif /* __cplusplus */
-#endif /* __ARGUMENTS_H */
+#endif /* _ARGUMENTS_H_ */
 

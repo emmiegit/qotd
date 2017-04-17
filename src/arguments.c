@@ -29,12 +29,10 @@
 #include <unistd.h>
 
 #include "arguments.h"
-#include "configuration.h"
+#include "config.h"
+#include "core.h"
 #include "daemon.h"
-#include "info.h"
 #include "journal.h"
-#include "options.h"
-#include "standard.h"
 
 #define BOOLEAN_UNSET		2
 
@@ -52,8 +50,8 @@ struct argument_flags {
 	const char *journal_file;
 	enum transport_protocol tproto;
 	enum internet_protocol iproto;
-	char daemonize;
-	bool strict;
+	unsigned daemonize : 1;
+	unsigned strict    : 1;
 };
 
 static void parse_short_options(
@@ -70,7 +68,9 @@ static const char *name_option_protocol(enum transport_protocol tproto, enum int
 static const char *name_option_quote_divider(enum quote_divider value);
 #endif /* DEBUG */
 
-void parse_args(struct options *const opt, const int argc, const char *const argv[])
+void parse_args(struct options *const opt,
+		const int argc,
+		const char *const argv[])
 {
 	struct argument_flags flags;
 	int i;

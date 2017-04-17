@@ -18,27 +18,27 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <errno.h>
-#include <string.h>
-
-#include <ifaddrs.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <ifaddrs.h>
 #include <unistd.h>
 
+#include <errno.h>
+#include <string.h>
+
+#include "core.h"
 #include "daemon.h"
 #include "journal.h"
 #include "network.h"
 #include "quotes.h"
-#include "standard.h"
 
 /*
  * If the returned error is one of these, then you
  * should not attempt to remake the socket.
  * Getting one of these errors should be fatal.
  */
-#ifdef ESOCKTNOSUPPORT
+#if defined(ESOCKTNOSUPPORT)
 # define CHECK_SOCKET_ERROR(error)   		\
 	do { 					\
 		switch (error) {		\
@@ -56,7 +56,7 @@
 		case ENOSR:			\
 		case ESOCKTNOSUPPORT:		\
 		case EPROTONOSUPPORT:		\
-			cleanup(EXIT_IO, true);	\
+			cleanup(EXIT_IO, 1);	\
 		}				\
 	} while(0)
 #else
@@ -75,14 +75,13 @@
 		case EPROTO:			\
 		case EPERM:			\
 		case ENOSR:			\
-			cleanup(EXIT_IO, true);	\
+			cleanup(EXIT_IO, 1);	\
 		}				\
 	} while(0)
 #endif /* ESOCKTNOSUPPORT */
 
 #define TCP_CONNECTION_BACKLOG		50
 
-/* Static member declarations */
 static int sockfd = -1;
 
 void set_up_ipv4_socket(const struct options *opt)
@@ -100,7 +99,7 @@ void set_up_ipv4_socket(const struct options *opt)
 
 	if (sockfd < 0) {
 		journal("Unable to create IPv4 socket: %s.\n", strerror(errno));
-		cleanup(EXIT_IO, true);
+		cleanup(EXIT_IO, 1);
 	}
 
 	ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (void *)(&one), sizeof(one));
@@ -115,7 +114,7 @@ void set_up_ipv4_socket(const struct options *opt)
 	ret = bind(sockfd, (const struct sockaddr *)(&serv_addr), sizeof(struct sockaddr_in));
 	if (ret < 0) {
 		journal("Unable to bind to IPv4 socket: %s.\n", strerror(errno));
-		cleanup(EXIT_IO, true);
+		cleanup(EXIT_IO, 1);
 	}
 }
 

@@ -1,5 +1,5 @@
 /*
- * sighandler.c
+ * sig_hndl.c
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
@@ -18,48 +18,50 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <signal.h>
 
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "daemon.h"
 #include "journal.h"
-#include "main.h"
-#include "signal_handler.h"
+#include "signal_hndl.h"
 
-#define JOURNAL(x)		(journal_is_open() ? journal(x) : fprintf(stderr, (x)))
+#define JOURNAL(x)				\
+	do {					\
+		if (journal_is_open())		\
+			journal(x);		\
+		else				\
+			fputs((x), stderr);	\
+	} while (0)
 
-/* Static declarations */
-static void handle_signal(const int signum);
+static void handle_signal(const int signum)
+{
+	switch (signum) {
+	case SIGSEGV:
+		JOURNAL("Error: segmentation fault. Dumping core (if enabled).\n");
+		cleanup(EXIT_INTERNAL, 1);
+		break;
+	case SIGTERM:
+		JOURNAL("Termination signal received. Exiting...\n");
+		cleanup(EXIT_SUCCESS, 1);
+		break;
+	case SIGINT:
+		JOURNAL("Interrupt signal received. Exiting...\n");
+		cleanup(EXIT_SIGNAL, 1);
+		break;
+	case SIGCHLD:
+		JOURNAL("My child died. Doing nothing.\n");
+		break;
+	case SIGHUP:
+		JOURNAL("Hangup recieved. Doing nothing.\n");
+	}
+}
 
-/* Function implementations */
-void set_up_handlers()
+void set_up_handlers(void)
 {
 	signal(SIGSEGV, handle_signal);
 	signal(SIGTERM, handle_signal);
 	signal(SIGINT,  handle_signal);
 	signal(SIGHUP,  handle_signal);
 }
-
-static void handle_signal(const int signum)
-{
-	switch (signum) {
-	case SIGSEGV:
-		journal("Error: segmentation fault. Dumping core (if enabled).\n");
-		cleanup(EXIT_INTERNAL, 1);
-		break;
-	case SIGTERM:
-		journal("Termination signal received. Exiting...\n");
-		cleanup(EXIT_SUCCESS, 1);
-		break;
-	case SIGINT:
-		journal("Interrupt signal received. Exiting...\n");
-		cleanup(EXIT_SIGNAL, 1);
-		break;
-	case SIGCHLD:
-		journal("My child died. Doing nothing.\n");
-		break;
-	case SIGHUP:
-		journal("Hangup recieved. Doing nothing.\n");
-	}
-}
-

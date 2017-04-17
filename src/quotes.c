@@ -18,6 +18,9 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
@@ -25,16 +28,13 @@
 #include <string.h>
 #include <time.h>
 
-#include <sys/stat.h>
-#include <unistd.h>
-
 #include "daemon.h"
 #include "journal.h"
 #include "security.h"
 #include "standard.h"
 #include "quotes.h"
 
-#define QUOTE_SIZE				512  /* Set by RFC 865 */
+#define QUOTE_SIZE		512  /* Set by RFC 865 */
 
 /* Static functions */
 static unsigned long djb2_hash(const char *str);
@@ -69,7 +69,7 @@ int open_quotes_file(const struct options *const local_opt)
 
 	if (quotes_fh) {
 		journal("Internal error: quotes file handle is already open\n");
-		cleanup(EXIT_INTERNAL, true);
+		cleanup(EXIT_INTERNAL, 1);
 	}
 
 	if (opt->strict) {
@@ -127,7 +127,7 @@ int get_quote_of_the_day(char **const buffer, size_t *const length)
 	default:
 		ERR_TRACE();
 		journal("Internal error: invalid enum value for quote_divider: %d.\n", opt->linediv);
-		cleanup(EXIT_INTERNAL, true);
+		cleanup(EXIT_INTERNAL, 1);
 		return -1;
 	}
 
@@ -424,7 +424,7 @@ static int readquotes_percent(void)
 		} else if (ch == '\n' && watch == 0) {
 			watch++;
 		} else if (ch == '%' && watch == 1) {
-			has_percent = true;
+			has_percent = 1;
 			watch++;
 		} else if (ch == '\n' && watch == 2) {
 			watch = 0;
