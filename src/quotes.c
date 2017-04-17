@@ -302,7 +302,7 @@ static int readquotes_percent(void)
 {
 	unsigned int i, j;
 	size_t fsize, quotes;
-	int ch, watch, has_percent;
+	int watch, has_percent;
 
 	watch = 0;
 	quotes = 0;
@@ -327,31 +327,34 @@ static int readquotes_percent(void)
 	}
 
 	rewind(quotes_fh);
-	for (i = 0; (ch = fgetc(quotes_fh)) != EOF; i++) {
-		if (ch == '\0') {
-			ch = ' ';
+	for (i = 0; i < fsize; i++) {
+		char *c;
+
+		c = &quote_file_data.buffer[i];
+		if (*c == '\0') {
+			*c = ' ';
 			watch = 0;
-		} else if (ch == '\n' && watch == 0) {
+		} else if (*c == '\n' && watch == 0) {
 			watch++;
-		} else if (ch == '%' && watch == 1) {
+		} else if (*c == '%' && watch == 1) {
 			has_percent = 1;
 			watch++;
-		} else if (ch == '\n' && watch == 2) {
+		} else if (*c == '\n' && watch == 2) {
 			watch = 0;
-			quote_file_data.buffer[i - 2] = '\0';
+			*(c - 2) = '\0';
 			quotes++;
-		} else if (watch > 0) {
-			watch = 0;
+		} else {
+			if (watch > 0)
+				watch = 0;
 		}
-		quote_file_data.buffer[i] = (char)ch;
 	}
 	quote_file_data.buffer[fsize] = '\0';
 
 	if (!has_percent) {
-		journal("No percent signs (%%) were found in the quotes file. This means that\n"
-			"the whole file will be treated as one quote, which is probably not\n"
-			"what you want. If this is what you want, use the `file' option for\n"
-			"`QuoteDivider' in the config file.\n");
+		journal("No dividing percent signs (%%) were found in the quotes file. This\n"
+			"means that the whole file will be treated as one quote, which is\n"
+			"probably not what you want. If this is what you want, use the `file'\n"
+			"option for `QuoteDivider' in the config file.\n");
 		return -1;
 	}
 
