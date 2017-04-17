@@ -9,8 +9,9 @@ qotdd
 *.pdf
 
 # Others
-core*
-vgcore*
+core
+core.[0-9]*
+vgcore.[0-9]*
 *.pid
 .*.swp
 *.bak
