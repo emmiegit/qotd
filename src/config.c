@@ -155,7 +155,7 @@ static int read_kv(const char *filename,
 
 	if (!line->data[i] || line->data[i] == '#') {
 		key->ptr = NULL;
-		return 0;
+		return -1;
 	}
 
 	/* Read to end of key */
@@ -176,7 +176,7 @@ static int read_kv(const char *filename,
 		if (!line->data[i])
 			goto invalid;
 	}
-	key->length = &line->data[i] - val->ptr;
+	val->length = &line->data[i] - val->ptr;
 	return 0;
 
 invalid:
@@ -234,7 +234,7 @@ static int process_line(struct options *opt,
 	int n;
 
 	if (read_kv(conf_file, lineno, line, &key, &val))
-		return key.ptr == NULL;
+		return key.ptr != NULL;
 
 	/* Check each possible option */
 	if (caseless_eq(&key, "Daemonize", 9)) {
