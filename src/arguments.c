@@ -40,8 +40,10 @@
 
 #if DEBUG
 # define DEBUG_BUFFER_SIZE	48
-# define BOOLSTR(x)		((x) ? "true" : "false")
-# define BOOLSTR2(x)		(((x) == BOOLEAN_UNSET) ? "(unset)" : ((x) ? "true" : "false"))
+# define BOOLSTR(x)		\
+	((x) ? "true" : "false")
+# define BOOLSTR2(x)		\
+	(((x) == BOOLEAN_UNSET) ? "(unset)" : ((x) ? "true" : "false"))
 
 static const char *name_option_protocol(enum transport_protocol tproto, enum internet_protocol iproto)
 {
@@ -283,7 +285,7 @@ static void parse_short_options(const char *argument,
 			close_journal();
 			break;
 		default:
-			fprintf(stderr, "Unknown short option: -%c.\n", argument[i]);
+			fprintf(stderr, "Unknown short option: \"-%c\".\n", argument[i]);
 			usage_and_exit(flags->program_name);
 		}
 	}
@@ -294,13 +296,13 @@ static void parse_long_option(const char *argument,
 			      int *i,
 			      struct argument_flags *flags)
 {
-	if (!strcmp(argument, "--help")) {
+	if (!strcmp(argument, "help")) {
 		help_and_exit(flags->program_name);
-	} else if (!strcmp(argument, "--version")) {
+	} else if (!strcmp(argument, "version")) {
 		version_and_exit();
-	} else if (!strcmp(argument, "--foreground")) {
+	} else if (!strcmp(argument, "foreground")) {
 		flags->daemonize = 0;
-	} else if (!strcmp(argument, "--config")) {
+	} else if (!strcmp(argument, "conf") || !strcmp(argument, "config")) {
 		if (!next_arg) {
 			fprintf(stderr, "You must specify a configuration file.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
@@ -308,12 +310,12 @@ static void parse_long_option(const char *argument,
 
 		flags->conf_file = next_arg;
 		(*i)++;
-	} else if (!strcmp(argument, "--noconfig")) {
+	} else if (!strcmp(argument, "noconfig")) {
 		flags->conf_file = NULL;
-	} else if (!strcmp(argument, "--lax")) {
+	} else if (!strcmp(argument, "lax")) {
 		fprintf(stderr, "Note: --lax has been enabled. Security checks will *not* be performed.\n");
 		flags->strict = 0;
-	} else if (!strcmp(argument, "--pidfile")) {
+	} else if (!strcmp(argument, "pidfile")) {
 		if (!next_arg) {
 			fprintf(stderr, "You must specify a pid file.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
@@ -321,14 +323,14 @@ static void parse_long_option(const char *argument,
 
 		flags->pid_file = next_arg;
 		(*i)++;
-	} else if (!strcmp(argument, "--quotes")) {
+	} else if (!strcmp(argument, "quotes")) {
 		if (!next_arg) {
 			fprintf(stderr, "You must specify a quotes file.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
 		}
 
 		flags->quotes_file = argument;
-	} else if (!strcmp(argument, "--journal")) {
+	} else if (!strcmp(argument, "journal")) {
 		if (!next_arg) {
 			fprintf(stderr, "You must specify a journal file.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
@@ -336,38 +338,38 @@ static void parse_long_option(const char *argument,
 
 		flags->journal_file = next_arg;
 		(*i)++;
-	} else if (!strcmp(argument, "--ipv4")) {
+	} else if (!strcmp(argument, "ipv4")) {
 		if (flags->iproto == PROTOCOL_IPv6) {
 			fprintf(stderr, "Conflicting options passed: -4 and -6.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
 		}
 
 		flags->iproto = PROTOCOL_IPv4;
-	} else if (!strcmp(argument, "--ipv6")) {
+	} else if (!strcmp(argument, "ipv6")) {
 		if (flags->iproto == PROTOCOL_IPv4) {
 			fprintf(stderr, "Conflicting options passed: -4 and -6.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
 		}
 
 		flags->iproto = PROTOCOL_IPv6;
-	} else if (!strcmp(argument, "--tcp")) {
+	} else if (!strcmp(argument, "tcp")) {
 		if (flags->tproto == PROTOCOL_UDP) {
 			fprintf(stderr, "Conflicting options passed: -t and -u.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
 		}
 
 		flags->tproto = PROTOCOL_TCP;
-	} else if (!strcmp(argument, "--udp")) {
+	} else if (!strcmp(argument, "udp")) {
 		if (flags->tproto == PROTOCOL_TCP) {
 			fprintf(stderr, "Conflicting options passed: -t and -u.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
 		}
 
 		flags->tproto = PROTOCOL_UDP;
-	} else if (!strcmp(argument, "--quiet")) {
+	} else if (!strcmp(argument, "quiet")) {
 		close_journal();
 	} else {
-		printf("Unrecognized long option: %s.\n", argument);
+		printf("Unrecognized long option: \"--%s\".\n", argument);
 		usage_and_exit(flags->program_name);
 	}
 }
@@ -377,7 +379,6 @@ void parse_args(struct options *const opt,
 		const char *const argv[])
 {
 	struct argument_flags flags;
-	const char *next_arg;
 	int i;
 
 	/* Set override flags */
@@ -409,14 +410,18 @@ void parse_args(struct options *const opt,
 
 	/* Parse arguments */
 	for (i = 1; i < argc; i++) {
-		next_arg = (i + 1 < argc) ? argv[i + 1] : NULL;
+		const char *arg, *next_arg;
 
-		if (argv[i][0] != '-' || !strcmp(argv[i], "-"))
+		next_arg = (i + 1 < argc) ? argv[i + 1] : NULL;
+		arg = argv[i];
+		if (arg[0] != '-' || !strcmp(arg, "-"))
 			break;
-		else if (argv[i][0] == '-')
-			parse_short_options(argv[i] + 1, next_arg, &i, &flags);
+
+		arg++;
+		if (arg[0] == '-')
+			parse_long_option(arg + 1, next_arg, &i, &flags);
 		else
-			parse_long_option(argv[i], next_arg, &i, &flags);
+			parse_short_options(arg, next_arg, &i, &flags);
 	}
 
 	/* Override config file options */
