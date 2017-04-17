@@ -27,7 +27,7 @@ int journal_is_open(void);
 
 int journal(const char *message, ...);
 
-#define ERR_TRACE()			\
+#define JTRACE()			\
 	do {				\
 		journal("%s:%d: ",	\
 			__FILE__,	\

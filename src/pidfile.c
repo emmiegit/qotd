@@ -64,7 +64,7 @@ void pidfile_create(const struct options *opt)
 			return;
 	}
 	if (fprintf(fh, "%d\n", getpid()) < 0) {
-		ERR_TRACE();
+		JTRACE();
 		perror("Unable to write process id to pid file");
 
 		if (opt->require_pidfile) {

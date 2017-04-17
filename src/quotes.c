@@ -125,7 +125,7 @@ int get_quote_of_the_day(char **const buffer, size_t *const length)
 		readquotes = readquotes_file;
 		break;
 	default:
-		ERR_TRACE();
+		JTRACE();
 		journal("Internal error: invalid enum value for quote_divider: %d.\n", opt->linediv);
 		cleanup(EXIT_INTERNAL, 1);
 		return -1;
@@ -264,14 +264,14 @@ static long get_file_size(void)
 
 	ret = fseek(quotes_fh, 0, SEEK_END);
 	if (ret) {
-		ERR_TRACE();
+		JTRACE();
 		journal("Unable to seek to the end within the quotes file: %s.\n", strerror(errno));
 		return -1;
 	}
 
 	size = ftell(quotes_fh);
 	if (size < 0) {
-		ERR_TRACE();
+		JTRACE();
 		journal("Unable to determine file size: %s.\n", strerror(errno));
 		return -1;
 	}

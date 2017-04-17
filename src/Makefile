@@ -36,7 +36,7 @@ DEP   = $(DEP_$(V))
 V       ?= 0
 CC      ?= gcc
 FLAGS   := -ansi -pipe
-WARN    := -pedantic -Wall -Wextra -Wcast-qual
+WARN    := -pedantic -Wall -Wextra -Wcast-qual -Wunused-result
 COMPILE := -I. -D_XOPEN_SOURCE=500 -DGITHASH='"$(shell git rev-parse --short HEAD)"'
 LINKING :=
 

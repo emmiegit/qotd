@@ -402,7 +402,7 @@ void check_config(const struct options *opt)
 		cleanup(EXIT_ARGUMENTS, 1);
 	}
 	if (access(opt->quotes_file, R_OK)) {
-		ERR_TRACE();
+		JTRACE();
 		journal("Unable to access quotes file '%s': %s.\n",
 			opt->quotes_file, strerror(errno));
 		cleanup(EXIT_IO, 1);

@@ -80,7 +80,7 @@ static int main_loop(void)
 		accept_connection = udp_accept_connection;
 		break;
 	default:
-		ERR_TRACE();
+		JTRACE();
 		journal("Internal error: invalid enum value for \"tproto\": %d.\n",
 			opt.tproto);
 		cleanup(EXIT_INTERNAL, 1);
