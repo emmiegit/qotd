@@ -25,6 +25,7 @@
 #include <signal.h>
 #include <unistd.h>
 
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 
@@ -55,14 +56,11 @@ static void check_socket_error(const int error)
 	case ENOMEM:
 	case EPERM:
 	case ENOSR:
-
-#if defined(ENOTSOCK)
+	case EPIPE:
 	case ENOTSOCK:
-#endif /* ENOTSOCK */
-
-#if defined(EPROTO)
+	case ENOTCONN:
 	case EPROTO:
-#endif /* EPROTO */
+	case ECONNRESET:
 
 #if defined(EOPNOTSUPP)
 	case EOPNOTSUPP:
@@ -97,6 +95,7 @@ void set_up_ipv4_socket(const struct options *const opt)
 
 	if (unlikely(sockfd < 0)) {
 		const int errsave = errno;
+		assert(errno != 0);
 		JTRACE();
 		journal("Unable to create IPv4 socket: %s.\n",
 			strerror(errsave));
@@ -108,6 +107,7 @@ void set_up_ipv4_socket(const struct options *const opt)
 				(const void *)(&one),
 				sizeof(one)) < 0)) {
 		const int errsave = errno;
+		assert(errno != 0);
 		JTRACE();
 		journal("Unable to set the socket to allow address reuse: %s.\n",
 			strerror(errsave));
@@ -121,6 +121,7 @@ void set_up_ipv4_socket(const struct options *const opt)
 			 (const struct sockaddr *)(&serv_addr),
 			 sizeof(struct sockaddr_in)) < 0)) {
 		const int errsave = errno;
+		assert(errno != 0);
 		JTRACE();
 		journal("Unable to bind to IPv4 socket: %s.\n",
 			strerror(errsave));
@@ -145,6 +146,7 @@ void set_up_ipv6_socket(const struct options *const opt)
 
 	if (sockfd < 0) {
 		const int errsave = errno;
+		assert(errno != 0);
 		journal("Unable to create IPv6 socket: %s.\n", strerror(errsave));
 		cleanup(EXIT_IO, 1);
 	}
@@ -156,6 +158,7 @@ void set_up_ipv6_socket(const struct options *const opt)
 					(const void *)(&one),
 					sizeof(one)) < 0)) {
 			const int errsave = errno;
+			assert(errno != 0);
 			JTRACE();
 			journal("Unable to set IPv4 compatibility option: %s.\n", strerror(errsave));
 			cleanup(EXIT_IO, 1);
@@ -167,6 +170,7 @@ void set_up_ipv6_socket(const struct options *const opt)
 				(const void *)(&one),
 				sizeof(one)) < 0)) {
 		const int errsave = errno;
+		assert(errno != 0);
 		JTRACE();
 		journal("Unable to set the socket to allow address reuse: %s.\n", strerror(errsave));
 	}
@@ -180,7 +184,10 @@ void set_up_ipv6_socket(const struct options *const opt)
 	if (unlikely(bind(sockfd,
 			 (const struct sockaddr *)(&serv_addr),
 			 sizeof(struct sockaddr_in6)) < 0)) {
-		journal("Unable to bind to socket: %s.\n", strerror(errno));
+		const int errsave = errno;
+		assert(errno != 0);
+		journal("Unable to bind to socket: %s.\n",
+			strerror(errsave));
 		cleanup(EXIT_IO, 1);
 	}
 }
@@ -190,8 +197,10 @@ void close_socket(void)
 	if (sockfd < 0)
 		return;
 	if (unlikely(close(sockfd))) {
+		const int errsave = errno;
+		assert(errno != 0);
 		journal("Unable to close socket file descriptor %d: %s.\n",
-			sockfd, strerror(errno));
+			sockfd, strerror(errsave));
 	}
 }
 
@@ -206,6 +215,7 @@ void tcp_accept_connection(void)
 	journal("Listening for connection...\n");
 	if (unlikely(listen(sockfd, TCP_CONNECTION_BACKLOG))) {
 		const int errsave = errno;
+		assert(errno != 0);
 		JTRACE();
 		journal("Unable to listen on socket: %s.\n", strerror(errsave));
 		cleanup(EXIT_IO, 1);
@@ -215,6 +225,7 @@ void tcp_accept_connection(void)
 	consockfd = accept(sockfd, (struct sockaddr *)(&cli_addr), &cli_len);
 	if (consockfd < 0) {
 		const int errsave = errno;
+		assert(errno != 0);
 		JTRACE();
 		journal("Unable to accept connection: %s.\n", strerror(errsave));
 		check_socket_error(errsave);
@@ -223,13 +234,19 @@ void tcp_accept_connection(void)
 	if (unlikely(get_quote_of_the_day(&buffer, &length)))
 		return;
 	if (write(consockfd, buffer, length) < 0) {
+		const int errsave = errno;
+		assert(errno != 0);
 		JTRACE();
-		journal("Unable to write to TCP connection socket: %s.\n", strerror(errno));
+		journal("Unable to write to TCP connection socket: %s.\n",
+			strerror(errsave));
 		return;
 	}
 	if (unlikely(close(consockfd))) {
+		const int errsave = errno;
+		assert(errno != 0);
 		JTRACE();
-		journal("Unable to close connection: %s.\n", strerror(errno));
+		journal("Unable to close connection: %s.\n",
+			strerror(errsave));
 		return;
 	}
 }
@@ -248,6 +265,7 @@ void udp_accept_connection(void)
 			      (struct sockaddr *)(&cli_addr),
 			      &cli_len) < 0)) {
 		const int errsave = errno;
+		assert(errno != 0);
 		JTRACE();
 		journal("Unable to read from socket: %s.\n", strerror(errsave));
 		check_socket_error(errsave);
@@ -263,6 +281,7 @@ void udp_accept_connection(void)
 			    (struct sockaddr *)(&cli_addr),
 			    cli_len) < 0)) {
 		const int errsave = errno;
+		assert(errno != 0);
 		JTRACE();
 		journal("Unable to write to UDP socket: %s.\n", strerror(errsave));
 		return;
