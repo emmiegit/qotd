@@ -47,6 +47,10 @@ int gethostname(char *name,
 # define FTELL			ftello
 #endif /* __APPLE__ */
 
+#if !defined(HOST_NAME_MAX)
+# define HOST_NAME_MAX		256
+#endif /* HOST_NAME_MAX */
+
 /* Static data */
 
 static FILE *quotes_fh;
