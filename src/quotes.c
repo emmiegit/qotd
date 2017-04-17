@@ -36,6 +36,15 @@
 
 #define QUOTE_SIZE		512  /* Set by RFC 865 */
 
+#if defined(__APPLE__)
+# define FSEEK			fseek
+# define FTELL			ftell
+#else
+# define _FILE_OFFSET_BITS	64
+# define FSEEK			fseeko
+# define FTELL			ftello
+#endif /* __APPLE__ */
+
 /* Static data */
 
 static FILE *quotes_fh;
@@ -154,7 +163,7 @@ static int format_quote(void)
 	}
 
 	if (opt->pad_quotes)
-		snprintf(quote_buffer.data, length, "\n%s\n\n", quote_file_data.array[i]);
+		sprintf(quote_buffer.data, "\n%s\n\n", quote_file_data.array[i]);
 	else
 		strncpy(quote_buffer.data, quote_file_data.array[i], length);
 
@@ -169,15 +178,15 @@ static int format_quote(void)
 
 static size_t get_file_size(void)
 {
-	long size;
+	off_t size;
 
-	if (fseeko(quotes_fh, 0, SEEK_END)) {
+	if (FSEEK(quotes_fh, 0, SEEK_END)) {
 		const int errsave = errno;
 		JTRACE();
 		journal("Unable to seek to the end within the quotes file: %s.\n", strerror(errsave));
 		return -1;
 	}
-	if ((size = ftello(quotes_fh)) < 0) {
+	if ((size = FTELL(quotes_fh)) < 0) {
 		const int errsave = errno;
 		JTRACE();
 		journal("Unable to determine file size: %s.\n", strerror(errsave));
