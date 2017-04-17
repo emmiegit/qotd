@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <ifaddrs.h>
+#include <signal.h>
 #include <unistd.h>
 
 #include <errno.h>
@@ -41,7 +42,6 @@ static int sockfd = -1;
 /*
  * If the returned error is one of these, then you
  * should not attempt to remake the socket.
- * Getting one of these errors should be fatal.
  */
 static void check_socket_error(int error)
 {
@@ -75,8 +75,10 @@ static void check_socket_error(int error)
 #if defined(EPROTONOSUPPORT)
 	case EPROTONOSUPPORT:
 #endif /* EPROTONOSUPPORT */
-
 		cleanup(EXIT_IO, 1);
+
+	case EINTR:
+		raise(SIGSTOP);
 	}
 }
 
