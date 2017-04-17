@@ -18,15 +18,17 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <libgen.h>
+#include <limits.h>
+#include <unistd.h>
+
+#include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 #include "arguments.h"
 #include "config.h"
@@ -43,6 +45,7 @@
 #endif /* DEBUG */
 
 struct argument_flags {
+	char _program_name[PATH_MAX];
 	const char *program_name;
 	const char *conf_file;
 	const char *quotes_file;
@@ -54,7 +57,7 @@ struct argument_flags {
 	unsigned strict    : 1;
 };
 
-static char *default_pidfile()
+static const char *default_pidfile(void)
 {
 	access("/run", F_OK);
 	return (errno == ENOENT)
@@ -62,42 +65,48 @@ static char *default_pidfile()
 		: "/run/qotd.pid";
 }
 
+static void print_usage(const char *program_name)
+{
+	printf("Usage: %s [OPTION]...\n"
+	       "Usage: %s [--help | --version]\n\n",
+		program_name, program_name);
+}
+
 static void help_and_exit(const char *program_name)
 {
 	/* Split into sections to comply with -pedantic */
-	printf("%s - A simple QOTD daemon.\n"
-		   "Usage: %s [OPTION]...\n"
-		   "Usage: %s [--help | --version]\n\n", PROGRAM_NAME, program_name, program_name);
 
-	printf("  -f, --foreground      Do not fork, but run in the foreground.\n"
-	       "  -c, --config (file)   Specify an alternate configuration file location. The default\n"
-	       "                        is at \"/etc/qotd.conf\".\n"
-	       "  -N, --noconfig        Do not read from a configuration file, but use the default\n"
-	       "                        options instead.\n"
-	       "      --lax             When parsing the configuration, don't check file permissions\n"
-	       "                        or perform other security checks.\n");
-	printf("  -P, --pidfile (file)  Override the pidfile name given in the configuration file with\n"
-	       "                        the given file instead.\n"
-	       "  -s, --quotes (file)   Override the quotes file given in the configuration file with\n"
-	       "                        the given filename instead.\n"
-	       "  -j, --journal (file)  Override the journal file given in the configuration file with\n"
-	       "                        the given filename instead.\n"
-	       "  -4, --ipv4            Only listen on IPv4.\n");
-	printf("  -6, --ipv6            Only listen on IPv6. (By default the daemon listens on both)\n"
-	       "  -t, --tcp             Use TCP. This is the default behavior.\n"
-	       "  -u, --udp             Use UDP instead of TCP. (Not fully implemented yet)\n"
-	       "  -q, --quiet           Only output error messages. This is the same as using\n"
-	       "                        \"--journal /dev/null\".\n"
-	       "  --help                List all options and what they do.\n"
-	       "  --version             Print the version and some basic license information.\n");
+	print_usage(program_name);
+	fputs("  -f, --foreground      Do not fork, but run in the foreground.\n"
+	      "  -c, --config (file)   Specify an alternate configuration file location. The default\n"
+	      "                        is at \"/etc/qotd.conf\".\n"
+	      "  -N, --noconfig        Do not read from a configuration file, but use the default\n"
+	      "                        options instead.\n"
+	      "      --lax             When parsing the configuration, don't check file permissions\n"
+	      "                        or perform other security checks.\n",
+	      stdout);
+	fputs("  -P, --pidfile (file)  Override the pidfile name given in the configuration file with\n"
+	      "                        the given file instead.\n"
+	      "  -s, --quotes (file)   Override the quotes file given in the configuration file with\n"
+	      "                        the given filename instead.\n"
+	      "  -j, --journal (file)  Override the journal file given in the configuration file with\n"
+	      "                        the given filename instead.\n"
+	      "  -4, --ipv4            Only listen on IPv4.\n",
+	      stdout);
+	fputs("  -6, --ipv6            Only listen on IPv6. (By default the daemon listens on both)\n"
+	      "  -t, --tcp             Use TCP. This is the default behavior.\n"
+	      "  -u, --udp             Use UDP instead of TCP. (Not fully implemented yet)\n"
+	      "  -q, --quiet           Only output error messages. This is the same as using\n"
+	      "                        \"--journal /dev/null\".\n"
+	      "  --help                List all options and what they do.\n"
+	      "  --version             Print the version and some basic license information.\n",
+	      stdout);
 	cleanup(EXIT_SUCCESS, 0);
 }
 
 static void usage_and_exit(const char *program_name)
 {
-	printf("Usage: %s [OPTION]...\n"
-	       "Usage: %s [--help | --version]\n",
-			program_name, program_name);
+	print_usage(program_name);
 	cleanup(EXIT_ARGUMENTS, 0);
 }
 
@@ -107,8 +116,10 @@ static void version_and_exit()
 	cleanup(EXIT_SUCCESS, 0);
 }
 
-static void parse_short_options(
-	const char *argument, const char *next_arg, int *index, struct argument_flags *flags)
+static void parse_short_options(const char *argument,
+				const char *next_arg,
+				int *index,
+				struct argument_flags *flags)
 {
 	size_t i;
 
@@ -215,84 +226,88 @@ static void parse_short_options(
 	}
 }
 
-static void parse_long_option(
-	const int argc, const char *const argv[], int *i, struct argument_flags *flags)
+static void parse_long_option(const char *argument,
+			      const char *next_arg,
+			      int *i,
+			      struct argument_flags *flags)
 {
-	if (!strcmp(argv[*i], "--help")) {
+	if (!strcmp(argument, "--help")) {
 		help_and_exit(flags->program_name);
-	} else if (!strcmp(argv[*i], "--version")) {
+	} else if (!strcmp(argument, "--version")) {
 		version_and_exit();
-	} else if (!strcmp(argv[*i], "--foreground")) {
+	} else if (!strcmp(argument, "--foreground")) {
 		flags->daemonize = 0;
-	} else if (!strcmp(argv[*i], "--config")) {
-		if (++(*i) == argc) {
+	} else if (!strcmp(argument, "--config")) {
+		if (!next_arg) {
 			fprintf(stderr, "You must specify a configuration file.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
 		}
 
-		flags->conf_file = argv[*i];
-	} else if (!strcmp(argv[*i], "--noconfig")) {
+		flags->conf_file = next_arg;
+		(*i)++;
+	} else if (!strcmp(argument, "--noconfig")) {
 		flags->conf_file = NULL;
-	} else if (!strcmp(argv[*i], "--lax")) {
+	} else if (!strcmp(argument, "--lax")) {
 		fprintf(stderr, "Note: --lax has been enabled. Security checks will *not* be performed.\n");
 		flags->strict = 0;
-	} else if (!strcmp(argv[*i], "--pidfile")) {
-		if (++(*i) == argc) {
+	} else if (!strcmp(argument, "--pidfile")) {
+		if (!next_arg) {
 			fprintf(stderr, "You must specify a pid file.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
 		}
 
-		flags->pid_file = argv[*i];
-	} else if (!strcmp(argv[*i], "--quotes")) {
-		if (++(*i) == argc) {
+		flags->pid_file = next_arg;
+		(*i)++;
+	} else if (!strcmp(argument, "--quotes")) {
+		if (!next_arg) {
 			fprintf(stderr, "You must specify a quotes file.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
 		}
 
-		flags->quotes_file = argv[*i];
-	} else if (!strcmp(argv[*i], "--journal")) {
-		if (++(*i) == argc) {
+		flags->quotes_file = argument;
+	} else if (!strcmp(argument, "--journal")) {
+		if (!next_arg) {
 			fprintf(stderr, "You must specify a journal file.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
 		}
 
-		flags->journal_file = argv[*i];
-	} else if (!strcmp(argv[*i], "--ipv4")) {
+		flags->journal_file = next_arg;
+		(*i)++;
+	} else if (!strcmp(argument, "--ipv4")) {
 		if (flags->iproto == PROTOCOL_IPv6) {
 			fprintf(stderr, "Conflicting options passed: -4 and -6.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
 		}
 
 		flags->iproto = PROTOCOL_IPv4;
-	} else if (!strcmp(argv[*i], "--ipv6")) {
+	} else if (!strcmp(argument, "--ipv6")) {
 		if (flags->iproto == PROTOCOL_IPv4) {
 			fprintf(stderr, "Conflicting options passed: -4 and -6.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
 		}
 
 		flags->iproto = PROTOCOL_IPv6;
-	} else if (!strcmp(argv[*i], "--tcp")) {
+	} else if (!strcmp(argument, "--tcp")) {
 		if (flags->tproto == PROTOCOL_UDP) {
 			fprintf(stderr, "Conflicting options passed: -t and -u.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
 		}
 
 		flags->tproto = PROTOCOL_TCP;
-	} else if (!strcmp(argv[*i], "--udp")) {
+	} else if (!strcmp(argument, "--udp")) {
 		if (flags->tproto == PROTOCOL_TCP) {
 			fprintf(stderr, "Conflicting options passed: -t and -u.\n");
 			cleanup(EXIT_ARGUMENTS, 1);
 		}
 
 		flags->tproto = PROTOCOL_UDP;
-	} else if (!strcmp(argv[*i], "--quiet")) {
+	} else if (!strcmp(argument, "--quiet")) {
 		close_journal();
 	} else {
-		printf("Unrecognized long option: %s.\n", argv[*i]);
+		printf("Unrecognized long option: %s.\n", argument);
 		usage_and_exit(flags->program_name);
 	}
 }
-
 
 #if DEBUG
 static const char *name_option_protocol(enum transport_protocol tproto, enum internet_protocol iproto)
@@ -344,6 +359,8 @@ static const char *name_option_protocol(enum transport_protocol tproto, enum int
 
 static const char *name_option_quote_divider(enum quote_divider value)
 {
+	static char buf[32];
+
 	switch (value) {
 	case DIV_EVERYLINE:
 		return "DIV_EVERYLINE";
@@ -352,8 +369,8 @@ static const char *name_option_quote_divider(enum quote_divider value)
 	case DIV_WHOLEFILE:
 		return "DIV_WHOLEFILE";
 	default:
-		printf("(%u) ", value);
-		return "UNKNOWN";
+		sprintf(buf, "(%u) UNKNOWN", value);
+		return buf;
 	}
 }
 #endif /* DEBUG */
@@ -363,10 +380,12 @@ void parse_args(struct options *const opt,
 		const char *const argv[])
 {
 	struct argument_flags flags;
+	const char *next_arg;
 	int i;
 
 	/* Set override flags */
-	flags.program_name = basename((char *)argv[0]);
+	strncpy(flags._program_name, argv[0], sizeof(flags._program_name));
+	flags.program_name = basename(flags._program_name);
 	flags.conf_file = DEFAULT_CONFIG_FILE;
 	flags.quotes_file = NULL;
 	flags.pid_file = NULL;
@@ -393,17 +412,14 @@ void parse_args(struct options *const opt,
 
 	/* Parse arguments */
 	for (i = 1; i < argc; i++) {
-		if (!strncmp(argv[i], "--", 2)) {
-			if (argv[i][2] == '\0')
-				break;
-			parse_long_option(argc, argv, &i, &flags);
-		} else if (argv[i][0] == '-') {
-			const char *next_arg = (i + 1 == argc) ? NULL : argv[i + 1];
+		next_arg = (i + 1 < argc) ? argv[i + 1] : NULL;
+
+		if (argv[i][0] != '-' || !strcmp(argv[i], "-"))
+			break;
+		else if (argv[i][0] == '-')
 			parse_short_options(argv[i] + 1, next_arg, &i, &flags);
-		} else {
-			printf("Unrecognized option: %s.\n", argv[i]);
-			usage_and_exit(flags.program_name);
-		}
+		else
+			parse_long_option(argv[i], next_arg, &i, &flags);
 	}
 
 	/* Override config file options */
