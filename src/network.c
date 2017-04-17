@@ -33,56 +33,42 @@
 #include "network.h"
 #include "quotes.h"
 
+#define TCP_CONNECTION_BACKLOG		50
+
+static int sockfd = -1;
+
 /*
  * If the returned error is one of these, then you
  * should not attempt to remake the socket.
  * Getting one of these errors should be fatal.
  */
+static void check_socket_error(int error)
+{
+	switch (error) {
+	case EBADF:
+	case EFAULT:
+	case EINVAL:
+	case EMFILE:
+	case ENFILE:
+	case ENOBUFS:
+	case ENOMEM:
+	case ENOTSOCK:
+	case EOPNOTSUPP:
+	case EPROTO:
+	case EPERM:
+	case ENOSR:
+
 #if defined(ESOCKTNOSUPPORT)
-# define CHECK_SOCKET_ERROR(error)   		\
-	do { 					\
-		switch (error) {		\
-		case EBADF:			\
-		case EFAULT:			\
-		case EINVAL:			\
-		case EMFILE:			\
-		case ENFILE:			\
-		case ENOBUFS:			\
-		case ENOMEM:			\
-		case ENOTSOCK:			\
-		case EOPNOTSUPP:		\
-		case EPROTO:			\
-		case EPERM:			\
-		case ENOSR:			\
-		case ESOCKTNOSUPPORT:		\
-		case EPROTONOSUPPORT:		\
-			cleanup(EXIT_IO, 1);	\
-		}				\
-	} while(0)
-#else
-# define CHECK_SOCKET_ERROR(error)   		\
-	do { 					\
-		switch (error) {		\
-		case EBADF:			\
-		case EFAULT:			\
-		case EINVAL:			\
-		case EMFILE:			\
-		case ENFILE:			\
-		case ENOBUFS:			\
-		case ENOMEM:			\
-		case ENOTSOCK:			\
-		case EOPNOTSUPP:		\
-		case EPROTO:			\
-		case EPERM:			\
-		case ENOSR:			\
-			cleanup(EXIT_IO, 1);	\
-		}				\
-	} while(0)
+	case ESOCKTNOSUPPORT:
 #endif /* ESOCKTNOSUPPORT */
 
-#define TCP_CONNECTION_BACKLOG		50
+#if defined(EPROTONOSUPPORT)
+	case EPROTONOSUPPORT:
+#endif /* EPROTONOSUPPORT */
 
-static int sockfd = -1;
+		cleanup(EXIT_IO, 1);
+	}
+}
 
 void set_up_ipv4_socket(const struct options *opt)
 {
@@ -196,7 +182,7 @@ void tcp_accept_connection(void)
 	if (consockfd < 0) {
 		int errsave = errno;
 		journal("Unable to accept connection: %s.\n", strerror(errsave));
-		CHECK_SOCKET_ERROR(errsave);
+		check_socket_error(errsave);
 		return;
 	}
 
@@ -233,7 +219,7 @@ void udp_accept_connection(void)
 		int errsave = errno;
 		ERR_TRACE();
 		journal("Unable to read from socket: %s.\n", strerror(errsave));
-		CHECK_SOCKET_ERROR(errsave);
+		check_socket_error(errsave);
 	}
 
 	cli_len = sizeof(cli_addr);
