@@ -204,6 +204,49 @@ void close_socket(void)
 	}
 }
 
+static void tcp_write(const char *buf,
+		      size_t *len,
+		      int consockfd)
+{
+	while (*len > 0) {
+		ssize_t bytes;
+
+		bytes = write(consockfd, buf, *len);
+		if (unlikely(bytes < 0)) {
+			const int errsave = errno;
+			JTRACE();
+			journal("Unable to write to TCP socket: %s.\n",
+				strerror(errsave));
+			check_socket_error(errsave);
+			return;
+		}
+		buf += bytes;
+		*len -= (size_t)bytes;
+	}
+}
+
+static void udp_write(const char *buf,
+		      size_t *len,
+		      struct sockaddr *cli_addr,
+		      socklen_t cli_len)
+{
+	while (*len > 0) {
+		ssize_t bytes;
+
+		bytes = sendto(sockfd, buf, *len, 0, cli_addr, cli_len);
+		if (unlikely(bytes < 0)) {
+			const int errsave = errno;
+			JTRACE();
+			journal("Unable to write to UDP socket: %s.\n",
+				strerror(errsave));
+			check_socket_error(errsave);
+			return;
+		}
+		buf += bytes;
+		*len -= (size_t)bytes;
+	}
+}
+
 void tcp_accept_connection(void)
 {
 	struct sockaddr_in cli_addr;
@@ -231,24 +274,13 @@ void tcp_accept_connection(void)
 		check_socket_error(errsave);
 		return;
 	}
-	if (unlikely(get_quote_of_the_day(&buffer, &length)))
+
+	if (get_quote_of_the_day(&buffer, &length))
 		return;
-	if (write(consockfd, buffer, length) < 0) {
-		const int errsave = errno;
-		assert(errno != 0);
-		JTRACE();
-		journal("Unable to write to TCP connection socket: %s.\n",
-			strerror(errsave));
-		return;
-	}
-	if (unlikely(close(consockfd))) {
-		const int errsave = errno;
-		assert(errno != 0);
-		JTRACE();
-		journal("Unable to close connection: %s.\n",
-			strerror(errsave));
-		return;
-	}
+
+	tcp_write(buffer,
+		  &length,
+		  consockfd);
 }
 
 void udp_accept_connection(void)
@@ -272,18 +304,11 @@ void udp_accept_connection(void)
 		return;
 	}
 
-	if (unlikely(get_quote_of_the_day(&buffer, &length)))
+	if (get_quote_of_the_day(&buffer, &length))
 		return;
-	if (unlikely(sendto(sockfd,
-			    buffer,
-			    length,
-			    0,
-			    (struct sockaddr *)(&cli_addr),
-			    cli_len) < 0)) {
-		const int errsave = errno;
-		assert(errno != 0);
-		JTRACE();
-		journal("Unable to write to UDP socket: %s.\n", strerror(errsave));
-		return;
-	}
+
+	udp_write(buffer,
+		 &length,
+		 (struct sockaddr *)(&cli_addr),
+		 cli_len);
 }
