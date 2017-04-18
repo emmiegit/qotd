@@ -18,6 +18,7 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -39,6 +40,15 @@
 #define TCP_CONNECTION_BACKLOG		50
 
 static int sockfd = -1;
+
+#if DEBUG
+static void log_client(const struct sockaddr_in *cli_addr)
+{
+	journal("Received a query from %s:%d.\n",
+		inet_ntoa(cli_addr->sin_addr),
+		ntohs(cli_addr->sin_port));
+}
+#endif /* DEBUG */
 
 /*
  * If the returned error is one of these, then you
@@ -211,7 +221,7 @@ static void tcp_write(const char *buf,
 	while (*len > 0) {
 		ssize_t bytes;
 
-		bytes = write(consockfd, buf, *len);
+		bytes = send(consockfd, buf, *len, MSG_NOSIGNAL);
 		if (unlikely(bytes < 0)) {
 			const int errsave = errno;
 			JTRACE();
@@ -275,6 +285,10 @@ void tcp_accept_connection(void)
 		return;
 	}
 
+#if DEBUG
+	log_client(&cli_addr);
+#endif /* DEBUG */
+
 	if (get_quote_of_the_day(&buffer, &length))
 		goto end;
 
@@ -306,6 +320,10 @@ void udp_accept_connection(void)
 		check_socket_error(errsave);
 		return;
 	}
+
+#if DEBUG
+	log_client(&cli_addr);
+#endif /* DEBUG */
 
 	if (get_quote_of_the_day(&buffer, &length))
 		return;
