@@ -178,12 +178,12 @@ void set_up_ipv6_socket(const struct options *const opt)
 	serv_addr.sin6_family = AF_INET6;
 	serv_addr.sin6_addr = in6addr_any;
 	serv_addr.sin6_port = htons(opt->port);
-	serv_addr.sin6_flowinfo = 0;
+	serv_addr.sin6_flowinfo = htonl(0);
 	serv_addr.sin6_scope_id = 0;
 
 	if (unlikely(bind(sockfd,
-			 (const struct sockaddr *)(&serv_addr),
-			 sizeof(struct sockaddr_in6)) < 0)) {
+			  (const struct sockaddr *)(&serv_addr),
+			  sizeof(struct sockaddr_in6)) < 0)) {
 		const int errsave = errno;
 		assert(errno != 0);
 		journal("Unable to bind to socket: %s.\n",
@@ -227,7 +227,7 @@ static void tcp_write(const char *buf,
 
 static void udp_write(const char *buf,
 		      size_t *len,
-		      struct sockaddr *cli_addr,
+		      const struct sockaddr *cli_addr,
 		      socklen_t cli_len)
 {
 	while (*len > 0) {
@@ -276,11 +276,14 @@ void tcp_accept_connection(void)
 	}
 
 	if (get_quote_of_the_day(&buffer, &length))
-		return;
+		goto end;
 
 	tcp_write(buffer,
 		  &length,
 		  consockfd);
+
+end:
+	close(consockfd);
 }
 
 void udp_accept_connection(void)

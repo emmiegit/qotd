@@ -139,12 +139,11 @@ void cleanup(int ret, int quiet)
 {
 	if (!quiet)
 		journal("Quitting with exit code %d.\n", ret);
-	pidfile_remove(&opt);
 
+	pidfile_remove(&opt);
 	destroy_quote_buffers();
 	close_socket();
 	close_quotes_file();
 	close_journal();
-
 	exit(ret);
 }
