@@ -399,7 +399,7 @@ void parse_config(struct options *opt, const char *conf_file)
 	}
 }
 
-void check_config(const struct options *opt)
+void check_config(const struct options *const opt)
 {
 	if (opt->port < MIN_NORMAL_PORT && geteuid() != ROOT_USER_ID) {
 		fprintf(stderr, "Only root can bind to ports below %d.\n",
@@ -414,5 +414,12 @@ void check_config(const struct options *opt)
 		fprintf(stderr, "Unable to access quotes file '%s': %s.\n",
 			opt->quotes_file, strerror(errno));
 		cleanup(EXIT_IO, 1);
+	}
+
+	/* See issue #10 */
+	if ((opt->iproto == PROTOCOL_IPv6 || opt->iproto == PROTOCOL_BOTH) &&
+	     opt->tproto == PROTOCOL_UDP) {
+		fprintf(stderr, "UDP over IPv6 doesn't work yet. Sorry.\n");
+		cleanup(EXIT_UNSUPPORTED, 1);
 	}
 }
