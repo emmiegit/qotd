@@ -39,6 +39,10 @@
 #define IPPROTO_PART_STRING(opt)	(((opt)->iproto == PROTOCOL_BOTH) ? "4/" : "")
 #define TCP_CONNECTION_BACKLOG		50
 
+#if !defined(MSG_NOSIGNAL)
+# define MSG_NOSIGNAL			0
+#endif /* MSG_NOSIGNAL */
+
 static int sockfd = -1;
 
 #if DEBUG
