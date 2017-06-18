@@ -17,6 +17,8 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _DEFAULT_SOURCE
+
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <grp.h>
@@ -34,6 +36,8 @@
 #include "journal.h"
 #include "security.h"
 
+#define INVALID_GROUP	((gid_t)(-1))
+
 static gid_t get_daemon_group(void)
 {
 	const struct group *grp;
@@ -41,7 +45,7 @@ static gid_t get_daemon_group(void)
 	grp = getgrnam(DAEMON_GROUP_NAME);
 	if (!grp) {
 		journal("Unable to find daemon group id: %s.\n", strerror(errno));
-		return (gid_t)-1;
+		return INVALID_GROUP;
 	}
 	return grp->gr_gid;
 }
@@ -55,7 +59,7 @@ void drop_privileges(void)
 		return;
 	}
 	group = get_daemon_group();
-	if (unlikely(group == (gid_t)-1)) {
+	if (unlikely(group == INVALID_GROUP)) {
 		journal("Unable to drop drop privileges.\n");
 		return;
 	}
@@ -63,10 +67,18 @@ void drop_privileges(void)
 	journal("Everything is ready, dropping privileges.\n");
 
 	/* POSIX specifies that the group should be dropped first */
+	if (unlikely(setgroups(1, &group)))
+		journal("Unable to limit supplementary groups to just %d: %s.\n",
+			group,
+			strerror(errno));
 	if (unlikely(setgid(group)))
-		journal("Unable to set effective group id to %d: %s.\n", group, strerror(errno));
+		journal("Unable to set effective group id to %d: %s.\n",
+			group,
+			strerror(errno));
 	if (unlikely(setuid(group)))
-		journal("Unable to set effective user id to %d: %s.\n", group, strerror(errno));
+		journal("Unable to set effective user id to %d: %s.\n",
+			group,
+			strerror(errno));
 
 	if (unlikely(!setuid(ROOT_USER_ID))) {
 		journal("Managed to regain root privileges. Bailing out.\n");
