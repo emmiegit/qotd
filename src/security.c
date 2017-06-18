@@ -18,6 +18,7 @@
  */
 
 #define _DEFAULT_SOURCE
+#define _BSD_SOURCE
 
 #include <sys/stat.h>
 #include <sys/types.h>
