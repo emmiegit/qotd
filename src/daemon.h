@@ -24,6 +24,8 @@
 /* For EXIT_SUCCESS and EXIT_FAILURE */
 #include <stdlib.h>
 
+#include "core.h"
+
 enum {
 	EXIT_ARGUMENTS = 17,
 	EXIT_CONFIGURATION,
@@ -35,7 +37,7 @@ enum {
 	EXIT_INTERNAL
 };
 
-void cleanup(int ret, int quiet);
+NORETURN void cleanup(int ret, int quiet);
 
 #endif /* _DAEMON_H_ */
 

@@ -118,9 +118,11 @@
 #if defined(__GNUC__) || defined(__clang__)
 # define likely(x)				__builtin_expect(!!(x), 1)
 # define unlikely(x)				__builtin_expect(!!(x), 0)
+# define NORETURN				__attribute__((noreturn))
 #else
 # define likely(x)				(x)
 # define unlikely(x)				(x)
+# define NORETURN
 #endif /* __GNUC__ || __clang__ */
 
 /* Functions */

@@ -222,6 +222,7 @@ static void parse_short_options(const char *argument,
 			break;
 		case 'N':
 			flags->conf_file = NULL;
+			break;
 		case 'P':
 			if (!next_arg) {
 				fprintf(stderr, "You must specify a pid file.\n");
