@@ -1,0 +1,3 @@
+# Sets GitHub's language display
+*.h linguist-language=C
+
