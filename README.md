@@ -5,7 +5,9 @@
 QOTD (quote of the day) is specified in [RFC 865](https://tools.ietf.org/html/rfc865) as a way of broadcasting a quote to users. On both TCP and UDP, port 17 is officially reserved for this purpose. This program is meant to provide a simple QOTD daemon on IPv4 and IPv6 over TCP/IP. See also [here](https://en.wikipedia.org/wiki/QOTD).
 
 ### Installation from package
-This program is available on the AUR with both [stable](https://aur.archlinux.org/packages/qotd) and [development](https://aur.archlinux.org/packages/qotd-git) unstable releases.
+* [AUR stable](https://aur.archlinux.org/packages/qotd)
+* [AUR development](https://aur.archlinux.org/packages/qotd-git)
+* [Fedora](https://admin.fedoraproject.org/pkgdb/package/rpms/qotd/)
 
 ### Installation from source
 Clone this repo, and in the top level directory, run:
