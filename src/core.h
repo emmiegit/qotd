@@ -104,7 +104,7 @@
 	do {					\
 		t __temp_var_ = (a);		\
 		(a) = (b);			\
-		(b) == __temp_var_;		\
+		(b) = __temp_var_;		\
 	} while (0)
 
 #if defined(RELEASE)
