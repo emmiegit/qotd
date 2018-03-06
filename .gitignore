@@ -8,10 +8,12 @@ qotdd
 *.ps
 *.pdf
 
-# Others
+# Debugging
 core
 core.[0-9]*
 vgcore.[0-9]*
+
+# Misc
 *.pid
 .*.swp
 *.bak

@@ -144,10 +144,10 @@ static void help_and_exit(const char *program_name)
 
 	print_usage(program_name);
 	fputs("  -f, --foreground      Do not fork, but run in the foreground.\n"
-	      "  -c, --config (file)   Specify an alternate configuration file location. The default\n"
-	      "                        is at \"/etc/qotd.conf\".\n"
-	      "  -N, --noconfig        Do not read from a configuration file, but use the default\n"
-	      "                        options instead.\n"
+	      "  -c, --conf (file)     Specify an alternate configuration file location. The default\n"
+	      "      --config (file)   is at \"/etc/qotd.conf\".\n"
+	      "  -N, --noconf          Do not read from a configuration file, but use the default\n"
+	      "      --noconfig        options instead.\n"
 	      "      --lax             When parsing the configuration, don't check file permissions\n"
 	      "                        or perform other security checks.\n",
 	      stdout);
@@ -162,8 +162,8 @@ static void help_and_exit(const char *program_name)
 	fputs("  -6, --ipv6            Only listen on IPv6. (By default the daemon listens on both)\n"
 	      "  -t, --tcp             Use TCP. This is the default behavior.\n"
 	      "  -u, --udp             Use UDP instead of TCP. (Not fully implemented yet)\n"
-	      "  -q, --quiet           Only output error messages. This is the same as using\n"
-	      "                        \"--journal /dev/null\".\n"
+	      "  -q, --quiet           Only output error messages. This is the essentially the same as\n"
+	      "                        using \"--journal /dev/null\".\n"
 	      "  --help                List all options and what they do.\n"
 	      "  --version             Print the version and some basic license information.\n",
 	      stdout);
@@ -311,7 +311,7 @@ static void parse_long_option(const char *argument,
 
 		flags->conf_file = next_arg;
 		(*i)++;
-	} else if (!strcmp(argument, "noconfig")) {
+	} else if (!strcmp(argument, "noconf") || !strcmp(argument, "noconfig")) {
 		flags->conf_file = NULL;
 	} else if (!strcmp(argument, "lax")) {
 		fprintf(stderr, "Note: --lax has been enabled. Security checks will *not* be performed.\n");

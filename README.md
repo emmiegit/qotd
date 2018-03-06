@@ -41,17 +41,16 @@ _systemd_ users can run the new service:
 Those running the daemon directly should be aware of its options:
 
 ```
-qotd - A simple QOTD daemon.
-Usage: qotdd [OPTIONS]...
+Usage: qotdd [OPTION]...
 Usage: qotdd [--help | --version]
 
   -f, --foreground      Do not fork, but run in the foreground.
-  -c, --config &lt;file&gt;   Specify an alternate configuration file location. The default
-                        is at "/etc/qotd.conf".
-  -N, --noconfig        Do not read from a configuration file, but use the default
-                        options instead.
-      --strict          When parsing the configuration, check file permissions and
-                        ownership and treat warnings as errors.
+  -c, --conf (file)     Specify an alternate configuration file location. The default
+      --config (file)   is at "/etc/qotd.conf".
+  -N, --noconf          Do not read from a configuration file, but use the default
+      --noconfig        options instead.
+      --lax             When parsing the configuration, don't check file permissions
+                        or perform other security checks.
   -P, --pidfile (file)  Override the pidfile name given in the configuration file with
                         the given file instead.
   -s, --quotes (file)   Override the quotes file given in the configuration file with
@@ -62,8 +61,8 @@ Usage: qotdd [--help | --version]
   -6, --ipv6            Only listen on IPv6. (By default the daemon listens on both)
   -t, --tcp             Use TCP. This is the default behavior.
   -u, --udp             Use UDP instead of TCP. (Not fully implemented yet)
-  -q, --quiet           Only output error messages. This is the same as using
-                        "--journal /dev/null".
+  -q, --quiet           Only output error messages. This is the essentially the same as
+                        using "--journal /dev/null".
   --help                List all options and what they do.
   --version             Print the version and some basic license information.
 ```
