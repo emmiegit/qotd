@@ -64,4 +64,5 @@ void signal_hndl_init(void)
 	signal(SIGTERM, handle_signal);
 	signal(SIGINT,  handle_signal);
 	signal(SIGHUP,  handle_signal);
+	signal(SIGCHLD, handle_signal);
 }

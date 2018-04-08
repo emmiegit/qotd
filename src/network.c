@@ -145,8 +145,8 @@ void set_up_ipv4_socket(const struct options *const opt)
 
 void set_up_ipv6_socket(const struct options *const opt)
 {
+	const unsigned char one = 1;
 	struct sockaddr_in6 serv_addr;
-	const int one = 1;
 
 	if (opt->tproto == PROTOCOL_TCP) {
 		journal("Setting up IPv%s6 socket over TCP...\n",

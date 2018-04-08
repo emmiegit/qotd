@@ -138,14 +138,14 @@ static int format_quote(void)
 		}
 	}
 
+	length = strlen(quote_file_data.array[i]) + 1;
 	if (opt->pad_quotes) {
 		/*
 		 * The pattern is "\n%s\n\n", so the total length is strlen + 3,
 		 * with one byte for the null byte.
 		 */
-		length = strlen(quote_file_data.array[i]) + 4;
-	} else {
-		length = strlen(quote_file_data.array[i]) + 1;
+
+		length += 3;
 	}
 
 	if (!opt->allow_big && length > QUOTE_SIZE) {
