@@ -237,7 +237,7 @@ static int readquotes_file(void)
 			*c = ' ';
 	}
 	quote_file_data.buffer[fsize] = '\0';
-	quote_file_data.length = fsize;
+	quote_file_data.buf_length = fsize;
 
 	/* Allocate the array of strings */
 	if (quote_file_data.length < 1) {
