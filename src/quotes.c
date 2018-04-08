@@ -428,7 +428,8 @@ static int readquotes_percent(void)
 
 int open_quotes_file(const struct options *const local_opt)
 {
-	opt = local_opt;
+	if (local_opt)
+		opt = local_opt;
 
 	if (quotes_fh) {
 		journal("Internal error: quotes file handle is already open\n");
@@ -438,8 +439,33 @@ int open_quotes_file(const struct options *const local_opt)
 		security_quotes_file_check(opt->quotes_file);
 
 	quotes_fh = fopen(opt->quotes_file, "r");
-	if (!quotes_fh)
+	if (unlikely(!quotes_fh)) {
+		const int errsave = errno;
+		assert(errno != 0);
+		JTRACE();
+		journal("Failed to open quotes file: %s\n", strerror(errsave));
 		return -1;
+	}
+
+	journal("Opened quotes file \"%s\".\n", opt->quotes_file);
+	return 0;
+}
+
+int reopen_quotes_file(void)
+{
+	FILE *old_fh;
+
+	old_fh = quotes_fh;
+	quotes_fh = NULL;
+	if (open_quotes_file(NULL)) {
+		/* Replace old quotes file */
+		JTRACE();
+		quotes_fh = old_fh;
+		return -1;
+	}
+
+	journal("Successfully reopened quotes file.\n");
+	fclose(old_fh);
 	return 0;
 }
 

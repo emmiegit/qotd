@@ -26,6 +26,7 @@
 #include "config.h"
 
 int open_quotes_file(const struct options *opt);
+int reopen_quotes_file(void);
 void close_quotes_file(void);
 
 void destroy_quote_buffers(void);

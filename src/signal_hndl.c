@@ -25,6 +25,7 @@
 
 #include "daemon.h"
 #include "journal.h"
+#include "quotes.h"
 #include "signal_hndl.h"
 
 #define JOURNAL(x)				\
@@ -50,11 +51,13 @@ static void handle_signal(const int signum)
 		JOURNAL("Interrupt signal received. Exiting...\n");
 		cleanup(EXIT_SIGNAL, 1);
 		break;
+	case SIGHUP:
+		JOURNAL("Hangup recieved. Loading new quotes...\n");
+		if (reopen_quotes_file())
+			JOURNAL("Error reopening quotes file!\n");
+		break;
 	case SIGCHLD:
 		JOURNAL("My child died. Doing nothing.\n");
-		break;
-	case SIGHUP:
-		JOURNAL("Hangup recieved. Doing nothing.\n");
 	}
 }
 

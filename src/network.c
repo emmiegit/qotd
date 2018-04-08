@@ -88,9 +88,6 @@ static void check_socket_error(const int error)
 	case EPROTONOSUPPORT:
 #endif /* EPROTONOSUPPORT */
 		cleanup(EXIT_IO, 1);
-
-	case EINTR:
-		raise(SIGSTOP);
 	}
 }
 
