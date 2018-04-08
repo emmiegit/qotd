@@ -1,5 +1,5 @@
 /*
- * sig_hndl.c
+ * signal_hndl.c
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Ammon Smith
