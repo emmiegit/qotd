@@ -25,8 +25,8 @@
 
 #define PROGRAM_NAME				"qotd"
 #define PROGRAM_VERSION_MAJOR			0
-#define PROGRAM_VERSION_MINOR			11
-#define PROGRAM_VERSION_PATCH			3
+#define PROGRAM_VERSION_MINOR			12
+#define PROGRAM_VERSION_PATCH			0
 
 #if !defined(GIT_HASH)
 # define GIT_HASH				"nogithash"
