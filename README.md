@@ -7,7 +7,7 @@ QOTD (quote of the day) is specified in [RFC 865](https://tools.ietf.org/html/rf
 ### Installation from package
 * [AUR stable](https://aur.archlinux.org/packages/qotd)
 * [AUR development](https://aur.archlinux.org/packages/qotd-git)
-* [Fedora](https://admin.fedoraproject.org/pkgdb/package/rpms/qotd/)
+* [Fedora](https://packages.fedoraproject.org/pkgs/qotd/qotd/)
 
 ### Installation from source
 Clone this repo, and in the top level directory, run:
