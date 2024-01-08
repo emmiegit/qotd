@@ -2,7 +2,7 @@
  * daemon.h
  *
  * qotd - A simple QOTD daemon.
- * Copyright (c) 2015-2016 Ammon Smith
+ * Copyright (c) 2015-2016 Emmie Smith
  *
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,4 +40,3 @@ enum {
 NORETURN void cleanup(int ret, int quiet);
 
 #endif /* _DAEMON_H_ */
-

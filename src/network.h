@@ -2,7 +2,7 @@
  * network.h
  *
  * qotd - A simple QOTD daemon.
- * Copyright (c) 2015-2016 Ammon Smith
+ * Copyright (c) 2015-2016 Emmie Smith
  *
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,4 +31,3 @@ void tcp_accept_connection(void);
 void udp_accept_connection(void);
 
 #endif /* _NETWORK_H_ */
-
