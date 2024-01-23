@@ -58,17 +58,19 @@ void pidfile_create(const struct options *opt)
 	if (!fh) {
 		journal("Unable to open pid file: %s.\n", strerror(errno));
 
-		if (opt->require_pidfile)
+		if (opt->require_pidfile) {
 			cleanup(EXIT_IO, 1);
-		else
+		} else {
 			return;
+		}
 	}
 	if (fprintf(fh, "%d\n", getpid()) < 0) {
 		JTRACE();
 		perror("Unable to write process id to pid file");
 
-		if (opt->require_pidfile)
+		if (opt->require_pidfile) {
 			cleanup(EXIT_IO, 1);
+		}
 	}
 	wrote_pidfile = 1;
 	fclose(fh);
@@ -76,8 +78,9 @@ void pidfile_create(const struct options *opt)
 
 void pidfile_remove(const struct options *opt)
 {
-	if (!opt->pid_file)
+	if (!opt->pid_file) {
 		return;
+	}
 
 	if (access(opt->pid_file, F_OK)) {
 		journal("Pid file \"%s\" is inaccessible: %s.\n",

@@ -51,8 +51,9 @@ void open_journal(const char *const path)
 		return;
 	}
 
-	if (DEBUG)
+	if (DEBUG) {
 		printf("Setting journal to be \"%s\".\n", path);
+	}
 
 	journal_fh = fopen(path, "w");
 	if (!journal_fh) {
@@ -84,8 +85,9 @@ int journal(const char *const format, ...)
 	va_list args;
 	int ret;
 
-	if (!journal_fh)
+	if (!journal_fh) {
 		return 0;
+	}
 
 	va_start(args, format);
 	ret = vfprintf(journal_fh, format, args);

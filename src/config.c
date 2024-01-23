@@ -57,8 +57,9 @@ static int caseless_eq(const struct string *x,
 	size_t i;
 	char c1, c2;
 
-	if (x->length != y_len)
+	if (x->length != y_len) {
 		return 0;
+	}
 	for (i = 0; i < y_len; i++) {
 		c1 = tolower(x->ptr[i]);
 		c2 = tolower(y[i]);
@@ -72,8 +73,9 @@ static void print_str(FILE *out, const struct string *s)
 {
 	size_t i;
 
-	for (i = 0; i < s->length; i++)
+	for (i = 0; i < s->length; i++) {
 		putc(s->ptr[i], out);
+	}
 	putc('\n', out);
 }
 
@@ -82,8 +84,9 @@ static char *dup_str(const struct string *s)
 	char *buf;
 
 	buf = malloc(s->length + 1);
-	if (unlikely(!buf))
+	if (unlikely(!buf)) {
 		return NULL;
+	}
 
 	memcpy(buf, s->ptr, s->length);
 	buf[s->length] = '\0';
@@ -193,12 +196,13 @@ static int str_to_bool(const struct string *s,
 {
 	if (caseless_eq(s, "yes", 3) ||
 	    caseless_eq(s, "true", 4) ||
-	    caseless_eq(s, "1", 1))
+	    caseless_eq(s, "1", 1)) {
 		return 1;
-	else if (caseless_eq(s, "no", 2) ||
+	} else if (caseless_eq(s, "no", 2) ||
 		 caseless_eq(s, "false", 5) ||
-		 caseless_eq(s, "0", 1))
+		 caseless_eq(s, "0", 1)) {
 		return 0;
+	}
 
 	fprintf(stderr, "%s:%u: not a boolean value: ",
 		filename, lineno);
@@ -236,8 +240,9 @@ static int process_line(struct options *opt,
 	struct string key, val;
 	int n;
 
-	if (read_kv(conf_file, lineno, line, &key, &val))
+	if (read_kv(conf_file, lineno, line, &key, &val)) {
 		return key.ptr != NULL;
+	}
 
 	if (DEBUG) {
 		fputs("\tKey: ", stdout);
@@ -249,8 +254,9 @@ static int process_line(struct options *opt,
 	/* Check each possible option */
 	if (caseless_eq(&key, "Daemonize", 9)) {
 		n = str_to_bool(&val, conf_file, lineno);
-		if (unlikely(NOT_BOOL(n)))
+		if (unlikely(NOT_BOOL(n))) {
 			return -1;
+		}
 		opt->daemonize = n;
 	} else if (caseless_eq(&key, "TransportProtocol", 17)) {
 		if (caseless_eq(&val, "tcp", 3)) {
@@ -278,18 +284,21 @@ static int process_line(struct options *opt,
 		}
 	} else if (caseless_eq(&key, "Port", 4)) {
 		n = get_port(&val, conf_file, lineno);
-		if (unlikely(n < 0))
+		if (unlikely(n < 0)) {
 			return -1;
+		}
 		opt->port = n;
 	} else if (caseless_eq(&key, "StrictChecking", 14)) {
 		n = str_to_bool(&val, conf_file, lineno);
-		if (unlikely(NOT_BOOL(n)))
+		if (unlikely(NOT_BOOL(n))) {
 			return -1;
+		}
 		opt->strict = n;
 	} else if (caseless_eq(&key, "DropPrivileges", 14)) {
 		n = str_to_bool(&val, conf_file, lineno);
-		if (unlikely(NOT_BOOL(n)))
+		if (unlikely(NOT_BOOL(n))) {
 			return -1;
+		}
 		opt->drop_privileges = n;
 	} else if (caseless_eq(&key, "PidFile", 7)) {
 		if (caseless_eq(&val, "none", 4)) {
@@ -304,8 +313,9 @@ static int process_line(struct options *opt,
 		}
 	} else if (caseless_eq(&key, "RequirePidFile", 14)) {
 		n = str_to_bool(&val, conf_file, lineno);
-		if (unlikely(NOT_BOOL(n)))
+		if (unlikely(NOT_BOOL(n))) {
 			return -1;
+		}
 		opt->require_pidfile = n;
 	} else if (caseless_eq(&key, "JournalFile", 11)) {
 		if (caseless_eq(&val, "-", 1)) {
@@ -338,18 +348,21 @@ static int process_line(struct options *opt,
 		}
 	} else if (caseless_eq(&key, "PadQuotes", 9)) {
 		n = str_to_bool(&val, conf_file, lineno);
-		if (unlikely(NOT_BOOL(n)))
+		if (unlikely(NOT_BOOL(n))) {
 			return -1;
+		}
 		opt->pad_quotes = n;
 	} else if (caseless_eq(&key, "DailyQuotes", 11)) {
 		n = str_to_bool(&val, conf_file, lineno);
-		if (unlikely(NOT_BOOL(n)))
+		if (unlikely(NOT_BOOL(n))) {
 			return -1;
+		}
 		opt->is_daily = n;
 	} else if (caseless_eq(&key, "AllowBigQuotes", 14)) {
 		n = str_to_bool(&val, conf_file, lineno);
-		if (unlikely(NOT_BOOL(n)))
+		if (unlikely(NOT_BOOL(n))) {
 			return -1;
+		}
 		opt->allow_big = n;
 	} else {
 		fprintf(stderr, "%s:%u: unknown config option: ",
@@ -369,8 +382,9 @@ void parse_config(struct options *opt, const char *conf_file)
 	/* Journal hasn't been opened yet */
 	printf("Reading configuration file at \"%s\"...\n", conf_file);
 
-	if (opt->strict)
+	if (opt->strict) {
 		security_conf_file_check(conf_file);
+	}
 
 	fh = fopen(conf_file, "r");
 	if (!fh) {
@@ -385,8 +399,9 @@ void parse_config(struct options *opt, const char *conf_file)
 	lineno = 1;
 	errors = 0;
 	while (!read_line(fh, conf_file, &lineno, &line)) {
-		if (process_line(opt, conf_file, lineno, &line))
+		if (process_line(opt, conf_file, lineno, &line)) {
 			errors++;
+		}
 		lineno++;
 	}
 	fclose(fh);

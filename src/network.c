@@ -205,8 +205,9 @@ void set_up_ipv6_socket(const struct options *const opt)
 
 void close_socket(void)
 {
-	if (sockfd < 0)
+	if (sockfd < 0) {
 		return;
+	}
 	if (unlikely(close(sockfd))) {
 		const int errsave = errno;
 		assert(errno != 0);
@@ -290,8 +291,9 @@ void tcp_accept_connection(void)
 	log_client(&cli_addr);
 #endif /* DEBUG */
 
-	if (get_quote_of_the_day(&buffer, &length))
+	if (get_quote_of_the_day(&buffer, &length)) {
 		goto end;
+	}
 
 	tcp_write(buffer,
 		  &length,
@@ -326,8 +328,9 @@ void udp_accept_connection(void)
 	log_client(&cli_addr);
 #endif /* DEBUG */
 
-	if (get_quote_of_the_day(&buffer, &length))
+	if (get_quote_of_the_day(&buffer, &length)) {
 		return;
+	}
 
 	udp_write(buffer,
 		 &length,
