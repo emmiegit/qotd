@@ -1,5 +1,5 @@
 /*
- * quotes.c
+ * quotes_file.c
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Emmie Smith
@@ -33,7 +33,7 @@
 #include "daemon.h"
 #include "journal.h"
 #include "security.h"
-#include "quotes.h"
+#include "quotes_file.h"
 
 #define QUOTE_SIZE		512  /* Set by RFC 865 */
 

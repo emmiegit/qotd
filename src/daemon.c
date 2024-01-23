@@ -32,7 +32,7 @@
 #include "journal.h"
 #include "network.h"
 #include "pid_file.h"
-#include "quotes.h"
+#include "quotes_file.h"
 #include "security.h"
 #include "signal_hndl.h"
 

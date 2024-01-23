@@ -1,5 +1,5 @@
 /*
- * quotes.h
+ * quotes_file.h
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Emmie Smith
@@ -18,8 +18,8 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _QUOTES_H_
-#define _QUOTES_H_
+#ifndef _QUOTES_FILE_H_
+#define _QUOTES_FILE_H_
 
 #include <stddef.h>
 
@@ -32,4 +32,4 @@ void close_quotes_file(void);
 void destroy_quote_buffers(void);
 int get_quote_of_the_day(const char **buffer, size_t *length);
 
-#endif /* _QUOTES_H_ */
+#endif /* _QUOTES_FILE_H_ */

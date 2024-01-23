@@ -34,7 +34,7 @@
 #include "daemon.h"
 #include "journal.h"
 #include "network.h"
-#include "quotes.h"
+#include "quotes_file.h"
 
 #define IPPROTO_PART_STRING(opt)	(((opt)->iproto == PROTOCOL_BOTH) ? "4/" : "")
 #define TCP_CONNECTION_BACKLOG		50

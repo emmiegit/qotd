@@ -25,7 +25,7 @@
 
 #include "daemon.h"
 #include "journal.h"
-#include "quotes.h"
+#include "quotes_file.h"
 #include "signal_hndl.h"
 
 #define JOURNAL(x)				\
