@@ -2,7 +2,7 @@
  * arguments.h
  *
  * qotd - A simple QOTD daemon.
- * Copyright (c) 2015-2016 Emmie Smith
+ * Copyright (c) 2015-2024 Emmie Smith
  *
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
