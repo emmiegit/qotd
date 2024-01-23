@@ -35,8 +35,6 @@
 #include "security.h"
 #include "quotes_file.h"
 
-#define QUOTE_SIZE		512  /* Set by RFC 865 */
-
 #if defined(__APPLE__)
 # define FSEEK			fseek
 # define FTELL			ftell

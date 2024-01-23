@@ -125,6 +125,10 @@
 # define NORETURN
 #endif /* __GNUC__ || __clang__ */
 
+/* Constants */
+
+#define QUOTE_SIZE				512  /* Set by RFC 865 */
+
 /* Functions */
 
 void print_version(void);
