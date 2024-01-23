@@ -291,7 +291,7 @@ void tcp_accept_connection(void)
 	log_client(&cli_addr);
 #endif /* DEBUG */
 
-	if (get_quote_of_the_day(&buffer, &length)) {
+	if (get_quote_from_file(&buffer, &length)) {
 		goto end;
 	}
 
@@ -328,7 +328,7 @@ void udp_accept_connection(void)
 	log_client(&cli_addr);
 #endif /* DEBUG */
 
-	if (get_quote_of_the_day(&buffer, &length)) {
+	if (get_quote_from_file(&buffer, &length)) {
 		return;
 	}
 

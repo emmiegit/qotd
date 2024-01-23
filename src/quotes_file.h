@@ -30,6 +30,6 @@ int reopen_quotes_file(void);
 void close_quotes_file(void);
 
 void destroy_quote_buffers(void);
-int get_quote_of_the_day(const char **buffer, size_t *length);
+int get_quote_from_file(const char **buffer, size_t *length);
 
 #endif /* _QUOTES_FILE_H_ */

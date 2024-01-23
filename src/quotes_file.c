@@ -491,7 +491,7 @@ void destroy_quote_buffers(void)
 	FINAL_FREE(quote_buffer.data);
 }
 
-int get_quote_of_the_day(const char **const buffer, size_t *const length)
+int get_quote_from_file(const char **const buffer, size_t *const length)
 {
 	int (*readquotes)(void);
 
