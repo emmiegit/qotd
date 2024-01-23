@@ -1,5 +1,5 @@
 /*
- * signal_hndl.c
+ * signal_handler.c
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Emmie Smith
@@ -26,7 +26,7 @@
 #include "daemon.h"
 #include "journal.h"
 #include "quotes_file.h"
-#include "signal_hndl.h"
+#include "signal_handler.h"
 
 #define JOURNAL(x)				\
 	do {					\
@@ -61,7 +61,7 @@ static void handle_signal(const int signum)
 	}
 }
 
-void signal_hndl_init(void)
+void signal_handler_init(void)
 {
 	signal(SIGSEGV, handle_signal);
 	signal(SIGTERM, handle_signal);

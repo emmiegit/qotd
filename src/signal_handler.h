@@ -1,5 +1,5 @@
 /*
- * signal_hndl.h
+ * signal_handler.h
  *
  * qotd - A simple QOTD daemon.
  * Copyright (c) 2015-2016 Emmie Smith
@@ -18,9 +18,9 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _SIGNAL_HNDL_H_
-#define _SIGNAL_HNDL_H_
+#ifndef _SIGNAL_HANDLER_H_
+#define _SIGNAL_HANDLER_H_
 
-void signal_hndl_init(void);
+void signal_handler_init(void);
 
-#endif /* _SIGNAL_HNDL_H_ */
+#endif /* _SIGNAL_HANDLER_H_ */
