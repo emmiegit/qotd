@@ -1,8 +1,8 @@
 /*
- * quotes.h
+ * signal_handler.h
  *
  * qotd - A simple QOTD daemon.
- * Copyright (c) 2015-2016 Emmie Smith
+ * Copyright (c) 2015-2024 Emmie Smith
  *
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,18 +18,9 @@
  * along with qotd.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _QUOTES_H_
-#define _QUOTES_H_
+#ifndef _SIGNAL_HANDLER_H_
+#define _SIGNAL_HANDLER_H_
 
-#include <stddef.h>
+void signal_handler_init(void);
 
-#include "config.h"
-
-int open_quotes_file(const struct options *opt);
-int reopen_quotes_file(void);
-void close_quotes_file(void);
-
-void destroy_quote_buffers(void);
-int get_quote_of_the_day(const char **buffer, size_t *length);
-
-#endif /* _QUOTES_H_ */
+#endif /* _SIGNAL_HANDLER_H_ */

@@ -1,8 +1,8 @@
 /*
- * quotes.c
+ * quotes_file.c
  *
  * qotd - A simple QOTD daemon.
- * Copyright (c) 2015-2016 Emmie Smith
+ * Copyright (c) 2015-2024 Emmie Smith
  *
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,9 +33,7 @@
 #include "daemon.h"
 #include "journal.h"
 #include "security.h"
-#include "quotes.h"
-
-#define QUOTE_SIZE		512  /* Set by RFC 865 */
+#include "quotes_file.h"
 
 #if defined(__APPLE__)
 # define FSEEK			fseek
@@ -168,15 +166,17 @@ static int format_quote(void)
 		quote_buffer.length = length;
 	}
 
-	if (opt->pad_quotes)
+	if (opt->pad_quotes) {
 		sprintf(quote_buffer.data, "\n%s\n\n", quote_file_data.array[i]);
-	else
+	} else {
 		strncpy(quote_buffer.data, quote_file_data.array[i], length);
+	}
 
-	if (opt->pad_quotes)
+	if (opt->pad_quotes) {
 		journal("Sending quotation:%s<end>\n", quote_buffer.data);
-	else
+	} else {
 		journal("Sending quotation:\n%s<end>\n", quote_buffer.data);
+	}
 
 	quote_buffer.str_length = length;
 	return 0;
@@ -206,8 +206,9 @@ static int readquotes_file(void)
 	size_t i, fsize;
 
 	fsize = get_file_size();
-	if (unlikely(fsize == (size_t)-1))
+	if (unlikely(fsize == (size_t)-1)) {
 		return -1;
+	}
 
 	/* Allocate file buffer */
 	if (fsize > quote_file_data.buf_length) {
@@ -233,8 +234,9 @@ static int readquotes_file(void)
 		char *c;
 
 		c = &quote_file_data.buffer[i];
-		if (!*c)
+		if (!*c) {
 			*c = ' ';
+		}
 	}
 	quote_file_data.buffer[fsize] = '\0';
 	quote_file_data.buf_length = fsize;
@@ -262,8 +264,9 @@ static int readquotes_line(void)
 	size_t fsize, quotes;
 
 	fsize = get_file_size();
-	if (unlikely(fsize == (size_t)-1))
+	if (unlikely(fsize == (size_t)-1)) {
 		return -1;
+	}
 
 	/* Allocate file buffer */
 	if (fsize > quote_file_data.buf_length) {
@@ -339,8 +342,9 @@ static int readquotes_percent(void)
 	quotes = 0;
 	has_percent = 0;
 	fsize = get_file_size();
-	if (unlikely(fsize == (size_t)-1))
+	if (unlikely(fsize == (size_t)-1)) {
 		return -1;
+	}
 
 	/* Allocate file buffer */
 	if (fsize > quote_file_data.buf_length) {
@@ -428,15 +432,17 @@ static int readquotes_percent(void)
 
 int open_quotes_file(const struct options *const local_opt)
 {
-	if (local_opt)
+	if (local_opt) {
 		opt = local_opt;
+	}
 
 	if (quotes_fh) {
 		journal("Internal error: quotes file handle is already open\n");
 		cleanup(EXIT_INTERNAL, 1);
 	}
-	if (opt->strict)
+	if (opt->strict) {
 		security_quotes_file_check(opt->quotes_file);
+	}
 
 	quotes_fh = fopen(opt->quotes_file, "r");
 	if (unlikely(!quotes_fh)) {
@@ -471,8 +477,9 @@ int reopen_quotes_file(void)
 
 void close_quotes_file(void)
 {
-	if (quotes_fh)
+	if (quotes_fh) {
 		fclose(quotes_fh);
+	}
 }
 
 void destroy_quote_buffers(void)
@@ -482,7 +489,7 @@ void destroy_quote_buffers(void)
 	FINAL_FREE(quote_buffer.data);
 }
 
-int get_quote_of_the_day(const char **const buffer, size_t *const length)
+int get_quote_from_file(const char **const buffer, size_t *const length)
 {
 	int (*readquotes)(void);
 
@@ -516,8 +523,9 @@ int get_quote_of_the_day(const char **const buffer, size_t *const length)
 	print_quotes();
 #endif /* DEBUG */
 
-	if (format_quote())
+	if (format_quote()) {
 		return -1;
+	}
 	*buffer = quote_buffer.data;
 	*length = quote_buffer.str_length;
 	return 0;

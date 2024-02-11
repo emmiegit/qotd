@@ -2,7 +2,7 @@
  * arguments.c
  *
  * qotd - A simple QOTD daemon.
- * Copyright (c) 2015-2016 Emmie Smith
+ * Copyright (c) 2015-2024 Emmie Smith
  *
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -189,8 +189,9 @@ static void parse_short_options(const char *argument,
 {
 	size_t i;
 
-	if (DEBUG)
+	if (DEBUG) {
 		journal("Parsing options in \"-%s\":\n", argument);
+	}
 
 	for (i = 0; argument[i]; i++) {
 #if DEBUG
@@ -429,8 +430,9 @@ void parse_args(struct options *const opt,
 	opt->strict = flags.strict;
 
 	if (flags.conf_file) {
-		if (flags.conf_file[0] != '/')
+		if (flags.conf_file[0] != '/') {
 			opt->chdir_root = 0;
+		}
 		parse_config(opt, flags.conf_file);
 	}
 	if (flags.pid_file) {

@@ -2,7 +2,7 @@
  * network.c
  *
  * qotd - A simple QOTD daemon.
- * Copyright (c) 2015-2016 Emmie Smith
+ * Copyright (c) 2015-2024 Emmie Smith
  *
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 #include "daemon.h"
 #include "journal.h"
 #include "network.h"
-#include "quotes.h"
+#include "quotes_file.h"
 
 #define IPPROTO_PART_STRING(opt)	(((opt)->iproto == PROTOCOL_BOTH) ? "4/" : "")
 #define TCP_CONNECTION_BACKLOG		50
@@ -205,8 +205,9 @@ void set_up_ipv6_socket(const struct options *const opt)
 
 void close_socket(void)
 {
-	if (sockfd < 0)
+	if (sockfd < 0) {
 		return;
+	}
 	if (unlikely(close(sockfd))) {
 		const int errsave = errno;
 		assert(errno != 0);
@@ -290,8 +291,9 @@ void tcp_accept_connection(void)
 	log_client(&cli_addr);
 #endif /* DEBUG */
 
-	if (get_quote_of_the_day(&buffer, &length))
+	if (get_quote_from_file(&buffer, &length)) {
 		goto end;
+	}
 
 	tcp_write(buffer,
 		  &length,
@@ -326,8 +328,9 @@ void udp_accept_connection(void)
 	log_client(&cli_addr);
 #endif /* DEBUG */
 
-	if (get_quote_of_the_day(&buffer, &length))
+	if (get_quote_from_file(&buffer, &length)) {
 		return;
+	}
 
 	udp_write(buffer,
 		 &length,

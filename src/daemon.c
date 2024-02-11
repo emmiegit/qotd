@@ -2,7 +2,7 @@
  * daemon.c
  *
  * qotd - A simple QOTD daemon.
- * Copyright (c) 2015-2016 Emmie Smith
+ * Copyright (c) 2015-2024 Emmie Smith
  *
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,9 +32,9 @@
 #include "journal.h"
 #include "network.h"
 #include "pid_file.h"
-#include "quotes.h"
+#include "quotes_file.h"
 #include "security.h"
-#include "signal_hndl.h"
+#include "signal_handler.h"
 
 static struct options opt;
 
@@ -70,8 +70,9 @@ static int main_loop(void)
 		cleanup(EXIT_INTERNAL, 1);
 	}
 
-	if (opt.drop_privileges)
+	if (opt.drop_privileges) {
 		drop_privileges();
+	}
 
 	switch (opt.tproto) {
 	case PROTOCOL_TCP:
@@ -88,8 +89,9 @@ static int main_loop(void)
 		return -1;
 	}
 
-	for (;;)
+	for (;;) {
 		accept_connection();
+	}
 }
 
 static int daemonize(void)
@@ -121,24 +123,27 @@ static int daemonize(void)
 
 int main(const int argc, const char *const argv[])
 {
-	if (DEBUG)
+	if (DEBUG) {
 		printf("(Running in debug mode)\n");
+	}
 
-	signal_hndl_init();
+	signal_handler_init();
 	load_config(argc, argv);
 	open_journal(opt.journal_file);
 
 	/* Check security settings */
-	if (opt.strict)
+	if (opt.strict) {
 		security_options_check(&opt);
+	}
 
 	return opt.daemonize ? daemonize() : main_loop();
 }
 
 void cleanup(int ret, int quiet)
 {
-	if (!quiet)
+	if (!quiet) {
 		journal("Quitting with exit code %d.\n", ret);
+	}
 
 	pidfile_remove(&opt);
 	destroy_quote_buffers();

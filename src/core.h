@@ -2,7 +2,7 @@
  * core.h
  *
  * qotd - A simple QOTD daemon.
- * Copyright (c) 2015-2016 Emmie Smith
+ * Copyright (c) 2015-2024 Emmie Smith
  *
  * qotd is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -124,6 +124,10 @@
 # define unlikely(x)				(x)
 # define NORETURN
 #endif /* __GNUC__ || __clang__ */
+
+/* Constants */
+
+#define QUOTE_SIZE				512  /* Set by RFC 865 */
 
 /* Functions */
 
