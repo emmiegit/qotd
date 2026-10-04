@@ -74,7 +74,6 @@ static void check_socket_error(const int error)
 	case ENOTSOCK:
 	case ENOTCONN:
 	case EPROTO:
-	case ECONNRESET:
 
 #if defined(EOPNOTSUPP)
 	case EOPNOTSUPP:
