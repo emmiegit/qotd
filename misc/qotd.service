@@ -9,7 +9,7 @@ ExecStart=/usr/bin/qotdd
 ExecReload=/bin/kill -HUP $MAINPID
 ExecStop=/bin/kill $MAINPID
 PIDFile=/run/qotd.pid
-Restart=on-success
+Restart=unless-stopped
 RestartSec=60
 
 [Install]
